@@ -84,6 +84,7 @@ What was deliberately removed in this fork: cinematic Scene Director, Nepal/Bhot
 - **Global Context:** stage the situational picture with one switch, restore on exit.
 - **Share Links:** camera, style, layers, one tracked target serialize into a URL.
 - **Reset Globe:** one control back to full Earth.
+- **Draw:** DISPLAY ▸ **Draw** turns the globe into a whiteboard drawn by hand — pick Area, Line or Pin, click vertices on the real world, Enter finishes, Esc cancels, Clear wipes the board. Same persistence as voice annotations, no microphone needed.
 - **Voice (needs OpenAI key):** realtime agent with ~27 tools — camera verbs, annotations, analyst queries, console operation. Without a key the mic reports unavailable; the rest of the app runs.
 
 ## Quick start

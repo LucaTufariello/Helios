@@ -699,7 +699,7 @@ test('allocation accounting includes Cesium render aliases and excludes QA helpe
   });
 });
 
-test('public transit documentation uses courtesy attribution and the approved ground sentence', () => {
+test('public transit documentation uses courtesy attribution and private-fork copy', () => {
   const data = readFileSync(
     new URL('../../DATA_SOURCES.md', import.meta.url),
     'utf8',
@@ -724,16 +724,9 @@ test('public transit documentation uses courtesy attribution and the approved gr
     new URL('../../README.md', import.meta.url),
     'utf8',
   );
-  assert.ok(
-    readme.includes(
-      'Fifteen layers and map sources. **Thirteen have a keyless path.**',
-    ),
-  );
-  assert.ok(
-    readme.includes(
-      '**Sits on the real ground.** Entity heights are aligned to work with Google 3D tiles, so aircraft park on aprons and cameras stand on street corners instead of floating.',
-    ),
-  );
+  assert.ok(readme.includes('**FREE DATA ONLY.**'));
+  assert.ok(readme.includes('days old at best, never live video'));
+  assert.ok(readme.includes('No classification banners'));
   assert.doesNotMatch(
     readme,
     /geoid-aware|sampled against the _rendered_ terrain mesh/,
