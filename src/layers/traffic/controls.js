@@ -1,7 +1,3 @@
-import {
-  trafficBucketTier,
-  trafficStyleProfile,
-} from '../../data/trafficPresetStyle.js';
 import { TRAFFIC_TIMING_ENABLED } from './policy.js';
 
 export function createControls({ state: layerState, services, parts, source }) {
@@ -10,136 +6,56 @@ export function createControls({ state: layerState, services, parts, source }) {
   const methods = {
     id: 'traffic',
 
-    name: 'Street Traffic',
+    name: 'Road Conditions',
 
     icon: '🚗',
 
-    source: 'OpenStreetMap',
+    source: 'TomTom flow · OpenStreetMap roads',
 
     // The one data-layer control a provider key gates: without a TomTom key
     // the layer loads nothing (KEY REQUIRED) instead of simulating traffic.
     requiresKeyId: 'tomtom',
 
-    /** @type {number} Zero — layer is self-managed via camera listener + preRender */
-    updateInterval: 0,
+    /** Refresh measured flow while parked; cached road geometry is reused. */
+    updateInterval: 120000,
 
-    /**
-     * Update user-adjustable parameters (density and speed scaling).
-     *
-     * @param {Object}  [params]
-     * @param {number}  [params.densityScale] - Dot density multiplier (clamped 0.2–2.5).
-     * @param {number}  [params.speedScale]   - Dot speed multiplier (clamped 0.3–3.0).
-     */
-    setParams(params = {}) {
-      if (typeof params.densityScale === 'number') {
-        layerState._densityScale = Math.max(
-          0.2,
-          Math.min(2.5, params.densityScale),
-        );
-      }
-      if (typeof params.speedScale === 'number') {
-        layerState._speedScale = Math.max(
-          0.3,
-          Math.min(3.0, params.speedScale),
-        );
-      }
-      // Live-mode treatment of roads TomTom has no flow data for:
-      // 'sim' (default) keeps them as today's white ambient dots — colored =
-      // real data, white = simulation; 'hide' spawns nothing on them (strict
-      // data-integrity view). Owner-explorable; re-render applies on the next
-      // camera-driven load.
-      if (params.uncoveredRoads === 'sim' || params.uncoveredRoads === 'hide') {
-        layerState._uncoveredMode = params.uncoveredRoads;
-      }
-      // Jam-viz prototype toggle (owner A/B): 'none' = shipped main behavior;
-      // live mode only, applies on the next camera-driven load like the
-      // uncoveredRoads param above.
-      if (['none', 'density', 'heatline', 'both'].includes(params.jamViz)) {
-        layerState._jamViz = params.jamViz;
-      }
-      // Preset-aware dot styling kill switch (owner A/B): 'off' forces the
-      // shipped palette under every post-FX preset. Applies immediately via
-      // in-place restyle — no refetch — so A/B legs share identical dots.
-      if (params.presetDots === 'on' || params.presetDots === 'off') {
-        if (params.presetDots !== layerState._presetDots) {
-          layerState._presetDots = params.presetDots;
-          parts.style.restyleDotsInPlace();
-        }
-      }
+    // Aggregate flow has no observed individual vehicle positions.
+    getDetectableObjects() {
+      return [];
     },
 
-    /**
-     * Return the current user-adjustable parameters.
-     * @returns {{densityScale:number, speedScale:number}}
-     */
-    getParams() {
+    getRowControls() {
+      if (!layerState._count || layerState._flowError) return { legend: [] };
       return {
-        densityScale: layerState._densityScale,
-        speedScale: layerState._speedScale,
-        uncoveredRoads: layerState._uncoveredMode,
-        jamViz: layerState._jamViz,
-        presetDots: layerState._presetDots,
+        legend: [
+          {
+            label: 'Free flow',
+            count: layerState._bucketCounts.free,
+            color: '#64b98b',
+            blurb: 'At least 85% of free-flow speed',
+          },
+          {
+            label: 'Slow',
+            count: layerState._bucketCounts.slow,
+            color: '#d7b461',
+            blurb: '55–85% of free-flow speed',
+          },
+          {
+            label: 'Congested',
+            count: layerState._bucketCounts.jam,
+            color: '#d97968',
+            blurb: 'Below 55% of free-flow speed',
+          },
+          {
+            label: 'Closed',
+            count: layerState._closedRoads,
+            color: '#b992d1',
+            blurb: 'Closure reported by source',
+          },
+        ],
       };
     },
 
-    /**
-     * Return a sub-sampled list of active dot positions for detection overlays
-     * (e.g. CCTV bounding-box rendering).
-     *
-     * Uses a deterministic stride-based sampling so different seeds yield
-     * non-overlapping subsets without sorting or shuffling.
-     *
-     * @param {Object}  [options]
-     * @param {number}  [options.maxCount] - Maximum objects to return (defaults to all).
-     * @param {number}  [options.seed]     - Integer seed to offset the sampling start.
-     * @returns {Array<{position:Cesium.Cartesian3, id:string, type:string}>}
-     */
-    getDetectableObjects(options = {}) {
-      if (!layerState._enabled || layerState._dots.length === 0) return [];
-      const maxCount = Number.isFinite(options.maxCount)
-        ? Math.max(1, Math.floor(options.maxCount))
-        : layerState._dots.length;
-      const seed = Number.isFinite(options.seed) ? Math.floor(options.seed) : 0;
-      // Stride-based sampling: step through dots evenly to get ~maxCount samples
-      const stride = Math.max(1, Math.ceil(layerState._dots.length / maxCount));
-      const start = seed % stride;
-
-      const result = [];
-      for (let i = start; i < layerState._dots.length; i += stride) {
-        const pos = layerState._dots[i].point.position;
-        if (!pos) continue;
-        const entry = {
-          position: pos,
-          id: `VEH-${String(i).padStart(4, '0')}`,
-          type: 'VEH',
-        };
-        // Live mode: the detection bracket carries the congestion signal —
-        // its canvas sits ABOVE the post-FX chain, so tier colors survive
-        // every preset (owner round 2: "bounding boxes do the heavy
-        // lifting"). Keyless mode sets no tier: contacts keep the stock
-        // 'vehicle' bracket and the keyless experience stays untouched.
-        if (layerState._liveMode) {
-          const tier = trafficBucketTier(layerState._dots[i].bucket || 'sim');
-          if (tier) entry.tier = tier;
-        }
-        result.push(entry);
-        if (result.length >= maxCount) break;
-      }
-      return result;
-    },
-
-    /**
-     * Return current layer statistics for UI status chips.
-     * Without a TomTom key the layer is KEY REQUIRED and loads nothing —
-     * it never simulates traffic. `mode` is the CONFIGURED source ('live'
-     * when a key is present, 'sim' plumbing otherwise); `error` carries
-     * this instant's health. `flowCoveragePct` is matched roads / roads with
-     * any flow candidates (0–100 int); `tilesFetched` counts flow-tile
-     * requests issued to the proxy this session (decode-cache hits excluded).
-     * @returns {{count:number, lastUpdate:number|null, loading:boolean,
-     *   mode:'live'|'sim', keyRequired:boolean, error:string|null,
-     *   flowCoveragePct:number, tilesFetched:number}}
-     */
     getStats() {
       // Outstanding flow work counts as loading: the paint race can leave a
       // TomTom request in flight after the roads have settled, and the shared
@@ -155,6 +71,13 @@ export function createControls({ state: layerState, services, parts, source }) {
       });
       return {
         count: layerState._count,
+        countUnit: 'road segments',
+        stale: Boolean(
+          layerState._lastUpdate &&
+          Date.now() - layerState._lastUpdate > 5 * 60_000,
+        ),
+        partial: layerState._truncated === true,
+        coverage: 'Aggregate road flow; no individual vehicle positions',
         lastUpdate: layerState._lastUpdate,
         loading,
         mode: feed.mode,
@@ -167,26 +90,9 @@ export function createControls({ state: layerState, services, parts, source }) {
         ...(TRAFFIC_TIMING_ENABLED
           ? { trafficTiming: parts.timing.getTrafficTimingDiagnostics() }
           : {}),
-        // Per-bucket rendered-dot counts (sim = white ambient). Drives the
-        // qa-traffic color assertions and the sync-chip mode label below.
         flowBuckets: { ...layerState._bucketCounts },
         closedRoads: layerState._closedRoads,
-        // Jam-viz prototype diagnostics (additive — harness contract untouched).
         heatLines: layerState._heatLineCount,
-        jamViz: layerState._jamViz,
-        // Preset-styling diagnostics (additive): active style + profile.
-        stylePreset: layerState._stylePreset,
-        styleProfile:
-          layerState._presetDots === 'on'
-            ? trafficStyleProfile(layerState._stylePreset)
-            : 'normal',
-        // Sync-chip text: shown while busy, and flashed on its own for 1.5 s
-        // after each completed load (ui.js _updateTrafficSyncChip semantics).
-        // The settled flash carries NO progress number beside it — this label's
-        // coverage figure is the chip's only percentage — so a label that ends
-        // in one had better be the honest one. This is also where LIVE vs
-        // SIMULATED mode is surfaced, and it must never imply a live feed the
-        // layer does not have.
         loadingLabel: feed.loadingLabel,
       };
     },

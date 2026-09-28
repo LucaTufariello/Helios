@@ -89,3 +89,85 @@ test('partial feed controls distinguish incomplete records from stale data and o
   panel._syncToggleButton(button, layer);
   assert.equal(button.textContent, 'OFF');
 });
+
+test('catalog filtering searches source metadata and selected state without toggling layers', async () => {
+  const { LayerPanel } = await import('./layerPanel.js');
+  const movement = { hidden: false },
+    events = { hidden: false };
+  const rows = new Map([
+    [
+      'flights',
+      {
+        row: { hidden: false },
+        heading: movement,
+        searchText: 'live flights opensky movement',
+      },
+    ],
+    [
+      'earthquakes',
+      {
+        row: { hidden: false },
+        heading: events,
+        searchText: 'earthquakes usgs events',
+      },
+    ],
+  ]);
+  const enabled = new Set(['earthquakes']);
+  const panel = Object.assign(Object.create(LayerPanel.prototype), {
+    _rows: rows,
+    _query: 'usgs',
+    _activeOnly: false,
+    isEnabled: (id) => enabled.has(id),
+    _summary: { textContent: '' },
+    _empty: { hidden: true },
+  });
+  panel._applyFilters();
+  assert.equal(rows.get('flights').row.hidden, true);
+  assert.equal(movement.hidden, true);
+  assert.equal(rows.get('earthquakes').row.hidden, false);
+  assert.equal(panel._summary.textContent, '1 selected · 1 shown');
+  panel._query = '';
+  panel._activeOnly = true;
+  panel._applyFilters();
+  assert.equal(rows.get('flights').row.hidden, true);
+  enabled.clear();
+  panel._applyFilters();
+  assert.equal(panel._empty.hidden, false);
+  assert.equal(events.hidden, true);
+  assert.equal(rows.size, 2, 'filtering retains row identity and focus owners');
+});
+
+test('unchanged legends retain nodes during status refresh', async () => {
+  const { LayerPanel } = await import('./layerPanel.js');
+  const legend = [
+    { label: 'Slow', count: 3, color: '#d7b461', blurb: 'Measured road flow' },
+  ];
+  const node = {
+    className: 'data-toggle-legend-item',
+    dataset: {},
+    remove() {
+      assert.fail('unchanged legend was removed');
+    },
+  };
+  const container = {
+    children: [node],
+    _legendSignature: JSON.stringify(
+      legend.map(({ label, count, color, blurb }) => [
+        label,
+        count,
+        color,
+        blurb,
+      ]),
+    ),
+    appendChild() {
+      assert.fail('unchanged legend was recreated');
+    },
+  };
+  const panel = Object.assign(Object.create(LayerPanel.prototype), {
+    _rowControlsFor: () => ({ legend }),
+  });
+  panel._syncRowControls(container, { id: 'traffic', enabled: true });
+  panel._syncRowControls(container, { id: 'traffic', enabled: true });
+  assert.equal(container.children[0], node);
+  assert.equal(container.hidden, false);
+});

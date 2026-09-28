@@ -10,13 +10,13 @@
   <!-- Title -->
   <div id="title-bar">
     <div class="title-glow"></div>
-    <h1><span class="title-logo brand-logo" data-logo-gaze data-logo-src="/logo.svg" aria-hidden="true"><img src="/logo.svg" alt="" /></span> <span>GOD'S EYE <span class="title-accent">VIEW</span></span></h1>
-    <p class="subtitle">NO PLACE LEFT BEHIND</p>
+    <h1><span class="material-symbols-outlined workspace-logo" aria-hidden="true">public</span><span>GodEye</span><span class="workspace-section">Geospatial workspace</span></h1>
+    <p class="subtitle">Public sources · Local workspace</p>
   </div>
 
   <!-- Style indicator -->
   <div id="style-indicator">
-    <span class="indicator-label">ACTIVE STYLE</span>
+    <span class="indicator-label">DISPLAY FILTER</span>
     <span class="indicator-value" id="active-style-name">NORMAL</span>
   </div>
 
@@ -26,7 +26,7 @@
       <span class="material-symbols-outlined" aria-hidden="true">layers_clear</span>
     </button>
     <button id="share-btn" type="button" aria-label="Copy share link" title="Copy share link">
-      <span class="share-icon" aria-hidden="true">&#x1F517;</span>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="5" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>
     </button>
     <button id="tilt-map-view" type="button" aria-label="Tilt map to oblique view" aria-pressed="false" title="Toggle straight-down and tilted map views">
       <span class="material-symbols-outlined" aria-hidden="true">view_in_ar</span>
@@ -40,7 +40,7 @@
     </button>
   </nav>
   <div id="global-loading-status" role="status" aria-live="polite" aria-atomic="true" hidden>
-    <span id="global-loading-label">LOADING LIVE DATA</span>
+    <span id="global-loading-label">LOADING SOURCE DATA</span>
     <span id="global-loading-detail"></span>
   </div>
   <div id="traffic-sync-chip" aria-live="polite">
@@ -51,6 +51,8 @@
     <span id="cctv-sync-label">loading frames</span>
     <span id="cctv-sync-progress">0/0</span>
   </div>
+
+  <div id="workspace-data-note" role="note">Basemap imagery is not live. Read each source’s date and coverage.</div>
 
   <!-- Toast notification -->
   <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>

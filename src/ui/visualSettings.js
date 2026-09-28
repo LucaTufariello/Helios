@@ -1103,6 +1103,29 @@ export class VisualSettings {
     };
   }
 
+  /**
+   * Controls the scope mask (circular viewport vignette). Fresh boots start
+   * with it off — the workstation shows the full frame; the operator can
+   * still enable it from Display, and share links carrying an explicit `sc`
+   * value restore the author's view untouched.
+   * @param {boolean} enabled
+   * @param {object} [options]
+   * @param {boolean} [options.syncShare=true]
+   * @returns {{ok:boolean, scope:{enabled:boolean}}}
+   */
+  setScopeEnabled(enabled, { syncShare = true } = {}) {
+    const { setScopeMaskEnabled, isScopeMaskEnabled } = this.services;
+    if (typeof enabled !== 'boolean' || typeof syncShare !== 'boolean') {
+      return { ok: false, scope: { enabled: isScopeMaskEnabled() } };
+    }
+    if (syncShare) this.shareLinkManager?.claimRestoreLane?.('visual');
+    setScopeMaskEnabled(enabled);
+    this._scopeBtn?.classList.toggle('active', enabled);
+    this._scopeBtn?.setAttribute('aria-pressed', String(enabled));
+    if (syncShare) this._syncShareState();
+    return { ok: true, scope: { enabled } };
+  }
+
   getVisualState() {
     const {
       getDetectionTuning,
@@ -1532,8 +1555,8 @@ export class VisualSettings {
     btn.setAttribute(
       'aria-label',
       enabled
-        ? `Detection overlay: ${String(modeLabel).toLowerCase()}`
-        : 'Detection overlay: off',
+        ? `Map markers: ${String(modeLabel).toLowerCase()}`
+        : 'Map markers: off',
     );
     btn.classList.remove('active', 'god', 'panoptic');
     if (modeLabel === 'SPARSE') {
@@ -1546,7 +1569,7 @@ export class VisualSettings {
       btn.querySelector('.pp-label').textContent = 'DENSE';
       btn.classList.add('active', 'panoptic');
     } else {
-      btn.querySelector('.pp-label').textContent = 'DETECT';
+      btn.querySelector('.pp-label').textContent = 'MARKERS';
     }
 
     if (this._detectionSliderRow) {

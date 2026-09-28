@@ -1,6 +1,6 @@
 # GodEye
 
-A local-first 3D globe for open-source situational awareness — live public signals plus honest, free satellite freshness. Runs in your browser, no account or keys required to start.
+A local-first, open-source geospatial workspace for exploring public data, inspecting sources, and working with dated satellite imagery. Runs in your browser without an account or keys to start. Optional providers have their own terms, quotas, and costs.
 
 > Freshness honesty first: the basemap is a baked daytime mosaic (months/years old), not live. Satellite views here are **days old at best, never live video**. Sensor modes (CRT / NVG / FLIR) are shaders, not night imagery.
 
@@ -8,9 +8,9 @@ A local-first 3D globe for open-source situational awareness — live public sig
 
 GodEye fuses public feeds into one explorable CesiumJS globe:
 
-- Live moving layers (aircraft, ships, satellites, ground activity)
+- Public position feeds (aircraft, vessels, transit) and explicitly modelled satellite positions
 - Daily satellite freshness (NASA GIBS + Sentinel latest-clear) with acquisition dates and cloud %
-- Click-to-track, cockpit ride-along, contacts roster, detection overlay
+- Searchable source catalog, selection, tracking, contacts roster, and map marker overlays
 - Voice control (optional OpenAI key), share links, global context staging
 
 Standing rules for this fork:
@@ -40,7 +40,7 @@ The reason this fork exists — the basemap alone cannot answer "what changed re
 - Keyless public search via Copernicus Dataspace **OData** (`catalogue.dataspace.copernicus.eu/odata/v1/Products`). STAC v1 has no raw SENTINEL-1/2 collections, so OData is used deliberately.
 - S2: prefers `MSIL2A` (L2A first, L1C fallback), lowest cloud cover wins. S1: most recent (radar — no cloud concept).
 - Server routes: `/api/sentinel2-latest?lat=&lon=`, `/api/sentinel1-latest`, `/status`. Budgets: 60/min per IP, 8 MB cap, `gods-eye-view-sentinel-proxy/1.0` UA, 60 min memory + disk cache (`.gev-cache/sentinel-*.json`), serve-stale, 502-with-link-outs accepted.
-- Optional free Copernicus Dataspace account (`CDSE_USER` / `CDSE_PASS` in POWER UP) is reserved for future authenticated download. Search works without it.
+- Optional free Copernicus Dataspace account (`CDSE_USER` / `CDSE_PASS` in PROVIDER SETTINGS) is reserved for future authenticated download. Search works without it.
 - Context-panel section: when enabled, a `SENTINEL LATEST-CLEAR` card renders in the right-side CONTEXT panel (`#context-sentinel-host`, independent of CONTACTS / SPACE MISSIONS tabs): product name, collection, acquisition datetime, cloud % (`N/A — RADAR` for S1), queried point, footprint bbox, fetch time, stale / error / fallback states, plus COPERNICUS BROWSER + EO BROWSER deep links. Appears on enable, refreshes per fetch, removed on disable.
 - Credit: `Copernicus Sentinel, ESA/EU (10m S2 optical / S1 SAR preview — days old, not live)`.
 
@@ -53,32 +53,44 @@ Keyless unless noted. Some offer more with a free provider key.
 | Map Stack | Esri satellite, OSM fallback, optional ion-hosted stacks / Google Photorealistic 3D | Esri / OSM / ion / Google | Keyless base; 3D via ion or Google key |
 | Sat Fresh | Yesterday's ~250m daily imagery + night lights + terminator | NASA GIBS | Keyless |
 | Sentinel Latest-Clear | Latest S2 scene (date + cloud %) or S1 SAR footprint + browser link-outs | Copernicus Dataspace OData | Keyless search; free account reserved for download |
-| Live Flights | 11,000+ aircraft + route history | OpenSky + adsb.lol | Keyless (OpenSky key = more credits) |
+| Atmosphere | Current conditions + today/tomorrow + European AQI for the camera point (model readout, not a station) | Open-Meteo | Keyless (CC BY 4.0, non-commercial) |
+| Live Flights | Public aircraft positions + route history | OpenSky + adsb.lol | Keyless (OpenSky key = more credits) |
 | Military Flights | ADS-B military traffic | adsb.lol | Keyless |
 | Live Vessels | Ships worldwide | AISStream | Free key |
 | Satellites | Catalog with class colors + Starlink DENSE option, SGP4 orbits | CelesTrak | Keyless |
 | Earthquakes | Last 24h global seismic activity | USGS | Keyless |
 | Active Fires | Trailing-24h detections | NASA FIRMS | Free key |
 | Space Missions | Rolling 30-day launches: pad, vehicle, payload, recovery | Launch Library 2 | Keyless (token raises allowance) |
-| Traffic | Live flow speeds on OSM roads. Keyless = off with key prompt, nothing simulated | TomTom + OSM | Free key required |
-| CCTV Mesh | ~3,600 public cameras projected into 3D, pose calibrated by gizmo, viewsheds | City APIs | Keyless |
+| Traffic | Measured aggregate congestion on OSM road segments; no individual vehicle tracking. Keyless = off with key prompt, nothing simulated | TomTom + OSM | Free key required |
+| CCTV Mesh | Public camera catalog and available stills/streams; estimated poses can be calibrated | City APIs | Keyless |
 | Radio | Geolocated stations with analog tuner | Radio Browser | Keyless |
 | Transit | Live buses/trams/metros/trains/ferries with delayed playback | Operator GTFS-Realtime | Keyless |
-| Bikeshare | Live station availability | GBFS | Keyless |
+| Bikeshare | Live station availability (US systems + Milan BikeMi) | GBFS | Keyless |
 | Directions | Click A/B street-following route, draped on terrain, flyable | OSRM / OSM | Keyless |
 | Mapped Installations | Viewport-bounded community-mapped site context, labeled incomplete | OpenStreetMap | Keyless |
+| Energy & Refining | Power plants, substations, refineries from community mapping (capped, incomplete by nature) | OpenStreetMap via Overpass | Keyless |
+| Disaster Alerts | Current floods, quakes, cyclones, volcanoes, droughts (severity-coded) | GDACS | Keyless (public domain) |
 | Bundled infrastructure | Datacenters, dams, submarine cables | Bundled extracts | Keyless |
+
+Italy coverage, honestly stated:
+
+- **Milan works today:** default start view, Duomo/Castello/Centrale/Bosco Verticale/San Siro camera presets, live BikeMi availability (319 stations, NLOD 2.0), voice fly-to for Milan and Rome presets.
+- **Rome transit is researched but OFF:** ATAC/Roma TPL publishes a live keyless GTFS-RT feed (verified ~1,300 Rome vehicle positions), but its terms limit use to trip support and warn against aggregated display, with no explicit redistribution grant — so it is registered in `src/data/transitFeeds.js` with `defaultEnabled: false` (one-line flip once terms allow). See `DATA_SOURCES.md`.
+- **No Italy CCTV source yet:** Autostrade per l'Italia (1,000+ webcams) and ANAS traffic cameras are embedded in map apps with no open data endpoint or display license — scraping them is out. The first Italian operator to publish an open camera API gets a pack.
+- **No Milan transit realtime yet:** ATM Milano publishes GTFS static only; no keyless openly-licensed vehicle-positions feed found. Same bar as above applies.
 
 Also on the globe: neighborhood overlays, optional cockpit WX cloud effect.
 
-What was deliberately removed in this fork: cinematic Scene Director, Nepal/Bhote Koshi pack, launch ascent replay (real manifest kept), keyless traffic simulation, HUD classification cosplay (TOP SECRET banners, fake satellite IDs, REC dot), shader theatre copy. Telemetry kept: MGRS, lat/lon, MSL altitude, sun elevation, tilt, UTC clock, locality.
+Removed fictional presentation: cinematic Scene Director, Nepal/Bhote Koshi pack, launch ascent replay, guessed orbital tracks and recovery locations, keyless traffic simulation, invented individual traffic vehicles, TR-3B aircraft conversion, classification banners, fake satellite IDs, and recording indicators. Launch records remain; orbital tracks require a matching TLE catalog entry and are labelled as propagation. Missing coordinates remain missing.
+
+The September 2026 review also introduces a quieter workspace layout, searchable data layers, selection filtering, and responsive panels. Read the [project review and staged roadmap](docs/PROJECT-REVIEW-2026-09-28.md) for the changes, verification, remaining limitations, and next steps toward a free public-data analysis workspace.
 
 ## Interactions
 
 - **Click-to-track anything:** camera lock, fading trail, metadata card; tracked fire/vessel offers nearest-camera handoff.
 - **Cockpit:** ride a tracked flight with terrain holding underneath; sensor styles ride along.
 - **Contacts:** 250 km roster near your target, step through and drop into any cockpit.
-- **Detection overlay:** screen-space boxes + IDs, density control.
+- **Map markers:** screen-space boxes and record IDs, with density control. These identify loaded map objects; they do not perform computer vision on imagery.
 - **Sensor looks:** `1`–`7` (CRT, NVG, FLIR, Noir, Snow, etc.) — visual styles over the normal globe.
 - **Telemetry HUD:** camera-derived position, altitude, sun, clock, locality. No classification banners.
 - **Global Context:** stage the situational picture with one switch, restore on exit.
@@ -101,7 +113,7 @@ npm run dev
 
 Open `http://localhost:4173`. Pick **Live Contacts**, **Space Missions**, **Environmental**, or **Explore Manually** from the first-run panel.
 
-First-run default view is Austin, TX (planned move: Milan 45.4642, 9.1900 — see `src/camera.js: flyToAustin`, `src/app/controls.js`).
+First-run default view is Milan, IT (Duomo di Milano 45.4641, 9.1919) — the home turf. Curated camera presets also cover Rome plus Austin, San Francisco, New York, Tokyo, London, Paris, Dubai, and Washington DC, and voice "fly to the Duomo" / "fly to the Colosseo" resolves through the same preset table.
 
 Keyboard: `1`–`7` styles · `H` HUD · `D` detection · `C` cockpit · `K` Sat Fresh · `Y` Sentinel · `Esc` out.
 
@@ -109,7 +121,7 @@ macOS shortcut: `./scripts/dev-fresh.sh` clears the Vite cache and pulls configu
 
 ## Keys (upgrades, not prerequisites)
 
-Add keys in-app via the **POWER UP** chip (Provider Settings), not in files. Terminal clones read repo-root `.env` (see `.env.example`); server binds localhost; Provider Settings answers only from your machine.
+Add keys in-app via the **PROVIDER SETTINGS** chip (Provider Settings), not in files. Terminal clones read repo-root `.env` (see `.env.example`); server binds localhost; Provider Settings answers only from your machine.
 
 | Key | Why | Where |
 | --- | --- | --- |

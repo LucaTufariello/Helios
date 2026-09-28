@@ -530,24 +530,8 @@ test('accepts an array payload for proxy and fixture flexibility', () => {
 
 
 
-test('estimated mission orbit is a smooth planar ring', () => {
-  const orbit = approximateOrbitPath({
-    lat: 34.63,
-    lon: -120.61,
-    orbit: { name: 'Polar Orbit' },
-  });
-  const normal = Cesium.Cartesian3.normalize(
-    Cesium.Cartesian3.cross(orbit[0], orbit[24], new Cesium.Cartesian3()),
-    new Cesium.Cartesian3(),
-  );
-  const maximumPlaneResidual = Math.max(...orbit.map((position) => Math.abs(
-    Cesium.Cartesian3.dot(
-      normal,
-      Cesium.Cartesian3.normalize(position, new Cesium.Cartesian3()),
-    ),
-  )));
-  assert.ok(maximumPlaneResidual < 1e-12);
-  assert.ok(Cesium.Cartesian3.distance(orbit[0], orbit.at(-1)) < 1e-6);
+test('launch metadata alone cannot create an orbital track', () => {
+  assert.equal(approximateOrbitPath({lat: 34.63, lon: -120.61, orbit: {name: 'Polar Orbit'}}), null);
 });
 
 test('formats the launch epoch for ascent and orbit labels', () => {
@@ -720,6 +704,7 @@ test('real mission build, select, refresh, deselect, disable, and destroy paths 
     cancelFlight() {},
     lookAtTransform() {},
   };
+  const recordedPrimitives = [];
   const scene = {
     canvas,
     camera,
@@ -727,7 +712,7 @@ test('real mission build, select, refresh, deselect, disable, and destroy paths 
     postRender: new Cesium.Event(),
     preRender: new Cesium.Event(),
     preUpdate: new Cesium.Event(),
-    primitives: { add: (primitive) => primitive, remove: () => true },
+    primitives: { add(primitive) { recordedPrimitives.push(primitive); return primitive; }, remove(primitive) { const i = recordedPrimitives.indexOf(primitive); if (i >= 0) recordedPrimitives.splice(i, 1); return i >= 0; } },
     drillPick: () => [],
   };
   const viewer = {
@@ -785,7 +770,9 @@ test('real mission build, select, refresh, deselect, disable, and destroy paths 
   globalThis.OffscreenCanvas = class {};
   globalThis.fetch = async (url) => {
     if (url === '/api/celestrak/active') {
-      return { ok: true, text: async () => '' };
+      return { ok: true, text: async () => `Gauntlet Payload
+1 69728U 26148A   26208.65166678  .00000015  00000+0  00000+0 0  9990
+2 69728   0.0784 264.9826 0001797 240.4588 273.9506  1.00271527   440` };
     }
     assert.equal(url, '/api/launches');
     return { ok: true, json: async () => launchPayload() };
@@ -799,7 +786,7 @@ test('real mission build, select, refresh, deselect, disable, and destroy paths 
     await rocketLaunchesLayer.update();
 
     const entities = dataSources[0].entities.values;
-    assert.ok(entities.length >= 3, 'runtime guard requires the populated mission build path');
+    assert.ok(entities.length >= 2, 'runtime guard requires the pad and TLE-backed payload path');
     assert.ok(entities.every((entity) => entity.label === undefined));
     const ambientPublication = hostCalls.findLast(([type, sourceId]) => (
       type === 'entries' && sourceId === ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID
@@ -844,8 +831,8 @@ test('real mission build, select, refresh, deselect, disable, and destroy paths 
     assert.deepEqual(selectedPublication[3], ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_OPTIONS);
     assert.deepEqual(selectedPublication[2].map(({ title }) => title), [
       'FALCON 9',
-      'EST. ORBIT POSITION',
-      'PROJECTED ORBIT',
+      'GAUNTLET PAYLOAD · TLE PROPAGATION',
+      'TLE ORBIT',
     ]);
     assert.deepEqual(selectedPublication[2][0].details, ['LAUNCH SITE · 39A']);
     assert.match(selectedPublication[2][1].details[0], /^\d{4}-\d{2}-\d{2}$/);
@@ -904,8 +891,7 @@ test('real mission build, select, refresh, deselect, disable, and destroy paths 
       Date.now = realDateNow;
       scene.frameState.frameNumber = 1;
     }
-    const transferEntity = dataSources[0].entities.getById('rocket-orbit:mission-runtime');
-    assert.ok(transferEntity, 'orbit ring entity must exist for the selected mission');
+    assert.ok(recordedPrimitives.some((primitive) => primitive instanceof Cesium.PolylineCollection && primitive.length === 1), 'a TLE-backed orbit primitive must exist for the selected mission');
 
     launchName = 'Mission Refresh | Gauntlet Payload';
     await rocketLaunchesLayer.update();

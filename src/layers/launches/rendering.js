@@ -93,7 +93,7 @@ export function createRendering({
       ? null
       : satelliteTrack?.orbitPath?.length > 1
         ? satelliteTrack.orbitPath
-        : parts.paths.approximateOrbitPath(launch);
+        : null;
     launch.recoveryStages.forEach((stage) => {
       stage.endpoint = parts.paths.landingEndpoint(
         stage,
@@ -138,8 +138,10 @@ export function createRendering({
     const points = launch.trajectory
       .filter(
         (point) =>
-          Number.isFinite(Number(point.latitude)) &&
-          Number.isFinite(Number(point.longitude)),
+          parts.model.finiteCoordinate(point.latitude) !== null &&
+          parts.model.finiteCoordinate(point.longitude) !== null &&
+          Math.abs(Number(point.latitude)) <= 90 &&
+          Math.abs(Number(point.longitude)) <= 180,
       )
       .map((point) => ({
         stage: String(
@@ -184,65 +186,9 @@ export function createRendering({
         });
       });
     }
-    if (orbitPath?.length > 1) {
-      const orbitCurrent = satelliteTrack?.current || {
-        longitude: launch.lon,
-        latitude: launch.lat,
-        altitude: 0,
-      };
-      const orbitPeriodSec =
-        satelliteTrack?.periodSec ||
-        parts.paths.estimatedOrbitPeriodSeconds(orbitPath);
-      const launchEpochMs = Date.parse(launch.launchTime);
-      const disclosedInsertionOffsetSec =
-        parts.paths.orbitInsertionOffsetSeconds(launch);
-      const insertionDurationSec = Number.isFinite(disclosedInsertionOffsetSec)
-        ? Math.max(0, disclosedInsertionOffsetSec)
-        : 600;
-      const insertionEpochMs = Number.isFinite(launchEpochMs)
-        ? launchEpochMs + insertionDurationSec * 1000
-        : Number.NaN;
-      let insertionReference = points.at(-1)?.position || null;
-      if (
-        !insertionReference &&
-        satelliteTrack?.positionAt &&
-        Number.isFinite(insertionEpochMs)
-      ) {
-        const propagatedInsertion = satelliteTrack.positionAt(
-          new Date(insertionEpochMs),
-        );
-        if (propagatedInsertion) {
-          insertionReference = Cesium.Cartesian3.fromDegrees(
-            propagatedInsertion.longitude,
-            propagatedInsertion.latitude,
-            propagatedInsertion.altitude,
-          );
-        }
-      }
-      if (!insertionReference && !satelliteTrack) {
-        // A projected orbit has no authoritative historical phase. Start its
-        // plane over the launch site, advance only by the estimated powered
-        // ascent duration, and join the forward orbit tangent. Using the UTC
-        // epoch as phase sent some ascents toward the far side of Earth and
-        // forced a visible 180-degree corrective hook before insertion.
-        const insertionProgress = Cesium.Math.clamp(
-          insertionDurationSec / orbitPeriodSec,
-          1 / 96,
-          0.16,
-        );
-        insertionReference = parts.paths.samplePath(
-          orbitPath,
-          insertionProgress,
-        );
-      }
-      // Orbit label anchors near the insertion side of the real orbit ring.
-      const orbitLabelBakePosition =
-        orbitPath[
-          parts.paths.nearestOrbitIndex(
-            orbitPath,
-            insertionReference || position,
-          )
-        ] || position;
+    if (orbitPath?.length > 1 && satelliteTrack?.current) {
+      const orbitCurrent = satelliteTrack.current;
+      const orbitLabelBakePosition = orbitPath[0];
       let livePosition = Cesium.Cartesian3.fromDegrees(
         orbitCurrent.longitude,
         orbitCurrent.latitude,
@@ -252,8 +198,6 @@ export function createRendering({
       const liveTelemetry = { speedMps: null };
       layerState._satelliteTelemetry.set(launch.id, liveTelemetry);
       let liveFrameNumber = -1;
-      const fallbackPeriodSec =
-        parts.paths.estimatedOrbitPeriodSeconds(orbitPath);
       const updateLiveState = () => {
         const frameNumber =
           layerState._viewer?.scene?.frameState?.frameNumber ?? -1;
@@ -276,15 +220,6 @@ export function createRendering({
               ? propagated.speedMps
               : null;
           }
-        } else {
-          // In-place write keeps one Cartesian3 for the mission's lifetime —
-          // the estimated branch previously reallocated per propagation.
-          livePosition =
-            parts.paths.samplePath(
-              orbitPath,
-              parts.paths.orbitProgressAtTime(nowMs, fallbackPeriodSec),
-              livePosition,
-            ) || livePosition;
         }
       };
       layerState._dataSource.entities.add({
@@ -295,42 +230,34 @@ export function createRendering({
         }, false),
         point: {
           pixelSize: 6,
-          color: Cesium.Color.fromCssColorString(
-            satelliteTrack ? '#7bed9f' : '#ffd166',
-          ),
+          color: Cesium.Color.fromCssColorString('#7bed9f'),
           outlineWidth: 0,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
         properties: {
           launchId: launch.id,
           noradId: satelliteTrack?.noradId || '',
-          phase: satelliteTrack
-            ? 'CURRENT_SATELLITE_POSITION'
-            : 'ESTIMATED_ORBIT_POSITION',
-          source: satelliteTrack
-            ? 'Satellites layer'
-            : 'Approximate mission orbit',
+          phase: 'PROPAGATED_SATELLITE_POSITION',
+          source: 'CelesTrak TLE propagation',
         },
       });
       overlayRecord.liveEventTime = () => liveTime;
       overlayRecord.elementEntryFactories.push(() => {
-        const name = satelliteTrack
-          ? parts.overlays
-              .shortMissionLabel(satelliteTrack.name, 22)
-              .toUpperCase()
-          : 'EST. ORBIT POSITION';
+        const name = parts.overlays
+          .shortMissionLabel(satelliteTrack.name, 22)
+          .toUpperCase();
         return parts.overlays.createRocketMissionElementOverlayEntry({
           id: `payload-position:${launch.id}`,
           position: () => livePosition,
-          text: `${name}\n${parts.policyHelpers.formatMissionEventTime(liveTime)}`,
-          accent: satelliteTrack ? '#7bed9f' : '#ffd166',
+          text: `${name} · TLE PROPAGATION\n${parts.policyHelpers.formatMissionEventTime(liveTime)}`,
+          accent: '#7bed9f',
           priority: 900_000,
           gapPx: 12,
         });
       });
       // Live satellite rings use a primitive collection so the core Satellite
       // GMST transform can rotate their baked ECEF geometry without rebuilding
-      // it. Estimated launch-site-relative rings remain ordinary entities.
+      // it. The entity fallback represents the same matched TLE track.
       const primitiveOrbitAdded = parts.orbitRendering.addMissionOrbitPrimitive(
         launch,
         orbitPath,
@@ -354,7 +281,7 @@ export function createRendering({
             launchId: launch.id,
             satelliteName: '',
             noradId: '',
-            source: 'Approximate mission orbit',
+            source: 'CelesTrak TLE propagation',
           },
         });
       }
@@ -373,8 +300,8 @@ export function createRendering({
         parts.overlays.createRocketMissionElementOverlayEntry({
           id: `orbit:${launch.id}`,
           position: orbitLabelPosition,
-          text: satelliteTrack ? 'ORBIT' : 'PROJECTED ORBIT',
-          accent: satelliteTrack ? '#22e6e6' : '#c084fc',
+          text: 'TLE ORBIT',
+          accent: '#7fa8c9',
           priority: 800_000,
           gapPx: 8,
         }),

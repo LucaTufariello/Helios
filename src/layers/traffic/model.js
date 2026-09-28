@@ -1,19 +1,7 @@
 import * as Cesium from 'cesium';
-import {
-  flowDensityMult,
-  flowBucket,
-  flowSpeedScale,
-} from '../../data/trafficFlowStyle.js';
-import {
-  MAX_WAYPOINTS_PER_ROAD,
-  DOT_HEIGHT_OFFSET,
-  DENSITY_MULT,
-  JAM_DOT_FAR_SCALE,
-  JAM_DOT_DEPTH_PUNCH,
-} from './policy.js';
+import { MAX_WAYPOINTS_PER_ROAD, DOT_HEIGHT_OFFSET } from './policy.js';
 
-export function createModel({ state: layerState, services, parts, source }) {
-  /** Build scene waypoints from source records; thinning and terrain remain rendering policy. */
+export function createModel({ state: layerState }) {
   function parseRoads(roadData) {
     if (!roadData || !roadData.roads) {
       return [];
@@ -59,189 +47,17 @@ export function createModel({ state: layerState, services, parts, source }) {
         if (Number.isFinite(sampled)) baseHeight = sampled;
       }
 
-      // Pre-compute Cartesian3 waypoints (lon, lat, height) for fast lerp animation
+      // Pre-compute static road geometry at the local surface height.
       const waypoints = coords.map(([lng, lat]) => {
         const h = baseHeight + DOT_HEIGHT_OFFSET;
         return Cesium.Cartesian3.fromDegrees(lng, lat, h);
       });
 
-      // Pre-compute segment distances in meters for speed-to-t conversion
-      const segmentDist = [];
-      for (let i = 0; i < waypoints.length - 1; i++) {
-        segmentDist.push(
-          Cesium.Cartesian3.distance(waypoints[i], waypoints[i + 1]),
-        );
-      }
-
-      roads.push({ coords, type, oneway, waypoints, segmentDist });
+      roads.push({ coords, type, oneway, waypoints });
     }
 
     return roads;
   }
-
-  // ─── Road Length Estimation ────────────────────────────────
-
-  /**
-   * Estimate the total length of a road in meters from its degree-based coordinates.
-   *
-   * Uses Euclidean distance in degree-space then multiplies by the equatorial
-   * approximation of 111 km per degree. Accurate enough for dot density spacing
-   * but not for navigation.
-   *
-   * @param {number[][]} coords - Array of [lon, lat] pairs.
-   * @returns {number} Approximate road length in meters.
-   */
-
-  function estimateRoadLengthDeg(coords) {
-    let len = 0;
-    for (let i = 0; i < coords.length - 1; i++) {
-      const dx = coords[i + 1][0] - coords[i][0];
-      const dy = coords[i + 1][1] - coords[i][1];
-      len += Math.sqrt(dx * dx + dy * dy);
-    }
-    // Rough conversion: 1 degree ~ 111,000 meters at equator
-    return len * 111000;
-  }
-
-  // ─── Dot Spawning ──────────────────────────────────────────
-
-  /**
-   * Compute the ideal number of dots for a single road at a given camera altitude.
-   *
-   * Spacing increases with altitude so fewer dots are rendered when zoomed out.
-   * The result is further scaled by the road-type density multiplier and the
-   * user-adjustable `_densityScale`.
-   *
-   * @param {{coords:number[][], type:string}} road - Parsed road object.
-   * @param {number} altitude - Current camera altitude in meters.
-   * @returns {number} Ideal dot count (minimum 1).
-   */
-
-  function computeDotCount(road, altitude) {
-    // Live flow: closed roads carry zero traffic; congestion packs more dots.
-    // `road.flow` is only ever set in live mode, so the keyless path is
-    // untouched (flow stays undefined → multiplier 1, identical output).
-    const flow = layerState._liveMode ? road.flow : null;
-    if (flow?.closure) return 0;
-    // Strict data-integrity view: uncovered roads spawn nothing when hidden.
-    if (layerState._liveMode && !flow && layerState._uncoveredMode === 'hide')
-      return 0;
-
-    const lengthM = estimateRoadLengthDeg(road.coords);
-
-    // Altitude-adaptive spacing: closer camera = denser dots
-    let spacing;
-    if (altitude < 1000) spacing = 30;
-    else if (altitude < 3000) spacing = 80;
-    else if (altitude < 5000) spacing = 150;
-    else spacing = 250;
-
-    const mult =
-      (DENSITY_MULT[road.type] || 1) *
-      layerState._densityScale *
-      (flow
-        ? flowDensityMult(flow.level, { jamBoost: parts.style.jamDensityOn() })
-        : 1);
-    return Math.max(1, Math.floor((lengthM / spacing) * mult));
-  }
-
-  /**
-   * Distribute a fixed dot budget fairly across all visible roads.
-   *
-   * Algorithm:
-   *  1. Compute ideal dot count per road via `computeDotCount`.
-   *  2. Seed one dot to every road that wants at least one (fairness pass).
-   *  3. Distribute remaining budget proportionally to each road's ideal count.
-   *  4. Assign leftover dots (from floor rounding) to roads with the highest
-   *     fractional residuals (largest-remainder method).
-   *
-   * This prevents high-density motorways from starving smaller residential roads
-   * when the global MAX_DOTS cap is reached.
-   *
-   * @param {Array} roads    - Parsed road objects.
-   * @param {number} altitude - Camera altitude in meters (affects spacing).
-   * @param {number} dotCap   - Maximum total dots to allocate.
-   * @returns {number[]} Per-road dot budgets, same length as `roads`.
-   */
-
-  function allocateRoadDotBudgets(roads, altitude, dotCap) {
-    const planned = roads.map((road) => computeDotCount(road, altitude));
-    const budgets = new Array(roads.length).fill(0);
-    let remaining = Math.max(0, dotCap);
-
-    // Pass 1 — fairness seed: give one dot to every road (highest-demand first)
-    const firstPassOrder = planned
-      .map((count, index) => ({ count, index }))
-      .sort((a, b) => b.count - a.count);
-
-    for (const entry of firstPassOrder) {
-      if (remaining <= 0) break;
-      if (entry.count <= 0) continue;
-      budgets[entry.index] = 1;
-      remaining -= 1;
-    }
-
-    if (remaining <= 0) return budgets;
-
-    // Pass 2 — proportional distribution of the remaining budget
-    let totalRemainder = 0;
-    for (let i = 0; i < planned.length; i++) {
-      totalRemainder += Math.max(0, planned[i] - budgets[i]);
-    }
-    if (totalRemainder <= 0) return budgets;
-
-    const residuals = [];
-    let assigned = 0;
-    for (let i = 0; i < planned.length; i++) {
-      const cap = Math.max(0, planned[i] - budgets[i]);
-      if (cap <= 0) continue;
-      const ideal = (cap / totalRemainder) * remaining;
-      const add = Math.min(cap, Math.floor(ideal));
-      budgets[i] += add;
-      assigned += add;
-      residuals.push({ index: i, residual: ideal - add });
-    }
-
-    // Pass 3 — largest-remainder: hand out leftover dots from floor rounding
-    let leftover = remaining - assigned;
-    if (leftover > 0 && residuals.length > 0) {
-      residuals.sort((a, b) => b.residual - a.residual);
-      let cursor = 0;
-      while (leftover > 0 && residuals.length > 0) {
-        const idx = residuals[cursor % residuals.length].index;
-        if (budgets[idx] < planned[idx]) {
-          budgets[idx] += 1;
-          leftover -= 1;
-        }
-        cursor += 1;
-        // Safety valve: avoid infinite loop if all roads are already at their ideal
-        if (cursor > residuals.length * 3 && leftover > 0) break;
-      }
-    }
-
-    return budgets;
-  }
-
-  /**
-   * Derive the layer's honest feed presentation from its live-flow state.
-   *
-   * Without a TomTom key the layer is KEY REQUIRED and loads nothing — it
-   * never simulates traffic. Otherwise:
-   *  - live and healthy → LIVE with real coverage;
-   *  - live but flow-down → an `error` string, so the chip degrades instead
-   *    of reporting a stale "LIVE · N% cov";
-   *  - status probe unreachable → an `error` string (loads stay blocked;
-   *    absence of proof is not proof of absence).
-   *
-   * @param {Object} [input]
-   * @param {boolean} [input.liveMode] - `/api/tomtom/status` reported a key.
-   * @param {boolean} [input.fetching] - A viewport load is in flight.
-   * @param {string|null} [input.flowError] - `deriveTrafficFlowError` result, if any.
-   * @param {number} [input.coveragePct] - Matched-road coverage, 0–100.
-   * @param {boolean} [input.statusUnavailable] - The status probe itself failed.
-   * @param {boolean} [input.keyRequired] - No TomTom key is configured.
-   * @returns {{mode:'live'|'sim', error:string|null, loadingLabel:string}}
-   */
 
   function trafficFeedPresentation({
     liveMode = false,
@@ -253,7 +69,7 @@ export function createModel({ state: layerState, services, parts, source }) {
   } = {}) {
     // `mode` is the CONFIGURED source (live key present vs keyless), not this
     // instant's health — health rides on `error`.
-    const mode = liveMode ? 'live' : 'sim';
+    const mode = liveMode ? 'live' : 'unavailable';
     if (keyRequired) {
       const label = 'KEY REQUIRED — add TomTom key for live';
       return { mode, error: 'KEY REQUIRED', loadingLabel: label };
@@ -270,8 +86,8 @@ export function createModel({ state: layerState, services, parts, source }) {
         mode,
         error: null,
         loadingLabel: fetching
-          ? 'syncing LIVE traffic flow'
-          : `LIVE · TomTom flow · ${coveragePct}% cov`,
+          ? 'Refreshing road flow'
+          : `TomTom flow · ${coveragePct}% roads matched`,
       };
     }
     // The status probe itself failed: the layer loads nothing either way.
@@ -282,89 +98,5 @@ export function createModel({ state: layerState, services, parts, source }) {
     };
   }
 
-  /**
-   * Apply late-arriving flow data to already-rendered dots without a respawn:
-   * color, jam size, and speed update in place; closed roads' dots hide.
-   * Density bunching intentionally waits for the next natural re-render —
-   * color and speed are the live signal, dot count is a refinement.
-   * @param {string} label - Render log label (for the console trace).
-   */
-
-  function recolorDotsInPlace(label) {
-    if (!layerState._liveMode || !layerState._dots.length) return;
-    layerState._bucketCounts = { free: 0, slow: 0, jam: 0, sim: 0 };
-    let closedDots = 0;
-    const now = Date.now();
-    for (const dot of layerState._dots) {
-      const flow = dot.road ? dot.road.flow : null;
-      if (flow?.closure) {
-        dot.point.show = false;
-        closedDots += 1;
-        continue;
-      }
-      const bucket = flow ? flowBucket(flow.level) : null;
-      dot.bucket = bucket;
-      dot.point.color = bucket
-        ? layerState._activeBucketColors[bucket]
-        : Cesium.Color.WHITE.withAlpha(0.85);
-      if (bucket === 'jam') {
-        dot.point.pixelSize =
-          parts.style.baseDotSize(dot.road?.type, bucket) +
-          1 +
-          parts.style.activeSizeDelta('jam');
-      } else if (bucket && parts.style.presetProfileActive()) {
-        // Preset profiles size-floor every bucket; the shipped normal path
-        // keeps its jam-only size touch (byte-identical behavior).
-        dot.point.pixelSize =
-          parts.style.baseDotSize(dot.road?.type, bucket) +
-          parts.style.activeSizeDelta(bucket);
-      }
-      // Late flow can move a dot between buckets — keep the preset halo in
-      // step (no-op writes under the normal profile, whose dots have none).
-      if (parts.style.presetProfileActive())
-        parts.style.applyOutline(dot.point, bucket);
-      dot.mps = dot.baseMps * (flow ? flowSpeedScale(flow.level) : 1);
-      // Late flow tags/untags stop-and-go creep + city-scale prominence the
-      // same way it rescales speed. Queue *positions* wait for the next
-      // natural re-render, like density bunching.
-      if (bucket === 'jam' && parts.style.jamDensityOn()) {
-        if (!dot.creep)
-          dot.creep = {
-            moving: Math.random() < 0.4,
-            until: now + Math.random() * 2000,
-          };
-        dot.point.scaleByDistance = new Cesium.NearFarScalar(
-          100,
-          1.5,
-          layerState._fadeScaleFar,
-          JAM_DOT_FAR_SCALE,
-        );
-        dot.point.disableDepthTestDistance = JAM_DOT_DEPTH_PUNCH;
-      } else {
-        dot.creep = null;
-      }
-      layerState._bucketCounts[bucket || 'sim'] += 1;
-    }
-    layerState._closedRoads = layerState._roads.reduce(
-      (n, r) => n + (r.flow?.closure ? 1 : 0),
-      0,
-    );
-    parts.rendering.rebuildHeatLines(
-      parts.rendering.visibleRoadsForAltitude(
-        layerState._roads,
-        layerState._lastRenderAltitude,
-      ),
-    );
-    console.log(
-      `[Data:Traffic] Flow recolor (${label}): ${layerState._dots.length} dots, closedDots=${closedDots}`,
-    );
-  }
-  return {
-    parseRoads,
-    estimateRoadLengthDeg,
-    computeDotCount,
-    allocateRoadDotBudgets,
-    trafficFeedPresentation,
-    recolorDotsInPlace,
-  };
+  return { parseRoads, trafficFeedPresentation };
 }

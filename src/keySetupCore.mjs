@@ -76,7 +76,7 @@ export const KEY_SETUP_KEYS = Object.freeze([
   Object.freeze({
     id: 'tomtom',
     title: 'TOMTOM',
-    unlocks: 'Real live traffic (keyless runs a simulation)',
+    unlocks: 'Measured road congestion (no individual vehicle tracking)',
     getUrl: 'https://developer.tomtom.com',
     envVars: Object.freeze(['TOMTOM_API_KEY']),
     tier: 'free',

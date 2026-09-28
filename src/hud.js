@@ -107,7 +107,7 @@ export class IntelHUD {
     this._autoMode = true; // auto show/hide based on style
     this._currentStyle = 'normal';
     this._el = null;
-    this._variant = 'tactical';
+    this._variant = 'minimal';
     this._updateInterval = null;
     this._timestampInterval = null;
     this._summaryInterval = null;
@@ -175,7 +175,7 @@ export class IntelHUD {
     this._el.innerHTML = `
       <div class="hud-top-bar">
         <span class="hud-top-bar-left">OPEN SOURCE DATA</span>
-        <span class="hud-top-bar-right" id="hud-timestamp">2026-01-01 00:00:00Z</span>
+        <span class="hud-top-bar-right" id="hud-timestamp">—</span>
       </div>
 
       <div class="hud-corner hud-top-left">

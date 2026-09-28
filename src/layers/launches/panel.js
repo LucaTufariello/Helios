@@ -227,11 +227,7 @@ export function createPanel({ state: layerState, services, parts, source }) {
     ).innerHTML = missionTableRows(payloadRows, 3, 'PAYLOAD DATA UNAVAILABLE');
     const stageRows = launch.recoveryStages.map((stage) => {
       const endpoint = stage.endpoint;
-      const destination =
-        stage.destination ||
-        (endpoint?.accuracy === 'PAD / RTLS'
-          ? launch.launchSite
-          : 'UNAVAILABLE');
+      const destination = stage.destination || 'UNAVAILABLE';
       const position = endpoint
         ? `${endpoint.lat.toFixed(2)}, ${endpoint.lon.toFixed(2)} · ${endpoint.accuracy}`
         : stage.downrangeKm > 0

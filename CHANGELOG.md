@@ -1,5 +1,21 @@
 # Changelog
 
+## 28 September 2026 — public-data workspace review
+
+- Introduce a quieter workspace layout, searchable source catalog, selected-only
+  filtering, clearer context instructions, and responsive panel switching.
+- Remove fictional aircraft conversion, invented individual traffic vehicles,
+  guessed launch orbits/payload positions, and inferred recovery locations.
+- Render observed road congestion with bounded static geometry, cached road
+  refreshes, and guards against outdated asynchronous flow results.
+- Reject missing/invalid launch and disaster coordinates instead of coercing
+  them to 0,0; label satellite tracks as TLE propagation.
+- Retain the Atmosphere, Energy & Refining, Disaster Alerts, and Milan coverage
+  additions and document source limitations and the staged analysis roadmap.
+- Validation: 3,899 unit tests passed, one intentionally skipped, plus three
+  GDACS provider tests; build, formatting, package boundaries, and desktop/mobile
+  browser checks passed. Two Node 24 allocation benchmarks were omitted on Node 26.
+
 - Sentinel Latest-Clear now renders its full snapshot (product name, acquisition
   datetime, cloud cover, queried point, footprint bbox, fetch time, stale/error/
   fallback states, Copernicus + EO Browser link-outs) as a section in the

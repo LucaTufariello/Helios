@@ -15,7 +15,7 @@ import { readLayerSource } from '../testSupport/readLayerSource.mjs';
 //
 //  2. The WIRING in both flight layers — that the tracked contact takes its
 //     model with the fleet `models3d` toggle OFF (the whole point of the
-//     feature), that cockpit and TR-3B suppression survived the rewrite, and
+//     feature), that cockpit suppression survived the rewrite, and
 //     that deselecting drops the regime.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -43,7 +43,6 @@ import militaryFlightsLayer, {
   _driveFleetModelHandoffForTest as militaryDriveFleetModel,
   _ensureFleetModelForTest as militaryEnsureFleetModel,
 } from './militaryFlights.js';
-import { clearTr3bRegistry, setTr3b } from './tr3bRegistry.js';
 import { reportMeshFloorCell, _clearMeshFloorCellsForTest } from './groundFloor.js';
 
 // Sample altitudes are expressed RELATIVE to the band rather than as absolute
@@ -247,7 +246,6 @@ const LAYERS = [
 
 for (const fixture of LAYERS) {
   test(`${fixture.name}: production fleet loader admits a HIDDEN primitive and fails back to 2D`, async () => {
-    clearTr3bRegistry();
     fixture.layer.stopTracking();
     fixture.layer.setParams({ models3d: true });
 
@@ -323,7 +321,6 @@ for (const fixture of LAYERS) {
   });
 
   test(`${fixture.name}: grounded fleet handoff waits through terrain load and keeps one visual owner`, () => {
-    clearTr3bRegistry();
     fixture.layer.stopTracking();
 
     const realNow = Date.now;
@@ -446,7 +443,6 @@ for (const fixture of LAYERS) {
     //
     // A at 120 m → taxi 202 m to B, whose measured skin is 150 m → resample
     // misses. The held 120 m must NOT be used to place a model at B.
-    clearTr3bRegistry();
     fixture.layer.stopTracking();
     fixture.layer.setParams({ models3d: false });
     _clearMeshFloorCellsForTest();
@@ -572,7 +568,6 @@ for (const fixture of LAYERS) {
   });
 
   test(`${fixture.name}: grounded tracked model waits for a valid terrain snap with no visual gap`, async () => {
-    clearTr3bRegistry();
     fixture.layer.stopTracking();
     fixture.layer.setParams({ models3d: false });
 
@@ -694,7 +689,6 @@ for (const fixture of LAYERS) {
   });
 
   test(`${fixture.name}: the tracked contact goes 3D with the fleet 3D toggle OFF`, () => {
-    clearTr3bRegistry();
     fixture.layer.setParams({ models3d: false });
     assert.equal(fixture.layer.getParams().models3d, false, 'the fleet toggle really is off');
 
@@ -711,7 +705,6 @@ for (const fixture of LAYERS) {
   });
 
   test(`${fixture.name}: the tracked regime is hysteretic across a live zoom in/out`, () => {
-    clearTr3bRegistry();
     fixture.layer.setParams({ models3d: false });
     const viewer = viewerAtHeight(FAR_OUTSIDE_M);
     fixture.seed({ viewer });
@@ -744,7 +737,6 @@ for (const fixture of LAYERS) {
     // PRODUCTION teardown — which is why nothing below touches a test-only
     // latch reset; the seam re-seeds state but deliberately leaves the latches
     // alone, and `stopTracking()` is the real deselect path.
-    clearTr3bRegistry();
     fixture.layer.setParams({ models3d: false });
 
     // Latch the regime on close in...
@@ -768,26 +760,8 @@ for (const fixture of LAYERS) {
     fixture.layer.stopTracking();
   });
 
-  test(`${fixture.name}: a converted TR-3B never takes the model, at any zoom`, () => {
-    clearTr3bRegistry();
-    fixture.layer.setParams({ models3d: false });
-    const viewer = viewerAtHeight(1); // as zoomed in as it gets
-    fixture.seed({ viewer });
-    assert.equal(fixture.regimeActive(), true, 'control: an unconverted contact does model');
-
-    setTr3b(ICAO, true);
-    fixture.seed({ viewer });
-    assert.equal(fixture.regimeActive(), false,
-      'there is no TR-3B GLB — the triangle billboard stays the visual all the way in');
-
-    setTr3b(ICAO, false);
-    fixture.seed({ viewer });
-    assert.equal(fixture.regimeActive(), true, 'un-converting restores the handoff');
-    clearTr3bRegistry();
-  });
 
   test(`${fixture.name}: deselecting drops the regime even zoomed all the way in`, () => {
-    clearTr3bRegistry();
     fixture.layer.setParams({ models3d: false });
     const viewer = viewerAtHeight(1);
     fixture.seed({ viewer });
@@ -799,7 +773,6 @@ for (const fixture of LAYERS) {
   });
 
   test(`${fixture.name}: turning the fleet toggle ON does not disturb the tracked regime`, () => {
-    clearTr3bRegistry();
     const viewer = viewerAtHeight(WELL_INSIDE_M);
     fixture.seed({ viewer });
     fixture.layer.setParams({ models3d: true });
@@ -831,7 +804,6 @@ async function driveFrames(fixture, count, clock) {
 
 for (const fixture of LAYERS) {
   test(`${fixture.name}: a rejecting GLB loader is bounded, not a per-frame retry loop`, async () => {
-    clearTr3bRegistry();
     fixture.layer.setParams({ models3d: false });
 
     const realFrom = Cesium.Model.fromGltfAsync;
@@ -892,7 +864,6 @@ for (const fixture of LAYERS) {
   });
 
   test(`${fixture.name}: the failure latch clears on a same-icao re-track too`, async () => {
-    clearTr3bRegistry();
     fixture.layer.setParams({ models3d: false });
 
     const realFrom = Cesium.Model.fromGltfAsync;

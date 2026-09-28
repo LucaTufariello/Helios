@@ -14,6 +14,9 @@ import { createLaunchSource } from '../layers/launches/source.js';
 import { createOverpassAlprSource } from '../layers/alpr/source.js';
 import { createFirmsSource } from '../layers/firms/source.js';
 import { createSentinelSource } from '../layers/sentinel/source.js';
+import { createAtmosphereSource } from '../layers/atmosphere/source.js';
+import { createEnergySource } from '../layers/energy/source.js';
+import { createGdacsSource } from '../layers/gdacs/source.js';
 import { createReferenceSources } from '../sources/reference.js';
 export { createReferenceSources as createStandaloneReferenceSources } from '../sources/reference.js';
 
@@ -37,5 +40,8 @@ export function createStandaloneLayerSources() {
     alpr: createOverpassAlprSource(),
     firms: createFirmsSource(),
     sentinel: createSentinelSource(),
+    atmosphere: createAtmosphereSource(),
+    energy: createEnergySource(),
+    gdacs: createGdacsSource(),
   };
 }

@@ -270,6 +270,32 @@ export const TRANSIT_FEED_REGISTRY = Object.freeze([
     }),
     defaultMode: 'bus',
   }),
+  Object.freeze({
+    id: 'atac-rome',
+    name: 'ATAC',
+    operator: 'ATAC / Roma TPL (Roma Servizi per la Mobilità)',
+    region: 'Rome, IT',
+    center: Object.freeze({ lat: 41.9028, lon: 12.4964 }),
+    loadRadiusKm: 60,
+    url: 'https://romamobilita.it/wp-content/uploads/shared/rome_rtgtfs_vehicle_positions_feed.pb',
+    license:
+      'Roma Servizi per la Mobilità open data — no explicit redistribution license found',
+    licenseUrl: 'https://romamobilita.it/sistemi-e-tecnologie/open-data',
+    attribution: 'Roma Servizi per la Mobilità — ATAC / Roma TPL',
+    // Registered OFF: the feed is live and keyless (verified 2026-09-18,
+    // ~1300 Rome vehicle positions), but the publisher's terms say the data
+    // may be used only as trip support and warn that aggregated/reworked
+    // representation may mislead — that does not plainly cover a live map
+    // layer, so this stays inert until the license question is resolved.
+    // Flip to true only after reading terms that clearly allow display.
+    defaultEnabled: false,
+    terms: Object.freeze({
+      quote:
+        'I dati possono essere utilizzati, quindi, esclusivamente a titolo di supporto al viaggio. La rappresentazione dei dati in forma aggregata e rielaborata potrebbe risultare fuorviante e non rappresentare la condizione reale del servizio.',
+      note: 'No CC/BY-style redistribution grant found (city CKAN lists the companion GTFS as unknown license). Live feed verified reachable and fresh; kept off by the admission rule requiring terms that plainly cover display.',
+    }),
+    defaultMode: 'bus',
+  }),
 ]);
 
 /**

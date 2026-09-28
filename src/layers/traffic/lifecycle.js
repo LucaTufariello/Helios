@@ -11,12 +11,11 @@ export function createLifecycle({
   parts,
   source,
 }) {
-  const { holdContinuousRender, releaseContinuousRender } = services.render;
   const { resetFlowTileCache } = source;
 
   const methods = {
     /**
-     * One-time initialisation. Creates the PointPrimitiveCollection and adds it
+     * One-time initialisation. Creates the static road collection and adds it
      * to the scene (hidden). The collection is never removed and re-added — only
      * toggled via `.show` to avoid destroy-on-remove errors.
      *
@@ -24,21 +23,20 @@ export function createLifecycle({
      */
     init(viewer) {
       layerState._viewer = viewer;
-      layerState._pointCollection = new Cesium.PointPrimitiveCollection({
-        blendOption: Cesium.BlendOption.TRANSLUCENT,
-      });
-      // Add permanently — toggle with .show to avoid destroy-on-remove errors
-      viewer.scene.primitives.add(layerState._pointCollection);
-      layerState._pointCollection.show = false;
-      layerState._dots = [];
+      layerState._flowLines = viewer.scene.primitives.add(
+        new Cesium.PolylineCollection(),
+      );
+      layerState._flowLines.show = false;
+      layerState._groundSupported = Boolean(
+        viewer.scene.groundPrimitives &&
+        Cesium.GroundPolylinePrimitive.isSupported(viewer.scene),
+      );
       layerState._roads = [];
       layerState._count = 0;
       layerState._lastUpdate = null;
       layerState._lastBounds = null;
       layerState._fetching = false;
       layerState._loadGeneration = 0;
-      layerState._densityScale = 1.0;
-      layerState._speedScale = 1.0;
       layerState._lastViewCenter = null;
       layerState._flowCoveragePct = 0;
       layerState._flowError = null;
@@ -49,44 +47,23 @@ export function createLifecycle({
         layerState._trafficTimingDroppedTraces = 0;
       }
 
-      // Preset-aware dot styling: adopt the active post-FX style (persisted
-      // style restore may run before layer registration, so read the dataset)
-      // and follow StyleManager's gev:style-change event thereafter. Guarded
-      // for non-browser contexts; bound once per page (init survives layer
-      // destroy/re-register).
-      if (typeof window !== 'undefined') {
-        layerState._stylePreset =
-          document?.documentElement?.dataset?.gevStyle || 'normal';
-        if (!layerState._styleListenerBound) {
-          window.addEventListener('gev:style-change', (e) =>
-            parts.style.setStylePreset(e?.detail?.style),
-          );
-          layerState._styleListenerBound = true;
-        }
-      }
-      parts.style.refreshBucketColors();
       console.log('[Data:Traffic] Initialized');
     },
 
     /**
-     * Enable the traffic layer. Shows the point collection, subscribes to the
-     * preRender animation loop and camera-change events, and kicks off an
+     * Enable the traffic layer. Shows the road collection, subscribes to
+     * camera-change events, and kicks off an
      * initial viewport check.
      *
      * @param {Cesium.Viewer} viewer - The Cesium viewer instance.
      */
     enable(viewer) {
       layerState._enabled = true;
-      holdContinuousRender('traffic'); // per-frame animator (perf wave 2)
-      layerState._lastAnimTime = 0;
-      layerState._pointCollection.show = true;
+      layerState._flowLines.show = true;
 
-      // One status check per session decides sim vs live-TomTom mode.
+      // One status check per session determines source availability.
       parts.flow.ensureFlowStatus();
 
-      layerState._preRenderRemover = viewer.scene.preRender.addEventListener(
-        parts.animation.animate,
-      );
       if (TRAFFIC_TIMING_ENABLED) {
         parts.timing.clearTrafficTimingEntries();
         layerState._trafficTimingCurrentAnchor = null;
@@ -133,14 +110,13 @@ export function createLifecycle({
     },
 
     /**
-     * Disable the traffic layer. Cancels pending fetches, clears all dots,
-     * unsubscribes from events, and hides the point collection.
+     * Disable the traffic layer. Cancels pending fetches, clears road segments,
+     * unsubscribes from events, and hides the road collection.
      *
      * @param {Cesium.Viewer} viewer - The Cesium viewer instance.
      */
     disable(viewer) {
       layerState._enabled = false;
-      releaseContinuousRender('traffic');
       clearTimeout(layerState._fetchTimeout);
       clearInterval(layerState._enableKickTimer);
       layerState._enableKickTimer = null;
@@ -152,7 +128,7 @@ export function createLifecycle({
       layerState._fetching = false;
       layerState._flowPending = 0;
       layerState._roadError = null;
-      parts.animation.clearDots();
+      parts.rendering.removeHeatLines();
       layerState._lastViewCenter = null;
       // A stale outage from the last session would misreport a fresh enable —
       // the next load re-derives feed health from real evidence.
@@ -175,20 +151,20 @@ export function createLifecycle({
       layerState._arrivalRemover?.();
       layerState._arrivalRemover = null;
       releaseCameraSensitivity(viewer.camera, 'traffic');
-      if (layerState._pointCollection) layerState._pointCollection.show = false;
+      if (layerState._flowLines) layerState._flowLines.show = false;
     },
 
     /**
-     * Permanently tear down the layer. Disables it, removes the point collection
+     * Permanently tear down the layer. Disables it, removes the road collection
      * from the scene, and clears the tile cache.
      *
      * @param {Cesium.Viewer} viewer - The Cesium viewer instance.
      */
     destroy(viewer) {
       this.disable(viewer);
-      if (layerState._pointCollection) {
-        viewer.scene.primitives.remove(layerState._pointCollection);
-        layerState._pointCollection = null;
+      if (layerState._flowLines) {
+        viewer.scene.primitives.remove(layerState._flowLines);
+        layerState._flowLines = null;
       }
       parts.rendering.removeHeatLines();
       layerState._tileCache.clear();

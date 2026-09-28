@@ -3,6 +3,7 @@ import {
   OVERPASS_URL,
   TILE_CACHE_MAX_ENTRIES,
   FAST_FETCH_ALTITUDE,
+  ACTIVATION_ALTITUDE,
 } from './policy.js';
 
 export function createIngestion({
@@ -132,7 +133,7 @@ export function createIngestion({
   }
 
   /**
-   * Load road data for the given viewport bounds and render traffic dots.
+   * Load road data for the given viewport bounds and render observed road segments.
    *
    * Implements a two-pass fetch strategy with tile caching:
    *
@@ -285,7 +286,7 @@ export function createIngestion({
         renderedSomething = true;
       }
 
-      // At higher altitude, major roads provide sufficient motion density
+      // At higher altitude, major roads provide sufficient road coverage
       if (altitude > FAST_FETCH_ALTITUDE) return;
 
       // Detailed pass: fetch the full road graph (tertiary, residential, etc.)
@@ -352,14 +353,19 @@ export function createIngestion({
     }
   }
   const methods = {
-    /**
-     * No-op — traffic updates are entirely camera-driven, not timer-driven.
-     * @returns {Promise<void>}
-     */
+    /** Refresh provider flow without refetching cached geometry or holding a render loop. */
     async update() {
-      // No-op — updates are camera-driven
+      if (
+        !layerState._enabled ||
+        !layerState._lastBounds ||
+        layerState._fetching ||
+        layerState._flowPending > 0
+      )
+        return;
+      const altitude = parts.viewport.getCameraAltitude();
+      if (altitude > ACTIVATION_ALTITUDE) return;
+      await loadRoadsForBounds(layerState._lastBounds, altitude);
     },
   };
-
   return { fetchRoads, cancelActiveFetch, loadRoadsForBounds, methods };
 }

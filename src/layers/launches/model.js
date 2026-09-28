@@ -3,6 +3,13 @@ import { WINDOW_DAYS } from './policy.js';
 
 export function createModel({ state: layerState, services, parts, source }) {
   function finiteCoordinate(value) {
+    if (
+      value === null ||
+      value === undefined ||
+      typeof value === 'boolean' ||
+      String(value).trim() === ''
+    )
+      return null;
     const number = Number(value);
     return Number.isFinite(number) ? number : null;
   }
@@ -179,13 +186,9 @@ export function createModel({ state: layerState, services, parts, source }) {
         const coordinates = location.coordinates || '';
         const [coordinateLon, coordinateLat] = String(coordinates)
           .split(',')
-          .map(Number);
-        const lat = Number.isFinite(Number(pad.latitude))
-          ? Number(pad.latitude)
-          : coordinateLat;
-        const lon = Number.isFinite(Number(pad.longitude))
-          ? Number(pad.longitude)
-          : coordinateLon;
+          .map(finiteCoordinate);
+        const lat = finiteCoordinate(pad.latitude) ?? coordinateLat;
+        const lon = finiteCoordinate(pad.longitude) ?? coordinateLon;
         const payloads = normalizePayloadFlights(launch);
         return {
           id: String(
@@ -197,8 +200,8 @@ export function createModel({ state: layerState, services, parts, source }) {
             ? new Date(date).toISOString()
             : null,
           launchSite: pad.name || location.name || 'Unknown launch site',
-          lat: Number.isFinite(lat) ? lat : null,
-          lon: Number.isFinite(lon) ? lon : null,
+          lat: Number.isFinite(lat) && Math.abs(lat) <= 90 ? lat : null,
+          lon: Number.isFinite(lon) && Math.abs(lon) <= 180 ? lon : null,
           provider: launch.launch_service_provider?.name || null,
           mission: launch.mission?.description || null,
           missionName: launch.mission?.name || null,

@@ -33,7 +33,6 @@ import { isPickedWorldPosition } from '../data/scenePick.js';
 import { unavailablePlaceSearch } from '../search/placeSearch.js';
 import * as defaultAnnotationResolver from '../annotations/annotationResolver.js';
 import { normalizeRadioCountryInput } from '../data/radioCountry.js';
-import { TR3B_CLASS } from '../data/tr3bRegistry.js';
 
 const ALLOWED_STYLES = new Set([
   'normal',
@@ -2629,29 +2628,13 @@ function normalizeCockpitNavigationHints(rawAction) {
   };
 }
 
-/**
- * Normalize a spoken/typed aircraft-class filter to the class id the analyst
- * records carry.
- *
- * Every real `classifyAircraft()` id is a single unpunctuated word, so callers
- * already say them exactly and a plain lower-case is enough. The one exception
- * is the TR-3B Easter egg (`tr3b`): people write and say it hyphenated, so
- * "TR-3B" / "tr 3b" / "tr 3 b" would otherwise reach the analyst as a value no
- * record matches. Collapsing spaces and hyphens and comparing against THAT ONE
- * id keeps this surgical — no general alias table, and no other class id
- * collapses to `tr3b`, so nothing else can be caught by it.
- *
- * App-side only: the voice tool schema and the model instructions are
- * untouched, so this costs no prompt-cache churn.
- * @param {*} value Raw class filter from the tool call or an utterance hint.
- * @returns {string|null} Class id, or null when nothing was supplied.
- */
+/** Normalize the feed-derived aircraft class filter. */
 function normalizeAircraftClassFilter(value) {
   const raw = String(value || '')
     .trim()
     .toLowerCase();
   if (!raw) return null;
-  return raw.replace(/[\s-]+/g, '') === TR3B_CLASS ? TR3B_CLASS : raw;
+  return raw;
 }
 
 function setPanelOpen(styleManager, panelId, open) {

@@ -37,6 +37,7 @@ const PANEL_GROUPS = [
       'local-datacenters',
       'telegeography-submarine-cables',
       'local-dams',
+      'energy',
     ],
   },
   {
@@ -47,6 +48,8 @@ const PANEL_GROUPS = [
       'local-firms',
       'sat-fresh',
       'sentinel-free',
+      'atmosphere',
+      'gdacs',
     ],
   },
   {
@@ -61,13 +64,17 @@ const PANEL_POSITIONS = new Map(
   PANEL_ORDER.map(({ id }, index) => [id, index]),
 );
 const PANEL_LABELS = {
-  'ais-live-vessels': 'Live Vessels',
+  'ais-live-vessels': 'Vessel Positions',
+  traffic: 'Road Conditions',
+  atmosphere: 'Atmosphere',
   bikeshare: 'Bike Share',
   cctv: 'Cameras',
   'alpr-cameras': 'Mapped ALPR Cameras',
   'local-datacenters': 'Data Centers',
   'local-firms': 'Active Fires',
-  'sat-fresh': 'Sat Fresh (free)',
+  energy: 'Energy & Refining',
+  gdacs: 'Disaster Alerts',
+  'sat-fresh': 'Daily Satellite Imagery',
   'sentinel-free': 'Sentinel Latest-Clear',
 };
 
@@ -116,6 +123,9 @@ export class LayerPanel {
     this.subscribeRowControls = subscribeRowControls;
     this.onHiddenRefresh = onHiddenRefresh;
     this._generation = 0;
+    this._rows = new Map();
+    this._query = '';
+    this._activeOnly = false;
     this._removers = [];
     this._destroyed = false;
   }
@@ -138,11 +148,28 @@ export class LayerPanel {
     this._destroyed = true;
     this._releaseBindings();
     this._toggleContainer = null;
+    this._rows.clear();
   }
   _renderToggles() {
     if (this._destroyed || !this._toggleContainer) return;
     this._releaseBindings();
     this._toggleContainer.innerHTML = '';
+    this._rows.clear();
+    const documentRef = this._toggleContainer.ownerDocument;
+    this._search = documentRef?.getElementById('data-layer-search');
+    this._activeFilter = documentRef?.getElementById('data-active-only');
+    this._summary = documentRef?.getElementById('data-layer-summary');
+    this._empty = documentRef?.getElementById('data-layer-empty');
+    if (this._search)
+      this._bind(this._search, 'input', () => {
+        this._query = this._search.value.trim().toLowerCase();
+        this._applyFilters();
+      });
+    if (this._activeFilter)
+      this._bind(this._activeFilter, 'change', () => {
+        this._activeOnly = this._activeFilter.checked;
+        this._applyFilters();
+      });
 
     const generation = this._generation;
     const layers = this.getAll()
@@ -153,6 +180,7 @@ export class LayerPanel {
           (PANEL_POSITIONS.get(b.id) ?? PANEL_ORDER.length),
       );
     let previousGroup = '';
+    let groupHeading = null;
     for (const layer of layers) {
       if (!layer.showInTogglePanel) continue;
       const group =
@@ -161,6 +189,7 @@ export class LayerPanel {
         const heading = document.createElement('h3');
         heading.className = 'data-layer-group-heading';
         heading.textContent = group;
+        groupHeading = heading;
         this._toggleContainer.appendChild(heading);
       }
       previousGroup = group;
@@ -277,14 +306,57 @@ export class LayerPanel {
       }
 
       this._toggleContainer.appendChild(row);
+      this._rows.set(layer.id, {
+        row,
+        heading: groupHeading,
+        toggle,
+        count,
+        meta: bottomRow,
+        controls: row.querySelector('.data-toggle-controls'),
+        list: row.querySelector('.data-row-list'),
+        searchText:
+          `${panelLabel(layer)} ${layer.name} ${layer.source || ''} ${group}`.toLowerCase(),
+      });
     }
+    this._applyFilters();
+  }
+
+  _applyFilters() {
+    if (this._destroyed) return;
+    const visibleGroups = new Set();
+    let visible = 0;
+    let selected = 0;
+    for (const [id, entry] of this._rows) {
+      const enabled = this.isEnabled(id);
+      if (enabled) selected++;
+      const hidden =
+        (this._activeOnly && !enabled) ||
+        !entry.searchText.includes(this._query);
+      if (entry.row.hidden !== hidden) entry.row.hidden = hidden;
+      if (!hidden) {
+        visible++;
+        visibleGroups.add(entry.heading);
+      }
+    }
+    for (const { heading } of this._rows.values()) {
+      if (heading && heading.hidden !== !visibleGroups.has(heading))
+        heading.hidden = !visibleGroups.has(heading);
+    }
+    const summary = selected
+      ? `${selected} selected · ${visible} shown`
+      : `${visible} ${visible === 1 ? 'source' : 'sources'} · none selected`;
+    if (this._summary && this._summary.textContent !== summary)
+      this._summary.textContent = summary;
+    if (this._empty) this._empty.hidden = visible !== 0;
   }
 
   /** Qualify a loaded count when it does not mean items currently on screen. */
   _layerCountText(stats) {
     if (typeof stats.countLabel === 'string' && stats.countLabel.trim())
       return stats.countLabel;
-    return stats.count ? this._formatCount(stats.count) : '—';
+    if (!stats.count) return '—';
+    const count = this._formatCount(stats.count);
+    return stats.countUnit ? `${count} ${stats.countUnit}` : count;
   }
 
   /**
@@ -309,11 +381,25 @@ export class LayerPanel {
     this._syncRowList(listContainer, controls?.list || null);
     container.hidden = chips.length === 0 && legend.length === 0;
 
-    for (const node of [...container.children]) {
-      if (
-        String(node.className).split(/\s+/).includes('data-toggle-legend-item')
-      )
-        node.remove();
+    const legendSignature = JSON.stringify(
+      legend.map(({ label, count, color, blurb }) => [
+        label,
+        count,
+        color,
+        blurb,
+      ]),
+    );
+    const legendChanged = container._legendSignature !== legendSignature;
+    if (legendChanged) {
+      for (const node of [...container.children]) {
+        if (
+          String(node.className)
+            .split(/\s+/)
+            .includes('data-toggle-legend-item')
+        )
+          node.remove();
+      }
+      container._legendSignature = legendSignature;
     }
 
     const stale = new Map();
@@ -340,7 +426,7 @@ export class LayerPanel {
     }
     for (const node of stale.values()) node.remove();
 
-    for (const item of legend) {
+    for (const item of legendChanged ? legend : []) {
       const entry = document.createElement('span');
       entry.className = 'data-toggle-legend-item';
       if (item.blurb) entry.title = item.blurb;
@@ -441,32 +527,30 @@ export class LayerPanel {
       return;
     }
     for (const layer of this.getAll()) {
-      const row = this._toggleContainer.querySelector(
-        `[data-layer-id="${layer.id}"]`,
-      );
+      const entry = this._rows.get(layer.id);
+      const row = entry?.row;
       if (!row) continue;
 
-      const btn = row.querySelector('.data-toggle-btn');
+      const btn = entry.toggle;
       if (btn) {
         this._syncToggleButton(btn, layer);
       }
 
-      const count = row.querySelector('.data-count');
+      const count = entry.count;
       if (count) {
-        count.textContent = this._layerCountText(layer.stats);
+        const next = this._layerCountText(layer.stats);
+        if (count.textContent !== next) count.textContent = next;
       }
 
-      const meta = row.querySelector('.data-toggle-meta');
+      const meta = entry.meta;
       if (meta) {
-        meta.textContent = this._buildMetaText(layer);
+        const next = this._buildMetaText(layer);
+        if (meta.textContent !== next) meta.textContent = next;
       }
 
-      this._syncRowControls(
-        row.querySelector('.data-toggle-controls'),
-        layer,
-        row.querySelector('.data-row-list'),
-      );
+      this._syncRowControls(entry.controls, layer, entry.list);
     }
+    this._applyFilters();
   }
 
   _buildMetaText(layer) {
@@ -499,7 +583,11 @@ export class LayerPanel {
     ) {
       return `${source} · ${stats.statusMessage.trim()}`;
     }
-    const ago = stats.lastUpdate ? this._timeAgo(stats.lastUpdate) : 'never';
+    if (layer.enabled === false && !stats.lastUpdate && !stats.loading)
+      return `${source} · Not loaded`;
+    const ago = stats.lastUpdate
+      ? this._timeAgo(stats.lastUpdate)
+      : 'Not loaded';
     if (stats.loading) {
       const loadingLabel =
         typeof stats.loadingLabel === 'string' && stats.loadingLabel.trim()

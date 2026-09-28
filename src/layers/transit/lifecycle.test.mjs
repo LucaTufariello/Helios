@@ -3569,14 +3569,14 @@ test('actual Traffic, Bikeshare and Transit lifecycles retain sensitivity in eve
   const app = harness(t);
   const noop = () => {};
   const traffic = trafficLifecycle({
-    state: { _pointCollection: {}, _loadGeneration: 0 },
+    state: { _flowLines: {}, _loadGeneration: 0 },
     services: {
       render: { holdContinuousRender: noop, releaseContinuousRender: noop },
     },
     source: {},
     parts: {
       flow: { ensureFlowStatus: noop },
-      animation: { animate: noop, clearDots: noop },
+      rendering: { removeHeatLines: noop },
       viewport: { onCameraChanged: noop },
       ingestion: { cancelActiveFetch: noop },
     },

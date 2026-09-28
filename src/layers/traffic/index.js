@@ -1,9 +1,7 @@
 import { TRAFFIC_TIMING_ENABLED } from './policy.js';
-import { createStyle } from './style.js';
 import { createTiming } from './timing.js';
 import { createModel } from './model.js';
 import { createIngestion } from './ingestion.js';
-import { createAnimation } from './animation.js';
 import { createViewport } from './viewport.js';
 import { createFlow } from './flow.js';
 import { createRendering } from './rendering.js';
@@ -26,11 +24,9 @@ export function createTrafficLayer({ services, source }) {
   const state = createState({ services });
   const parts = {};
   const context = { state, services, parts, source };
-  parts.style = createStyle(context);
   parts.timing = createTiming(context);
   parts.model = createModel(context);
   parts.ingestion = createIngestion(context);
-  parts.animation = createAnimation(context);
   parts.viewport = createViewport(context);
   parts.flow = createFlow(context);
   parts.rendering = createRendering(context);

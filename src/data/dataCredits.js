@@ -97,6 +97,20 @@ export const DATA_CREDITS = [
       '(ODbL 1.0; incomplete mapped context)',
   },
   {
+    key: 'energy-osm',
+    html:
+      'Energy & refining sites (plants, substations, refineries): ' +
+      '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a> ' +
+      '(ODbL 1.0; incomplete mapped context)',
+  },
+  {
+    key: 'gdacs',
+    html:
+      'Disaster alerts: ' +
+      '<a href="https://www.gdacs.org/" target="_blank" rel="noopener">GDACS</a> ' +
+      '(UN/EU JRC — public domain)',
+  },
+  {
     key: 'cockpit-place-osm',
     html:
       'Cockpit place context and last-resort place search: ' +
@@ -106,9 +120,9 @@ export const DATA_CREDITS = [
   {
     key: 'open-meteo',
     html:
-      'Cockpit current conditions: ' +
+      'Cockpit current conditions + Atmosphere layer: ' +
       '<a href="https://open-meteo.com/en/licence" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> ' +
-      '(CC BY 4.0)',
+      '(CC BY 4.0 — model readout, not a station observation)',
   },
   {
     key: 'google-news-rss',
@@ -171,7 +185,7 @@ export const DATA_CREDITS = [
   },
   {
     key: 'gbfs',
-    html: 'Bikeshare availability: GBFS operator feeds (e.g. Austin BCycle)',
+    html: 'Bikeshare availability: GBFS operator feeds (e.g. Austin BCycle, Milan BikeMi)',
   },
   {
     key: 'osrm-routing',

@@ -158,8 +158,8 @@ function encode(state) {
 
 test('production registry is exact, canonical, and rejects incomplete contracts', async () => {
   assert.equal(validateLayerStateRegistry(), true);
-  assert.equal(REGISTERED_LAYER_IDS.length, 21);
-  assert.equal(new Set(REGISTERED_LAYER_IDS).size, 21);
+  assert.equal(REGISTERED_LAYER_IDS.length, 24);
+  assert.equal(new Set(REGISTERED_LAYER_IDS).size, 24);
   assert.ok(REGISTERED_LAYER_IDS.includes('transit'));
   assert.deepEqual(REGISTERED_LAYER_IDS, [...REGISTERED_LAYER_IDS].sort());
   assert.throws(
@@ -231,10 +231,14 @@ test('unknown enabled-layer tokens reject the payload instead of becoming an emp
   assert.equal(decodeLayerStateParams(new URLSearchParams('v=2&l=c.unknown')), null);
 });
 
-test('Sat Fresh and Sentinel free layers have distinct enabled-only share tokens', () => {
-  const decoded = decodeLayerStateParams(new URLSearchParams('v=2&l=k.y'));
-  assert.deepEqual(decoded.enabledLayerIds, ['sat-fresh', 'sentinel-free']);
-  assert.ok(encode(decoded).includes('l=k.y'));
+test('Sat Fresh, Sentinel free and Atmosphere layers have distinct enabled-only share tokens', () => {
+  const decoded = decodeLayerStateParams(new URLSearchParams('v=2&l=k.y.o'));
+  assert.deepEqual(decoded.enabledLayerIds, [
+    'atmosphere',
+    'sat-fresh',
+    'sentinel-free',
+  ]);
+  assert.ok(encode(decoded).includes('l=o.k.y'));
 });
 
 test('unknown and forbidden option fields are ignored while missing options use codec defaults', () => {

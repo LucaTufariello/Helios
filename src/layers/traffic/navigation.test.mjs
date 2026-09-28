@@ -11,8 +11,12 @@ function deferred() {
   return { promise, resolve };
 }
 
-function setup(t, requestRoads) {
+function setup(t, requestRoads, flowSource = null) {
   t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  t.mock.method(Cesium.Material, 'fromType', (type, uniforms) => ({
+    uniforms,
+    destroy() {},
+  }));
   const camera = {
     positionCartographic: Cesium.Cartographic.fromDegrees(
       -97.744,
@@ -56,7 +60,18 @@ function setup(t, requestRoads) {
     source: {
       requestRoads,
       getStatus: async () => ({ hasKey: true }),
-      fetchFlowForBounds: async () => [],
+      fetchFlowForBounds:
+        flowSource ||
+        (async (bounds) => [
+          {
+            coords: [
+              [bounds.west, bounds.south],
+              [bounds.west + 0.005, bounds.south + 0.005],
+            ],
+            trafficLevel: 0.3,
+            closure: false,
+          },
+        ]),
       getFlowSessionStats: () => ({ tilesFetched: 0 }),
       resetFlowTileCache() {},
     },
@@ -215,4 +230,41 @@ test('parked failures back off and disabling cancels the scheduled retry', async
   await tick(60000);
   assert.equal(calls, 2);
   assert.equal(layer.getStats().error, null);
+});
+
+test('parked flow refreshes reuse cached roads and never install vehicle animation', async (t) => {
+  let roadRequests = 0;
+  let level = 1;
+  const { layer, viewer, tick } = setup(
+    t,
+    async (bounds) => {
+      roadRequests++;
+      return roads(bounds);
+    },
+    async (bounds) => [
+      {
+        coords: [
+          [bounds.west, bounds.south],
+          [bounds.west + 0.005, bounds.south + 0.005],
+        ],
+        trafficLevel: level,
+        closure: false,
+      },
+    ],
+  );
+  layer.enable(viewer);
+  await tick(400);
+  await tick(2000);
+  assert.equal(layer.getStats().flowBuckets.free, 1);
+  assert.equal(viewer.scene.preRender.numberOfListeners, 0);
+  const before = roadRequests;
+  level = 0.2;
+  await layer.update();
+  assert.equal(
+    roadRequests,
+    before,
+    'stationary refresh must reuse road geometry',
+  );
+  assert.equal(layer.getStats().flowBuckets.jam, 1);
+  assert.deepEqual(layer.getDetectableObjects(), []);
 });

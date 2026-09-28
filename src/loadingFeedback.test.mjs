@@ -118,7 +118,7 @@ test('universal notice masks active loading only for its own fixed dwell', () =>
   const notice = createGlobalStatusNotice('Shared satellite is unavailable', 300);
 
   assert.equal(presentGlobalLoadingStatus(notice, loading, summary, 301).label, 'Shared satellite is unavailable');
-  assert.equal(presentGlobalLoadingStatus(notice, loading, summary, notice.hideAt).label, 'LOADING LIVE DATA');
+  assert.equal(presentGlobalLoadingStatus(notice, loading, summary, notice.hideAt).label, 'LOADING SOURCE DATA');
 });
 
 test('terminal failure preempts a finite notice, whose full dwell starts afterward', () => {
@@ -232,7 +232,7 @@ test('reveals sustained loading and then a bounded completion state', () => {
   const summary = aggregateLayerLoading([{ id: 'a', name: 'A', lifecycleState: 'enabling' }]);
   const pending = reduceLoadingFeedback(createLoadingFeedbackState(), summary, 100);
   const visible = reduceLoadingFeedback(pending, summary, 300);
-  assert.equal(presentLoadingFeedback(visible, summary, 300).label, 'LOADING LIVE DATA');
+  assert.equal(presentLoadingFeedback(visible, summary, 300).label, 'LOADING SOURCE DATA');
   const complete = reduceLoadingFeedback(visible, aggregateLayerLoading([]), 350);
   assert.equal(presentLoadingFeedback(complete, aggregateLayerLoading([]), 350).label, 'LOAD COMPLETE');
 });
