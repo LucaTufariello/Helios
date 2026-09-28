@@ -8,7 +8,6 @@ import { DataLayerManager } from '../data/manager.js';
 import { getActiveCameraMotion, interruptCameraMotion, moveCamera } from '../cameraVerbs.js';
 import { reassertNavigationHandoff, runExplicitNavigation } from '../navigationPolicy.js';
 import { normalizeRadioCountryInput } from '../data/radioCountry.js';
-import { TR3B_CLASS } from '../data/tr3bRegistry.js';
 import {
   controlCctv,
   controlRadio as runControlRadio,
@@ -1175,42 +1174,6 @@ test('control_cockpit forwards schema-valid navigation filters', async () => {
   assert.equal(calls[1].options.targetLayer, 'military');
 });
 
-test('control_cockpit resolves spoken TR-3B spellings to the tr3b class id', async () => {
-  globalThis.window = globalThis.window || { clearTimeout, setTimeout, requestIdleCallback: null };
-  const calls = [];
-  const styleManager = {
-    controlCockpit(action, options) {
-      calls.push(options);
-      return { ok: true, state: { active: true, navigation: { canNext: true, canPrevious: true, canFocus: true } } };
-    },
-  };
-  const viewer = {
-    clock: { onTick: { addEventListener: () => () => {} } },
-    scene: { canvas: { addEventListener() {}, removeEventListener() {} } },
-    camera: { moveEnd: { addEventListener() {} } },
-  };
-  const runner = createGevActionRunner({
-    viewer,
-    styleManager,
-    dataManager: { layers: new Map(), getAll: () => [] },
-  });
-
-  // Analyst records carry the class as the unpunctuated id `tr3b`, but nobody
-  // says or writes it that way — every hyphenated/spaced spelling has to land on
-  // the same id or a voice query for TR-3Bs silently matches nothing. Driven
-  // through the real runner, so a broken hand-off fails here.
-  for (const spoken of ['TR-3B', 'tr-3b', 'tr 3b', 'TR 3 B', 'tr3b']) {
-    await runner('control_cockpit', { action: 'next', aircraftClass: spoken });
-    assert.equal(calls.at(-1).aircraftClass, TR3B_CLASS, `"${spoken}" must resolve to ${TR3B_CLASS}`);
-  }
-
-  // Surgical: real class ids still pass through untouched, and an unrelated
-  // hyphenated value is NOT rewritten — only the TR-3B spellings are aliased.
-  for (const passthrough of ['helicopter', 'fastjet', 'widebody', 'e-3b', 'tr-3c']) {
-    await runner('control_cockpit', { action: 'next', aircraftClass: passthrough });
-    assert.equal(calls.at(-1).aircraftClass, passthrough);
-  }
-});
 
 test('control_cockpit delegates selected-flight adoption to the canonical cockpit owner', async () => {
   globalThis.window = globalThis.window || { clearTimeout, setTimeout, requestIdleCallback: null };

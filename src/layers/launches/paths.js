@@ -1,144 +1,9 @@
 import * as Cesium from 'cesium';
 
 export function createPaths({ state: layerState, services, parts, source }) {
-  function orbitInsertionOffsetSeconds(launch) {
-    const events = (launch.timeline || []).filter(
-      (event) =>
-        Number.isFinite(event.offsetSeconds) && event.offsetSeconds >= 0,
-    );
-    if (!events.length) return null;
-    const deployment = events.filter((event) =>
-      /deploy|payload separation|spacecraft separation|orbit insertion|injection/i.test(
-        event.name,
-      ),
-    );
-    if (deployment.length)
-      return Math.max(...deployment.map((event) => event.offsetSeconds));
-    const engineCutoff = events.filter((event) =>
-      /seco|second engine cutoff/i.test(event.name),
-    );
-    if (engineCutoff.length)
-      return Math.max(...engineCutoff.map((event) => event.offsetSeconds));
-    return Math.max(...events.map((event) => event.offsetSeconds));
-  }
-
-  function estimatedOrbitPeriodSeconds(orbitPath) {
-    if (!orbitPath?.length) return 5400;
-    const meanRadius =
-      orbitPath.reduce(
-        (total, point) => total + Cesium.Cartesian3.magnitude(point),
-        0,
-      ) / orbitPath.length;
-    return 2 * Math.PI * Math.sqrt(meanRadius ** 3 / 3.986004418e14);
-  }
-
-  function approximateOrbitPath(launch) {
-    if (
-      !launch.orbit?.name ||
-      !Number.isFinite(launch.lat) ||
-      !Number.isFinite(launch.lon)
-    )
-      return null;
-    const orbitName = launch.orbit.name.toLowerCase();
-    const altitude =
-      orbitName.includes('geostationary') || orbitName.includes('transfer')
-        ? 35786000
-        : orbitName.includes('medium')
-          ? 20200000
-          : 550000;
-    const radius = Cesium.Ellipsoid.WGS84.maximumRadius + altitude;
-    const longitude = Cesium.Math.toRadians(launch.lon);
-    const latitude = Cesium.Math.toRadians(launch.lat);
-    const up = new Cesium.Cartesian3(
-      Math.cos(latitude) * Math.cos(longitude),
-      Math.cos(latitude) * Math.sin(longitude),
-      Math.sin(latitude),
-    );
-    const east = new Cesium.Cartesian3(
-      -Math.sin(longitude),
-      Math.cos(longitude),
-      0,
-    );
-    const north = new Cesium.Cartesian3(
-      -Math.sin(latitude) * Math.cos(longitude),
-      -Math.sin(latitude) * Math.sin(longitude),
-      Math.cos(latitude),
-    );
-    const isPolar = orbitName.includes('polar') || orbitName.includes('sun');
-    const isWesternNorthAmerica =
-      launch.lat > 20 &&
-      launch.lat < 60 &&
-      launch.lon > -140 &&
-      launch.lon < -105;
-    const launchAzimuthDeg = isPolar
-      ? launch.lat >= 0
-        ? 180
-        : 0
-      : isWesternNorthAmerica
-        ? 190
-        : 90;
-    const launchAzimuth = Cesium.Math.toRadians(launchAzimuthDeg);
-    const forward = Cesium.Cartesian3.normalize(
-      Cesium.Cartesian3.add(
-        Cesium.Cartesian3.multiplyByScalar(
-          north,
-          Math.cos(launchAzimuth),
-          new Cesium.Cartesian3(),
-        ),
-        Cesium.Cartesian3.multiplyByScalar(
-          east,
-          Math.sin(launchAzimuth),
-          new Cesium.Cartesian3(),
-        ),
-        new Cesium.Cartesian3(),
-      ),
-      new Cesium.Cartesian3(),
-    );
-    // A reconstructed orbit is an estimate, not a claim that the vehicle was
-    // inserted directly above the pad. Offset the orbital plane downrange by a
-    // small launch-to-insertion arc so a top-down view does not draw the entire
-    // orbit on top of the launch site. The ascent still joins this ring at its
-    // propagated insertion reference.
-    const insertionArc = Cesium.Math.toRadians(isPolar ? 8 : 12);
-    const orbitAnchor = Cesium.Cartesian3.normalize(
-      Cesium.Cartesian3.add(
-        Cesium.Cartesian3.multiplyByScalar(
-          up,
-          Math.cos(insertionArc),
-          new Cesium.Cartesian3(),
-        ),
-        Cesium.Cartesian3.multiplyByScalar(
-          forward,
-          Math.sin(insertionArc),
-          new Cesium.Cartesian3(),
-        ),
-        new Cesium.Cartesian3(),
-      ),
-      new Cesium.Cartesian3(),
-    );
-    const planeNormal = Cesium.Cartesian3.normalize(
-      Cesium.Cartesian3.cross(orbitAnchor, forward, new Cesium.Cartesian3()),
-      new Cesium.Cartesian3(),
-    );
-    const crossTrack = Cesium.Cartesian3.normalize(
-      Cesium.Cartesian3.cross(
-        planeNormal,
-        orbitAnchor,
-        new Cesium.Cartesian3(),
-      ),
-      new Cesium.Cartesian3(),
-    );
-    return Array.from({ length: 97 }, (_, index) => {
-      const angle = (index / 96) * Math.PI * 2;
-      return new Cesium.Cartesian3(
-        radius *
-          (Math.cos(angle) * orbitAnchor.x + Math.sin(angle) * crossTrack.x),
-        radius *
-          (Math.cos(angle) * orbitAnchor.y + Math.sin(angle) * crossTrack.y),
-        radius *
-          (Math.cos(angle) * orbitAnchor.z + Math.sin(angle) * crossTrack.z),
-      );
-    });
+  /** Legacy API retained as unavailable: launch metadata cannot establish an orbit. */
+  function approximateOrbitPath() {
+    return null;
   }
 
   function samplePath(path, progress, result) {
@@ -196,28 +61,6 @@ export function createPaths({ state: layerState, services, parts, source }) {
     return Cesium.Math.mod((Number(nowMs) || 0) / 1000, period) / period;
   }
 
-  function nearestOrbitIndex(orbitPath, referencePosition) {
-    if (!orbitPath?.length || !referencePosition) return 0;
-    const referenceDirection = Cesium.Cartesian3.normalize(
-      referencePosition,
-      new Cesium.Cartesian3(),
-    );
-    let bestIndex = 0;
-    let bestDot = -Number.MAX_VALUE;
-    orbitPath.forEach((candidate, index) => {
-      const direction = Cesium.Cartesian3.normalize(
-        candidate,
-        new Cesium.Cartesian3(),
-      );
-      const dot = Cesium.Cartesian3.dot(referenceDirection, direction);
-      if (dot > bestDot) {
-        bestDot = dot;
-        bestIndex = index;
-      }
-    });
-    return bestIndex;
-  }
-
   function surfaceSafeSegment(startPosition, endPosition) {
     const ellipsoid = Cesium.Ellipsoid.WGS84;
     const start = ellipsoid.cartesianToCartographic(startPosition);
@@ -265,54 +108,17 @@ export function createPaths({ state: layerState, services, parts, source }) {
     return path;
   }
 
-  function landingEndpoint(stage, launch, insertionPosition) {
+  function landingEndpoint(stage) {
     if (Number.isFinite(stage.lat) && Number.isFinite(stage.lon)) {
-      return { lat: stage.lat, lon: stage.lon, accuracy: 'CONFIRMED' };
+      return { lat: stage.lat, lon: stage.lon, accuracy: 'SOURCE REPORTED' };
     }
-    const recoveryIdentity =
-      `${stage.recoveryType || ''} ${stage.destination || ''}`.toLowerCase();
-    if (
-      /return to launch site|rtls|launch site|landing zone/.test(
-        recoveryIdentity,
-      )
-    ) {
-      return { lat: launch.lat, lon: launch.lon, accuracy: 'PAD / RTLS' };
-    }
-    if (!(stage.downrangeKm > 0) || !insertionPosition) return null;
-    const ellipsoid = Cesium.Ellipsoid.WGS84;
-    const start = Cesium.Cartographic.fromDegrees(launch.lon, launch.lat);
-    const insertion = ellipsoid.cartesianToCartographic(insertionPosition);
-    if (!insertion) return null;
-    const geodesic = new Cesium.EllipsoidGeodesic(start, insertion, ellipsoid);
-    const bearing = geodesic.startHeading;
-    const angularDistance =
-      (stage.downrangeKm * 1000) / ellipsoid.maximumRadius;
-    const lat1 = start.latitude;
-    const lon1 = start.longitude;
-    const lat = Math.asin(
-      Math.sin(lat1) * Math.cos(angularDistance) +
-        Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing),
-    );
-    const lon =
-      lon1 +
-      Math.atan2(
-        Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
-        Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat),
-      );
-    return {
-      lat: Cesium.Math.toDegrees(lat),
-      lon: Cesium.Math.toDegrees(Cesium.Math.negativePiToPi(lon)),
-      accuracy: 'EST. DOWNRANGE',
-    };
+    return null;
   }
 
   return {
-    orbitInsertionOffsetSeconds,
-    estimatedOrbitPeriodSeconds,
     approximateOrbitPath,
     samplePath,
     orbitProgressAtTime,
-    nearestOrbitIndex,
     surfaceSafeSegment,
     surfaceSafePath,
     landingEndpoint,

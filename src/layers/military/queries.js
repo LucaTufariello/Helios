@@ -17,7 +17,6 @@ export function createQueries({
   layer,
   resolveAsset,
 }) {
-  const { tr3bAircraftClass, tr3bTypeLabel } = services.aircraftPresentation;
   const { formatFlightLevel } = services.labels;
   const { applyTrackedCameraFrame } = services.camera;
 
@@ -172,8 +171,7 @@ export function createQueries({
       callsign,
       lat: num(info?.rawLat),
       lon: num(info?.rawLon),
-      // altitudeFt is the sticky barometric/MSL aviation field — converted to
-      // meters here for shape parity with the flights layer.
+
       altitudeM: Number.isFinite(info?.altitudeFt)
         ? info.altitudeFt * 0.3048
         : null,
@@ -182,9 +180,8 @@ export function createQueries({
       verticalRateMps: num(info?.verticalRateMps),
       onGround: info?.onGround === true,
       military: true,
-      // A converted contact reports the class it RENDERS as (mirror of
-      // flights.js), so an analyst filter/superlative agrees with the triangle.
-      aircraftClass: tr3bAircraftClass(icao24, text(info?.klass)),
+
+      aircraftClass: text(info?.klass),
       originCountry: null,
       operator: text(info?.operator),
       routeOrigin: null,
@@ -265,9 +262,6 @@ export function createQueries({
       ) {
         flightState._irBoost = params.irBoost;
         parts.rendering._reloadModelsForIrBoost();
-        // Sprites don't reload with the models — swap the TR-3B glyph between its
-        // cold and thermal-reactive variants directly (mirror of flights.js).
-        parts.tracking._refreshTr3bForStyle();
       }
       if (Object.hasOwn(params, 'selectedMilitaryTrackingId')) {
         const requested = _normalizeTrackedIcao(
@@ -301,16 +295,6 @@ export function createQueries({
         irBoost: flightState._irBoost,
         selectedMilitaryTrackingId: flightState._trackedIcao,
       };
-    },
-
-    /**
-     * Re-render a contact whose TR-3B conversion just flipped (Easter egg).
-     * Callers own the registry write; this only re-derives what renders.
-     * @param {string} icao24 - ICAO 24-bit address.
-     * @returns {boolean} True when this layer owns the contact.
-     */
-    refreshTr3b(icao24) {
-      return parts.tracking._refreshTr3bContact(icao24);
     },
 
     /**
@@ -370,18 +354,14 @@ export function createQueries({
           position: pos,
           distance,
           // Filter surface (mirror of flights.js): the cockpit next/previous path
-          // matches on this field, so it follows the conversion.
-          aircraftClass: tr3bAircraftClass(
-            icao24,
+
+          aircraftClass:
             String(info?.klass || info?.type || '')
               .trim()
               .toLowerCase() || null,
-          ),
           track: info?.track ?? null,
-          // Display type — converted too, so a Contacts row can't still name the
-          // airframe the triangle replaced (the filter matcher reads this as a
-          // fallback candidate as well).
-          type: tr3bTypeLabel(icao24, info?.type || null),
+
+          type: info?.type || null,
           registration: info?.registration || null,
           operator: info?.operator || null,
           altitudeFt: info?.altitudeFt ?? null,
@@ -473,9 +453,8 @@ export function createQueries({
         const id = callsign || registration || icao24;
         if (object.id !== id) object.id = id;
         // Card surface: detectionDraw composes its secondary line from
-        // `[src.klass, src.metric]`, so a converted contact's card must name the
-        // TR-3B, not the airframe underneath it.
-        const klass = tr3bTypeLabel(icao24, info?.type || 'MIL');
+
+        const klass = info?.type || 'MIL';
         if (object.klass !== klass) object.klass = klass;
         const altitudeFt = info?.altitudeFt ?? 0;
         if (object._altitudeFt !== altitudeFt) {

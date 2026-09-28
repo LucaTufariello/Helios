@@ -1,6 +1,6 @@
 # KNOWN ISSUES
 
-Updated: July 8, 2026
+Updated: September 28, 2026
 
 This file tracks active runtime issues only.
 
@@ -19,14 +19,25 @@ Context:
 - Zooming into adjacent streets does not always immediately trigger higher-detail coverage for all visible roads.
 
 Current mitigation in runtime:
-- Fair per-road dot budget allocation (reduces hard starvation under global `MAX_DOTS` cap).
+- Static observed-flow rendering capped at 1,200 segments, with at most four ground-polyline batches.
+- Unmatched roads remain absent; the metadata reports flow coverage rather than invented vehicles.
 - Center-shift threshold (reduces stale overlap lock while panning).
 
 Next iteration candidates:
 - Prioritize currently visible road segments inside the active viewport before off-center segments.
 - Add neighbor prefetch ring for nearby tiles after jump-to-city actions.
-- Add adaptive dot cap by frame time (coverage first, density second).
+- Prioritize observed geometry by viewport and measured draw cost.
 - Promote sync chip from loading indicator to true multi-phase progress.
+
+---
+
+### Analysis workflow and loading cost
+Status: Open
+
+- The main application bundle still triggers Vite's large-chunk warning. Existing package boundaries make a later lazy-loading pass possible, but changing startup ownership requires a separate measured review.
+- The source catalog has clear provider/state metadata, but source observation time, fetch time, spatial coverage, and model provenance are not yet one consistent record inspector across all layers.
+- Durable cases, linked tables, unified time filtering, evidence exports, and self-hosted collaboration are not implemented. The application is currently a geospatial viewer and workspace foundation.
+- The new workspace stylesheet coexists with legacy presentation styles; future cleanup should consolidate them while retaining tested overlay and attribution behavior.
 
 ---
 

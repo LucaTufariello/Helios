@@ -12,7 +12,7 @@ export function createFlow({ state: layerState, services, parts, source }) {
    *
    * `fetchFlowForBounds` only rejects when EVERY covering tile failed, so a
    * non-null result here always means "there is no live flow to show right
-   * now" — the dots fall back to simulated white. Mirrors the
+   * now" — unmatched roads are omitted. Mirrors the
    * `deriveAisFeedError` honesty helper.
    *
    * @param {Error|{name?:string, message?:string}|null|undefined} error - Rejection from the flow fetch.
@@ -74,10 +74,7 @@ export function createFlow({ state: layerState, services, parts, source }) {
    *
    * Reuses the load-generation guard: stale flow responses are discarded, and
    * the shared AbortController lets `cancelActiveFetch()` (next load / disable)
-   * cancel an in-flight flow fetch. Any failure leaves roads unmatched — the
-   * dots then render in today's simulated white, never a phantom color — and is
-   * recorded in `_flowError` so `getStats()` degrades honestly instead of
-   * reporting a stale "LIVE · N% cov" over simulated dots.
+   * cancel an in-flight flow fetch. Failures clear coverage and omit unmatched roads.
    *
    * @param {Array} roads - Parsed road objects (mutated: `road.flow`).
    * @param {{south:number,west:number,north:number,east:number}} clamped - Fetch bounds.
@@ -90,8 +87,9 @@ export function createFlow({ state: layerState, services, parts, source }) {
     // covers this request from the same tick the caller started it — the
     // loading batch must not be able to close underneath an in-flight fetch.
     layerState._flowPending += 1;
+    const requestId = ++layerState._flowRequestId;
     try {
-      if (!layerState._flowStatusPromise) return; // status check not started — sim mode
+      if (!layerState._flowStatusPromise) return; // status check not started — unavailable
       await layerState._flowStatusPromise;
       if (!layerState._liveMode || !layerState._enabled) return;
       if (generation !== layerState._loadGeneration) return;
@@ -101,35 +99,44 @@ export function createFlow({ state: layerState, services, parts, source }) {
         // reuse theirs so one cancel covers both roads and flow.
         if (!layerState._activeFetchAbort)
           layerState._activeFetchAbort = new AbortController();
+        for (const road of roads) road.flow = null;
         const segments = await fetchFlowForBounds(clamped, {
           signal: layerState._activeFetchAbort.signal,
         });
-        if (generation !== layerState._loadGeneration) return;
-        const { matches, matchedCount, candidateCount } = matchFlowToRoads(
-          roads,
-          segments,
-        );
+        if (
+          generation !== layerState._loadGeneration ||
+          requestId !== layerState._flowRequestId ||
+          !layerState._enabled
+        )
+          return;
+        const { matches, matchedCount } = matchFlowToRoads(roads, segments);
         for (let i = 0; i < roads.length; i++) {
           roads[i].flow = matches[i];
         }
         layerState._flowCoveragePct =
-          candidateCount > 0
-            ? Math.round((matchedCount / candidateCount) * 100)
+          roads.length > 0
+            ? Math.round((matchedCount / roads.length) * 100)
             : 0;
         layerState._flowError = null;
+        layerState._lastUpdate = Date.now();
       } catch (e) {
         if (e?.name === 'AbortError') return;
         // Same guard the success path gets: a superseded request rejecting late
         // (or after disable() cleared the state) must not restore a stale
         // outage over newer good data.
-        if (generation !== layerState._loadGeneration || !layerState._enabled)
+        if (
+          generation !== layerState._loadGeneration ||
+          requestId !== layerState._flowRequestId ||
+          !layerState._enabled
+        )
           return;
         // Every covering tile failed: there is no live flow on screen. Drop the
         // now-false coverage number and surface the reason through getStats().
+        for (const road of roads) road.flow = null;
         layerState._flowError = deriveTrafficFlowError(e);
         layerState._flowCoveragePct = 0;
         console.warn(
-          '[Data:Traffic] Flow fetch failed (sim colors remain):',
+          '[Data:Traffic] Flow fetch failed (no unobserved roads rendered):',
           e?.message || e,
         );
       }
@@ -141,7 +148,7 @@ export function createFlow({ state: layerState, services, parts, source }) {
 
   /**
    * Race flow application against the paint deadline, render, and schedule an
-   * in-place recolor if flow lost the race.
+   * road redraw if flow lost the race.
    * @param {Array} roads - Parsed road objects.
    * @param {{south:number,west:number,north:number,east:number}} clamped - Fetch bounds.
    * @param {number} generation - `_loadGeneration` at call time.
@@ -169,12 +176,15 @@ export function createFlow({ state: layerState, services, parts, source }) {
         })
       : null;
     const flowJob = applyFlowToRoads(roads, clamped, generation);
+    const requestId = layerState._flowRequestId;
+    let deadline;
     const outcome = await Promise.race([
       flowJob.then(() => 'flow'),
-      new Promise((resolve) =>
-        setTimeout(() => resolve('timeout'), FLOW_RENDER_RACE_MS),
-      ),
+      new Promise((resolve) => {
+        deadline = setTimeout(() => resolve('timeout'), FLOW_RENDER_RACE_MS);
+      }),
     ]);
+    clearTimeout(deadline);
     if (state) {
       const flowRaceEnd = parts.timing.trafficTimingMark(
         state,
@@ -195,13 +205,26 @@ export function createFlow({ state: layerState, services, parts, source }) {
         },
       );
     }
-    if (generation !== layerState._loadGeneration) return false;
+    if (
+      generation !== layerState._loadGeneration ||
+      requestId !== layerState._flowRequestId ||
+      !layerState._enabled
+    )
+      return false;
     parts.rendering.renderRoadsForAltitude(roads, altitude, label, trace);
     if (outcome === 'timeout') {
       flowJob
         .then(() => {
-          if (generation !== layerState._loadGeneration) return;
-          parts.model.recolorDotsInPlace(label);
+          if (
+            generation !== layerState._loadGeneration ||
+            requestId !== layerState._flowRequestId ||
+            !layerState._enabled ||
+            layerState._roads !== roads
+          )
+            return;
+          parts.rendering.rebuildHeatLines(
+            parts.rendering.visibleRoadsForAltitude(roads, altitude),
+          );
         })
         .catch(() => {
           /* applyFlowToRoads settles its own failures */

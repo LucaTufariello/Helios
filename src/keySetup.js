@@ -1,7 +1,7 @@
 import { createSurfaceKeyboard } from './ui/surfaceKeyboard.js';
 
 /**
- * The POWER UP surface — paste a key, get a power.
+ * Optional provider settings, stored locally.
  *
  * A small chip sits bottom-right whenever the app is running under the dev
  * server with keys still missing. It opens a dialog rendered ENTIRELY from
@@ -18,10 +18,7 @@ import { createSurfaceKeyboard } from './ui/surfaceKeyboard.js';
 
 /** Chip label — pure, exported for tests. */
 export function keySetupChipLabel(status) {
-  const missing = Math.max(0, (status?.total || 0) - (status?.setCount || 0));
-  return missing > 0
-    ? `POWER UP · ${missing} ${missing === 1 ? 'KEY' : 'KEYS'} WAITING`
-    : 'POWERED UP';
+  return 'PROVIDER SETTINGS';
 }
 
 /**

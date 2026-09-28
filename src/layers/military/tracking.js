@@ -38,8 +38,6 @@ export function createTracking({
     refreshTrackedSubjectContext,
     clearTrackedSubjectContext,
   } = services.context;
-  const { tr3bTypeLabel, isTr3b, tr3bConvertedIds } =
-    services.aircraftPresentation;
   const { trackedLabelModelFromText, refreshTrackedReadout } = services.readout;
   const { floorAltitudeM, cachedGroundFloor, resolveGroundFloorCellsBounded } =
     services.groundFloor;
@@ -107,12 +105,8 @@ export function createTracking({
         operator: parts.queries._toCleanText(info?.operator) || '',
         callsign: described.callsign || '',
         registration: described.registration || '',
-        // Converted contacts report their class as TR-3B — the same override
-        // the readout and Contacts card show.
-        type: tr3bTypeLabel(
-          icao24,
-          parts.queries._toCleanText(info?.type) || '',
-        ),
+
+        type: parts.queries._toCleanText(info?.type) || '',
         altitude: described.onGround
           ? 'on ground'
           : parts.queries._formatAltitude(info?.altitudeFt),
@@ -225,12 +219,8 @@ export function createTracking({
       (parts.queries._toCleanText(info?.callsign) ||
         parts.queries._toCleanText(info?.registration) ||
         icao24) + stale;
-    // Converted contacts report their class as TR-3B — that override is exactly
-    // what the Easter egg replaces the real type with.
-    const type = tr3bTypeLabel(
-      icao24,
-      parts.queries._toCleanText(info?.type) || 'Type unknown',
-    );
+
+    const type = parts.queries._toCleanText(info?.type) || 'Type unknown';
     const registration =
       parts.queries._toCleanText(info?.registration) || 'Reg unknown';
     const operator =
@@ -272,48 +262,6 @@ export function createTracking({
       ),
       TRACKED_ICON_PX,
     );
-  }
-
-  /**
-   * Re-render one contact after its TR-3B conversion (or the active IR style)
-   * changed. Mirror of flights.js: converting drops any 3D model so the triangle
-   * owns the visual, then the billboard, tracked entity, and card re-derive.
-   * @param {string} icao24 - ICAO 24-bit address.
-   * @returns {boolean} True when the layer owns this contact.
-   */
-
-  function _refreshTr3bContact(icao24) {
-    const id = String(icao24 || '')
-      .trim()
-      .toLowerCase();
-    if (!id) return false;
-    if (isTr3b(id)) {
-      if (flightState._models.has(id) || flightState._modelPending.has(id))
-        parts.rendering._releaseModel(id);
-      const modelled = flightState._billboards.get(id);
-      if (modelled && id !== flightState._trackedIcao) modelled.show = true; // horizon cull re-asserts next tick
-      if (id === flightState._trackedIcao) {
-        parts.rendering._releaseTrackedModel();
-        _syncTracked2dRotation();
-      }
-    }
-    const bb = flightState._billboards.get(id);
-    if (bb) parts.rendering._applyFleetBillboardPresentation(id, bb);
-    if (id === flightState._trackedIcao) {
-      _syncTrackedBillboardImage();
-      _updateTrackedLabelModel(id);
-    }
-    flightState._viewer?.scene?.requestRender?.();
-    return flightState._billboards.has(id) || id === flightState._trackedIcao;
-  }
-
-  /** Re-image every converted contact this layer owns (IR style flip). */
-
-  function _refreshTr3bForStyle() {
-    for (const id of tr3bConvertedIds()) {
-      if (flightState._billboards.has(id) || id === flightState._trackedIcao)
-        _refreshTr3bContact(id);
-    }
   }
 
   /** Clear every per-SELECTION tracked-model latch: the zoom hysteresis band and
@@ -383,14 +331,8 @@ export function createTracking({
       flightState._trackedZoomLatchIcao = flightState._trackedIcao;
       flightState._trackedZoomLatched = false;
     }
-    // A converted TR-3B has no 3D asset — suppressing the regime keeps its
-    // tracked billboard fully opaque (the colour callback reads this too), so
-    // the triangle stays the visual all the way in. Mirror of flights.js.
-    if (
-      !flightState._trackedIcao ||
-      flightState._cockpitContactMode ||
-      isTr3b(flightState._trackedIcao)
-    ) {
+
+    if (!flightState._trackedIcao || flightState._cockpitContactMode) {
       flightState._trackedZoomLatched = false;
       return false;
     }
@@ -1150,8 +1092,6 @@ export function createTracking({
     _buildTrackedLabel,
     _updateTrackedLabelModel,
     _syncTrackedBillboardImage,
-    _refreshTr3bContact,
-    _refreshTr3bForStyle,
     _resetTrackedSelectionState,
     _trackedModelLoadAllowed,
     _noteTrackedModelLoadFailure,

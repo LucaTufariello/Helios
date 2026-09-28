@@ -94,7 +94,7 @@ test('malformed availability is an unavailable source rather than a keyless resp
   await assert.rejects(source.getStatus(), /Malformed traffic status/);
 });
 
-test('traffic construction is inert and parameters belong to each layer', async () => {
+test('traffic construction is inert and cannot synthesize vehicle positions', async () => {
   const { createTrafficLayer } = await import('./index.js');
   const source = createTrafficSource({
     fetchImpl: () => assert.fail('construction fetched data'),
@@ -102,11 +102,11 @@ test('traffic construction is inert and parameters belong to each layer', async 
   const services = { credits: {}, render: {} };
   const a = createTrafficLayer({ services, source });
   const b = createTrafficLayer({ services, source });
-  a.setParams({ densityScale: 2, speedScale: 3, uncoveredRoads: 'hide' });
-  assert.equal(a.getParams().densityScale, 2);
-  assert.equal(b.getParams().densityScale, 1);
-  assert.equal(b.getParams().speedScale, 1);
-  assert.equal(b.getParams().uncoveredRoads, 'sim');
+  assert.equal(a.getStats().count, 0);
+  assert.equal(b.getStats().count, 0);
+  assert.equal(a.getStats().mode, 'unavailable');
+  assert.deepEqual(a.getDetectableObjects(), []);
+  assert.equal(a.setParams, undefined, 'simulation tuning is not exposed');
 });
 
 test('road body parsing retains the source request cancellation signal', async () => {

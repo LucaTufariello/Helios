@@ -1,6 +1,6 @@
   <div id="left-panel-stack">
   <!-- Data Layer Toggle Panel -->
-  <div id="data-panel" class="panel-collapsible collapsed active" data-panel-id="data-panel">
+  <div id="data-panel" class="panel-collapsible active" data-panel-id="data-panel">
     <div class="panel-glow"></div>
     <div class="data-panel-inner">
       <div class="panel-header">
@@ -8,6 +8,12 @@
         <span class="panel-divider"></span>
         <button class="panel-collapse-btn" data-collapse-target="data-panel" title="Collapse panel">+</button>
       </div>
+      <div class="data-catalog-tools">
+        <label class="data-search-label" for="data-layer-search">Find a source</label>
+        <input id="data-layer-search" type="search" placeholder="Search layers or providers…" autocomplete="off" aria-controls="data-toggles" />
+        <div class="data-catalog-filter"><label><input id="data-active-only" type="checkbox" /> Selected only</label><span id="data-layer-summary" role="status" aria-live="polite">No layers selected</span></div>
+      </div>
+      <p id="data-layer-empty" hidden>No matching sources. Clear the search or selected filter.</p>
       <div id="data-toggles" class="data-toggle-list"></div>
     </div>
   </div>

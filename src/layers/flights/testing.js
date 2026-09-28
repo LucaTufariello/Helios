@@ -156,7 +156,7 @@ export function createTesting({
   }
 
   /** Evaluate the TRACKED contact's zoom regime through the production predicate.
-   *  The decision is latch-bearing (default-on, hysteretic, cockpit/TR-3B-suppressed)
+   *  The decision is latch-bearing (default-on, hysteretic, cockpit-suppressed)
    *  and otherwise only observable through a live scene, so tests drive it here. */
 
   function _trackedModelRegimeActiveForTest() {

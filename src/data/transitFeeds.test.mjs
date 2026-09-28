@@ -145,10 +145,12 @@ test('the public catalog exposes coverage and credit, never the upstream URL or 
 });
 
 test('the enabled set is a gate on the registry, not a copy of it', () => {
-  // Every registered feed is switched on today. The gate still has to be the
-  // thing that decides that, because the moment an operator's terms change the
-  // owner flips one flag and expects the feed to become unreachable — not to
-  // stay routable because the filter had quietly become a no-op.
+  // Most registered feeds ship on; ATAC Rome is the documented exception —
+  // live and keyless but held off by the admission rule (terms do not plainly
+  // cover a live map layer). The gate still has to be the thing that decides
+  // that, because the moment an operator's terms change the owner flips one
+  // flag and expects the feed to become unreachable — not to stay routable
+  // because the filter had quietly become a no-op.
   assert.deepEqual(
     TRANSIT_ENABLED_FEEDS.map((feed) => feed.id),
     TRANSIT_FEED_REGISTRY.filter((feed) => feed.defaultEnabled === true).map(
@@ -202,6 +204,27 @@ test('only MBTA retains proxy history while every other registered feed stays li
   );
   assert.equal(getTransitFeed('capmetro-austin').defaultEnabled, true);
   assert.equal(getTransitFeed('mbta').attribution, 'MBTA / MassDOT');
+});
+
+test('ATAC Rome is registered but inert until its license plainly covers display', () => {
+  const registered = getRegisteredTransitFeed('atac-rome');
+  assert.ok(registered, 'stays documented for credits');
+  assert.equal(registered.defaultEnabled, false);
+  assert.equal(
+    getTransitFeed('atac-rome'),
+    null,
+    'never resolves to an upstream URL while off',
+  );
+  assert.ok(
+    !TRANSIT_ENABLED_FEEDS.some((feed) => feed.id === 'atac-rome'),
+    'never polled or offered to the browser',
+  );
+  assert.ok(
+    !transitFeedsInRange(41.9028, 12.4964).some(
+      (feed) => feed.id === 'atac-rome',
+    ),
+    'not even in range over Rome itself',
+  );
 });
 
 test('published transit history scope agrees with the catalog capability', () => {

@@ -41,8 +41,8 @@ test('flow failures map onto short, specific reasons', () => {
 test('keyless traffic reports KEY REQUIRED, loading or idle', () => {
   const idle = trafficFeedPresentation({ liveMode: false, fetching: false, keyRequired: true });
   const loading = trafficFeedPresentation({ liveMode: false, fetching: true, keyRequired: true });
-  assert.equal(idle.mode, 'sim');
-  assert.equal(loading.mode, 'sim');
+  assert.equal(idle.mode, 'unavailable');
+  assert.equal(loading.mode, 'unavailable');
   // Keyless is a missing key, not a fault in a feed — but it must read as a
   // named, actionable state, never as an empty healthy layer.
   assert.equal(idle.error, 'KEY REQUIRED');
@@ -70,7 +70,7 @@ test('no keyless label ever implies a live feed', () => {
 
 test('an unreachable status probe blocks loads distinctly from KEY REQUIRED', () => {
   const probeDown = trafficFeedPresentation({ statusUnavailable: true });
-  assert.equal(probeDown.mode, 'sim');
+  assert.equal(probeDown.mode, 'unavailable');
   assert.equal(probeDown.error, 'traffic service unreachable');
   assert.equal(probeDown.loadingLabel, 'traffic service unreachable');
 });
@@ -80,11 +80,11 @@ test('a healthy keyed layer reports live flow with its real coverage', () => {
   assert.deepEqual(idle, {
     mode: 'live',
     error: null,
-    loadingLabel: 'LIVE · TomTom flow · 87% cov',
+    loadingLabel: 'TomTom flow · 87% roads matched',
   });
   assert.equal(
     trafficFeedPresentation({ liveMode: true, fetching: true }).loadingLabel,
-    'syncing LIVE traffic flow',
+    'Refreshing road flow',
   );
 });
 
@@ -151,7 +151,7 @@ test('the manager reads keyless as UNAVAILABLE and an outage as DEGRADED', () =>
 
 test('the shipped layer boots keyless-honest before any status check', () => {
   const stats = trafficLayer.getStats();
-  assert.equal(stats.mode, 'sim');
+  assert.equal(stats.mode, 'unavailable');
   assert.equal(stats.keyRequired, true);
   assert.equal(stats.error, 'KEY REQUIRED');
   assert.ok(!LIVE_CLAIM.test(stats.loadingLabel), `boot label implies live data: ${stats.loadingLabel}`);

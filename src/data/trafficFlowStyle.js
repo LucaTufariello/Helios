@@ -1,12 +1,11 @@
 /**
  * @file Pure styling helpers for live traffic flow — level → bucket/color/
- * speed/density. Cesium-free so thresholds are unit-testable; the traffic
+ * and color. Cesium-free so thresholds are unit-testable; the traffic
  * layer maps buckets to Cesium colors at spawn time.
  *
  * `level` is TomTom's `traffic_level`: current speed / free-flow speed,
- * 0..1 where 1 = free flow. Non-finite input degrades to free-flow/neutral
- * everywhere — a road with unusable data must render like the simulation,
- * never as a phantom traffic jam.
+ * 0..1 where 1 = free flow. Renderers must omit records without finite flow data. The neutral
+ * fallback in this helper does not establish an observation.
  *
  * @module data/trafficFlowStyle
  */
@@ -46,35 +45,4 @@ export function flowBucket(level) {
  */
 export function flowColor(level) {
   return FLOW_BUCKET_RGBA[flowBucket(level)];
-}
-
-/**
- * Dot speed multiplier for a traffic level. Jammed roads crawl but never
- * freeze (0.15 floor keeps the layer visibly alive); free flow is unchanged.
- * @param {number} level - traffic_level 0..1.
- * @returns {number} Multiplier within [0.15, 1]; non-finite input → 1.
- */
-export function flowSpeedScale(level) {
-  if (!Number.isFinite(level)) return 1;
-  return Math.min(1, Math.max(0.15, level));
-}
-
-/**
- * Dot density multiplier for a traffic level — congestion means more cars on
- * the road, so slower roads pack more dots: 1/max(level, 0.4), capped at 2.5.
- *
- * With `jamBoost` (the jamViz density prototype) the same curve keeps
- * climbing through deep jams — 1/max(level, 0.25), capped at 4.0 — so
- * gridlock gets visibly denser while ordinary jams barely change. The two
- * curves are identical for level ≥ 0.4.
- *
- * @param {number} level - traffic_level 0..1.
- * @param {Object}  [opts]
- * @param {boolean} [opts.jamBoost=false] - Deepen the curve below the 2.5 cap.
- * @returns {number} Multiplier within [1, 2.5] (or [1, 4] boosted); non-finite input → 1.
- */
-export function flowDensityMult(level, { jamBoost = false } = {}) {
-  if (!Number.isFinite(level)) return 1;
-  if (jamBoost) return Math.min(4, 1 / Math.max(level, 0.25));
-  return Math.min(2.5, 1 / Math.max(level, 0.4));
 }

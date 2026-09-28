@@ -18,6 +18,9 @@ import { createApplicationAwareness } from './layers/militaryAwareness.js';
 import { createApplicationFirms } from './layers/firms.js';
 import { createApplicationSatFresh } from './layers/satFresh.js';
 import { createApplicationSentinel } from './layers/sentinel.js';
+import { createApplicationAtmosphere } from './layers/atmosphere.js';
+import { createApplicationEnergy } from './layers/energy.js';
+import { createApplicationGdacs } from './layers/gdacs.js';
 import { createApplicationEarthquakes } from './layers/earthquakes.js';
 import { createApplicationCables } from './layers/submarineCables.js';
 import { createInfrastructureLayers } from '../data/infrastructure.js';
@@ -43,6 +46,9 @@ const SOURCE_METHODS = Object.freeze({
   alpr: ['fetch'],
   firms: ['getSnapshot'],
   sentinel: ['getSnapshot'],
+  atmosphere: ['getSnapshot'],
+  energy: ['getSites'],
+  gdacs: ['getSnapshot'],
   earthquakes: ['getSnapshot'],
   cables: ['fetch'],
 });
@@ -131,11 +137,14 @@ export function createApplicationCatalog({
           id: 'local-firms',
           name: 'FIRMS Active Fires',
           icon: '▲',
-          source: 'NASA FIRMS · LIVE',
+          source: 'NASA FIRMS · satellite detections',
           feed: sources.firms,
         }),
         createApplicationSatFresh(),
         createApplicationSentinel({ source: sources.sentinel }),
+        createApplicationAtmosphere({ source: sources.atmosphere }),
+        createApplicationEnergy({ source: sources.energy }),
+        createApplicationGdacs({ source: sources.gdacs }),
       ],
       metadata,
     );

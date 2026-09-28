@@ -25,6 +25,18 @@ function bcycleEntry({
 }
 const RAW_GBFS_CITY_REGISTRY = [
   {
+    id: 'milan-bikemi',
+    city: 'Milan, IT',
+    centerLat: 45.4642,
+    centerLon: 9.19,
+    loadRadiusKm: 60,
+    stationInformationUrl:
+      'https://gbfs.urbansharing.com/bikemi.com/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.urbansharing.com/bikemi.com/station_status.json',
+    provider: 'BikeMi',
+  },
+  {
     id: 'nyc-citibike',
     city: 'New York, NY',
     centerLat: 40.7484,

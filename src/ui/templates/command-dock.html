@@ -6,8 +6,8 @@
     <div class="panel-inner">
       <button id="control-panel-toggle" class="panel-header dock-tray-toggle" type="button"
         data-dock-toggle-target="control-panel" aria-expanded="false"
-        aria-controls="control-panel-popover" aria-label="Expand Visual Presets">
-        <span class="panel-title"><span class="dock-label-icon dock-label-icon-presets" aria-hidden="true"></span>VISUAL PRESETS</span>
+        aria-controls="control-panel-popover" aria-label="Expand Map & Display">
+        <span class="panel-title"><span class="dock-label-icon dock-label-icon-presets" aria-hidden="true"></span>MAP & DISPLAY</span>
         <span class="panel-divider"></span>
       </button>
       <div id="control-panel-popover" class="dock-popover-content">
@@ -25,12 +25,12 @@
         </button>
         <button class="style-btn" data-style="surveillance" title="Simulate night-vision goggles with green intensification and a tube vignette.">
           <span class="btn-icon">🌙</span>
-          <span class="btn-label">NVG</span>
+          <span class="btn-label">Night filter</span>
           <span class="btn-key">3</span>
         </button>
         <button class="style-btn" data-style="thermal" title="Simulate FLIR-style thermal contrast. Turn up Ironbow for color.">
           <span class="btn-icon">🌡️</span>
-          <span class="btn-label">FLIR</span>
+          <span class="btn-label">Thermal filter</span>
           <span class="btn-key">4</span>
         </button>
         <button class="style-btn" data-style="anime" title="Apply bright cel-shaded color and illustrated outlines.">
@@ -49,6 +49,7 @@
           <span class="btn-key">7</span>
         </button>
       </div>
+      <p class="display-effects-note">Display effects only. Night and thermal filters do not show sensor imagery. Snow is not observed weather.</p>
       <section class="map-source-section" aria-labelledby="map-source-label">
         <div class="map-source-heading">
           <span id="map-source-label">MAP SOURCE</span>

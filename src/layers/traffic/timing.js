@@ -305,18 +305,12 @@ export function createTiming({ state: layerState, services, parts, source }) {
         const h = baseHeight + DOT_HEIGHT_OFFSET;
         return Cesium.Cartesian3.fromDegrees(lng, lat, h);
       });
-      const segmentDist = [];
-      for (let i = 0; i < waypoints.length - 1; i++) {
-        segmentDist.push(
-          Cesium.Cartesian3.distance(waypoints[i], waypoints[i + 1]),
-        );
-      }
       /* TRACE_ONLY_BEGIN */
       _trafficTimingWaypointMaterializationMs +=
         performance.now() - _trafficTimingMaterializeStart;
       /* TRACE_ONLY_END */
 
-      roads.push({ coords, type, oneway, waypoints, segmentDist });
+      roads.push({ coords, type, oneway, waypoints });
     }
 
     /* TRACE_ONLY_BEGIN */
@@ -366,7 +360,7 @@ export function createTiming({ state: layerState, services, parts, source }) {
     return trafficTimingPass(trace, pass, source);
   }
 
-  /** Record the first Cesium postRender following a completed dot render. */
+  /** Record the first Cesium postRender following a completed road render. */
 
   function scheduleTrafficTimingPostRender(
     state,

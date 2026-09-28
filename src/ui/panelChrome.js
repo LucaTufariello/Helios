@@ -116,6 +116,20 @@ export class PanelChrome {
         allowStored: !this._initialShareState,
       });
     }
+    if (window.matchMedia?.('(max-width: 720px)').matches) {
+      for (const id of ['data-panel', 'global-context-panel'])
+        this.setPanelCollapsed(id, true, { syncShare: false, persist: false });
+    }
+    this._mobileResizeRemover?.();
+    this._mobileResizeRemover = this._lifetime.listen(window, 'resize', () => {
+      if (
+        !window.matchMedia?.('(max-width: 720px)').matches ||
+        document.getElementById('data-panel')?.classList.contains('collapsed')
+      )
+        return;
+      for (const id of ['global-context-panel', 'pp-toggles', 'cctv-panel'])
+        this.setPanelCollapsed(id, true, { syncShare: false, persist: false });
+    });
     // The command dock always starts compact; either wing reveals on hover,
     // focus, or click and collapses again after the interaction moves away.
     this.setPanelCollapsed('control-panel', true, {
@@ -486,6 +500,18 @@ export class PanelChrome {
           syncShare,
         });
       }
+    }
+    if (!nextCollapsed && window.matchMedia?.('(max-width: 720px)').matches) {
+      const alternatives =
+        panelId === 'data-panel'
+          ? ['global-context-panel', 'pp-toggles', 'cctv-panel']
+          : ['global-context-panel', 'pp-toggles', 'cctv-panel'].includes(
+                panelId,
+              )
+            ? ['data-panel']
+            : [];
+      for (const id of alternatives)
+        this.setPanelCollapsed(id, true, { persist: false, syncShare: false });
     }
     panelEl.classList.toggle('collapsed', nextCollapsed);
     if (

@@ -197,7 +197,7 @@ export function createViewport({ state: layerState, services, parts, source }) {
       layerState._fetching = false;
       layerState._flowPending = 0;
       layerState._roadError = null;
-      parts.animation.clearDots();
+      parts.rendering.removeHeatLines();
       layerState._lastBounds = null;
       layerState._lastViewCenter = null;
       return;

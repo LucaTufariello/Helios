@@ -330,8 +330,6 @@ export class StyleManager extends ShellFacade {
       services: {
         flightsLayer: services.flightsLayer,
         militaryFlightsLayer: services.militaryFlightsLayer,
-        isTr3b: services.isTr3b,
-        toggleTr3b: services.toggleTr3b,
         militaryAwarenessLayer: services.militaryAwarenessLayer,
         cachedGroundFloor: services.cachedGroundFloor,
         cachedMeshFloor: services.cachedMeshFloor,
@@ -1152,6 +1150,18 @@ export class StyleManager extends ShellFacade {
   }
 
   /**
+   * Controls the scope mask (circular viewport vignette). Fresh boots
+   * default off; share links with an explicit value win.
+   * @param {boolean} enabled
+   * @param {object} [options]
+   * @param {boolean} [options.syncShare=true]
+   * @returns {{ok:boolean, scope:{enabled:boolean}}}
+   */
+  setScopeEnabled(enabled, { syncShare = true } = {}) {
+    return this._visualSettings.setScopeEnabled(...arguments);
+  }
+
+  /**
    * Enables/disables clean view (hides all UI chrome).
    * @param {boolean} [enabled] - Omit to toggle.
    * @returns {{ok: boolean, cleanView: boolean}}
@@ -1394,9 +1404,9 @@ export class StyleManager extends ShellFacade {
 
   _initHUDToggle() {
     if (this._hudLayoutSelect) {
-      this._hudLayoutSelect.value = 'tactical';
+      this._hudLayoutSelect.value = 'minimal';
     }
-    this._setHudVariant('tactical');
+    this._setHudVariant('minimal');
     this.hud.setMode('on');
     this._updateHudButtonState();
 

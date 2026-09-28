@@ -1,7 +1,7 @@
 /**
  * @file Flow→road matching: assign TomTom congestion levels to Overpass roads.
  *
- * The traffic layer renders dots along OSM road polylines (Overpass), while
+ * The traffic layer renders static segments along OSM road polylines (Overpass), while
  * TomTom flow tiles carry their own (differently segmented) polylines with
  * `traffic_level`. This module snaps flow onto roads geometrically:
  *
@@ -92,9 +92,9 @@ function pointSegDist2(px, py, ax, ay, bx, by) {
  *   candidateCount: number,
  * }}
  *   `matches` is PARALLEL to `roads` (index i describes roads[i]; null = no
- *   flow data for that road, render it exactly as today). `candidateCount` is
+ *   flow data for that road, omit it). `candidateCount` is
  *   the number of roads with at least one flow segment inside the 35 m search
- *   radius regardless of bearing — the denominator for coverage stats.
+ *   radius regardless of bearing; coverage in the UI uses all loaded roads.
  */
 export function matchFlowToRoads(roads, flowSegments) {
   const roadCount = Array.isArray(roads) ? roads.length : 0;

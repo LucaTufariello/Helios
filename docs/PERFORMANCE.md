@@ -1,5 +1,7 @@
 # Performance baseline
 
+The September 2026 review removes the traffic animation/render hold, bounds road-condition geometry, and caches source-catalog DOM handles. These are structural reductions in work; no new hardware FPS benchmark was collected. The figures below are historical and were not rerun during that review. See [the review](PROJECT-REVIEW-2026-09-28.md) for current build and validation results.
+
 This page records one hardware-rendered Apple M5 comparison captured on 22
 August 2026 in Chrome 150 at 1440 x 900. It is not a minimum hardware
 specification and should not be used to predict performance on untested systems.

@@ -463,7 +463,7 @@ export function presentLoadingFeedback(state, summary, nowMs) {
     ? 'TURNING OFF LIVE DATA'
     : summary.refresh
       ? 'REFRESHING LIVE DATA'
-      : 'LOADING LIVE DATA';
+      : 'LOADING SOURCE DATA';
   const names = active
     .slice(0, 2)
     .map((record) => record.label)

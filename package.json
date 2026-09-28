@@ -2,7 +2,7 @@
   "name": "gods-eye-view",
   "private": true,
   "version": "0.1.1",
-  "description": "A real-time intelligence console for planet Earth \u2014 photorealistic 3D globe, live aircraft/ships/satellites/earthquakes/CCTV, and hands-free voice control. Runs in a browser.",
+  "description": "An open-source geospatial workspace for public data, source inspection, and map-based exploration. Runs locally in a browser.",
   "type": "module",
   "license": "MIT",
   "author": "Bilawal Sidhu",
@@ -93,6 +93,12 @@
     "./sources/traffic": "./src/data/tomtomTiles.js",
     "./server/providers/firms": {
       "node": "./server/providers/firms.js"
+    },
+    "./server/providers/atmosphere": {
+      "node": "./server/providers/atmosphere.js"
+    },
+    "./server/providers/gdacs": {
+      "node": "./server/providers/gdacs.js"
     },
     "./server/providers/gbfs": {
       "node": "./server/providers/gbfs.js"

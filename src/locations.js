@@ -18,6 +18,116 @@ import { unavailablePlaceSearch } from './search/placeSearch.js';
  *   buildingHeight — estimated height of landmark center above ground (meters)
  */
 export const CITY_POIS = {
+  milan: {
+    name: 'Milan',
+    groundElevation: 120, // meters above WGS84 ellipsoid
+    viewBounds: {
+      southwest: { lat: 45.35, lng: 9.05 },
+      northeast: { lat: 45.57, lng: 9.35 },
+    },
+    pois: [
+      {
+        name: 'Duomo di Milano',
+        lat: 45.4641,
+        lon: 9.1919,
+        alt: 600,
+        pitch: -25,
+        heading: 315,
+        buildingHeight: 100,
+      },
+      {
+        name: 'Castello Sforzesco',
+        lat: 45.4705,
+        lon: 9.1802,
+        alt: 550,
+        pitch: -28,
+        heading: 90,
+        buildingHeight: 30,
+      },
+      {
+        name: 'Stazione Centrale',
+        lat: 45.4863,
+        lon: 9.2045,
+        alt: 650,
+        pitch: -25,
+        heading: 180,
+        buildingHeight: 40,
+      },
+      {
+        name: 'Bosco Verticale',
+        lat: 45.4833,
+        lon: 9.19,
+        alt: 500,
+        pitch: -20,
+        heading: 30,
+        buildingHeight: 110,
+      },
+      {
+        name: 'Stadio San Siro',
+        lat: 45.4781,
+        lon: 9.124,
+        alt: 700,
+        pitch: -30,
+        heading: 0,
+        buildingHeight: 50,
+      },
+    ],
+  },
+  rome: {
+    name: 'Rome',
+    groundElevation: 30, // meters above WGS84 ellipsoid
+    viewBounds: {
+      southwest: { lat: 41.75, lng: 12.35 },
+      northeast: { lat: 41.98, lng: 12.62 },
+    },
+    pois: [
+      {
+        name: 'Colosseo',
+        lat: 41.8902,
+        lon: 12.4922,
+        alt: 550,
+        pitch: -25,
+        heading: 315,
+        buildingHeight: 50,
+      },
+      {
+        name: 'Basilica di San Pietro',
+        lat: 41.9022,
+        lon: 12.4539,
+        alt: 700,
+        pitch: -25,
+        heading: 90,
+        buildingHeight: 100,
+      },
+      {
+        name: 'Pantheon',
+        lat: 41.8986,
+        lon: 12.4769,
+        alt: 400,
+        pitch: -30,
+        heading: 0,
+        buildingHeight: 30,
+      },
+      {
+        name: 'Stazione Termini',
+        lat: 41.9009,
+        lon: 12.5017,
+        alt: 600,
+        pitch: -25,
+        heading: 270,
+        buildingHeight: 30,
+      },
+      {
+        name: 'Castel Sant\u2019Angelo',
+        lat: 41.9031,
+        lon: 12.4663,
+        alt: 450,
+        pitch: -28,
+        heading: 180,
+        buildingHeight: 50,
+      },
+    ],
+  },
   austin: {
     name: 'Austin',
     groundElevation: 150, // meters above WGS84 ellipsoid
