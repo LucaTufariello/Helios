@@ -1,0 +1,19 @@
+{
+  "features": [
+    {
+      "id": "S2C_T32TNR_20260927T102053_L2A",
+      "collection": "sentinel-2-c1-l2a",
+      "bbox": [8.999754, 45.056758, 10.418891, 46.053565],
+      "properties": {
+        "datetime": "2026-09-27T10:28:15.042000Z",
+        "platform": "sentinel-2c",
+        "eo:cloud_cover": 0.010607
+      },
+      "assets": {
+        "visual": {
+          "href": "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/32/T/NR/2026/9/S2C_T32TNR_20260927T102053_L2A/TCI.tif"
+        }
+      }
+    }
+  ]
+}
