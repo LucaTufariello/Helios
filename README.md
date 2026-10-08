@@ -1,12 +1,32 @@
 # GodEye
 
-A local-first, open-source geospatial workspace for exploring public data, inspecting sources, and working with dated satellite imagery. Runs in your browser without an account or keys to start. Optional providers have their own terms, quotas, and costs.
+A local-first, open-source geospatial workspace for exploring public data, inspecting sources, and working with dated satellite imagery. The Apple Silicon macOS app is being migrated to SwiftUI, AppKit and Metal; the existing browser application remains available as the feature-parity reference. Public sources work without an account or keys to start. Optional providers have their own terms, quotas, and costs.
 
 > Freshness honesty first: the basemap is a baked daytime mosaic (months/years old), not live. Satellite views here are **days old at best, never live video**. Sensor modes (CRT / NVG / FLIR) are shaders, not night imagery.
 
-## What this is
+## Native macOS migration
 
-GodEye fuses public feeds into one explorable CesiumJS globe:
+The macOS target uses SwiftUI and AppKit for the workspace and Metal for the globe. It contains **no WebKit, web view, Electron, bundled browser, or Node runtime**. This is a growing native implementation, **not yet a feature-complete replacement** for the existing Cesium application. The existing application is retained as the parity reference.
+
+The native app opens on a full-window map with horizontal Satellite, Marine, Sky, Ground and Mission planner sections. Tools float over the map; mission plans connect saved views, infrastructure, annotations and acquisition evidence, with native two-layer visual comparison and a raw metadata viewer. See [map workspace and mission planning](docs/MAP-WORKSPACE-AND-MISSIONS.md).
+
+The latest native ports include satellite catalogs and estimated orbits, launch-site metadata, AIS vessel feeds, FIRMS thermal detections, operator transit, camera catalogs and native media playback, infrastructure/reference data, Sentinel product metadata, road flow, directions, local annotations, target following and retained-fix playback, workspace files/links and Keychain provider settings. Some sources require provider keys and their own terms/quotas. The native surface engine now streams real Mapzen elevation and textured 3D Tiles, with tilt/heading, reverse-depth rendering, geometry picking, terrain draping and loaded-surface clearance. Open **3D Surface** to load an HTTPS/local tileset or the public AGI headquarters dataset. Additional terrain/3D providers, full material/format coverage, calibrated camera projection and other parity details remain incomplete; see the report below. Bike share, radio, cockpit, voice and San Francisco neighborhood boundaries remain excluded by request.
+
+On an Apple Silicon Mac with Xcode, CMake 3.24+, Python 3 and pkg-config installed (Homebrew packages: `cmake` and `pkgconf`):
+
+```sh
+npm run macos:build
+npm run macos:test
+npm run macos:format:check
+```
+
+The first build downloads the pinned Cesium Native C++ source and builds its native dependencies; subsequent builds reuse the development cache. The build creates `output/native/GodEye.app`; open it in Finder. Node is only an optional shortcut for these development commands. The app itself needs neither Node nor a running web server. Direct commands are in the [native migration and feature-parity report](docs/NATIVE-MACOS-MIGRATION.md), which lists supported and remaining features.
+
+The native **Satellite → SAR workflow** page now searches the Copernicus catalogue by a region selected on the globe, dates, mode and polarization. It downloads complete Sentinel-1 GRD products using a free Copernicus account and hands them directly to the existing processor. The panel also imports local Sentinel-1 GRD SAFE/ZIP products and orchestrates ESA SNAP for calibrated Sigma0, optional Refined Lee filtering and DEM-based terrain correction. It preserves floating-point scientific/dB GeoTIFFs and creates grayscale/false-color display outputs, bounded previews and a georeferenced globe overlay. This optional local processing workflow needs SNAP 14+ with the Microwave Toolbox and a dedicated Python raster environment; it does not use the web backend. Run `native/macos/setup-sar.sh` for the raster dependencies, then select Python and GPT in the panel. A real GRD acquisition has completed the pipeline and preliminary numerical checks; independent geographic and absolute radiometric validation remain pending. See [Sentinel-1 processing, setup and scientific limitations](docs/SENTINEL1-SAR.md). The dedicated satellite section also includes a [native infrastructure change-review workspace](docs/SATELLITE-INFRASTRUCTURE-REVIEW.md): saved sites, compatible acquisition pairs, scientific dB changes, human-reviewed candidate patches, and portable evidence. It requires two completed comparable acquisitions and does not classify objects or certify physical events.
+
+## Existing web reference
+
+The retained web implementation fuses public feeds into one explorable CesiumJS globe. The sections below describe that reference; native coverage and limits are documented in the migration report above.
 
 - Public position feeds (aircraft, vessels, transit) and explicitly modelled satellite positions
 - Daily satellite freshness (NASA GIBS + Sentinel latest-clear) with acquisition dates and cloud %
@@ -48,29 +68,29 @@ The reason this fork exists — the basemap alone cannot answer "what changed re
 
 Keyless unless noted. Some offer more with a free provider key.
 
-| Layer | What you get | Source | Auth |
-| --- | --- | --- | --- |
-| Map Stack | Esri satellite, OSM fallback, optional ion-hosted stacks / Google Photorealistic 3D | Esri / OSM / ion / Google | Keyless base; 3D via ion or Google key |
-| Sat Fresh | Yesterday's ~250m daily imagery + night lights + terminator | NASA GIBS | Keyless |
-| Sentinel Latest-Clear | Latest S2 scene (date + cloud %) or S1 SAR footprint + browser link-outs | Copernicus Dataspace OData | Keyless search; free account reserved for download |
-| Atmosphere | Current conditions + today/tomorrow + European AQI for the camera point (model readout, not a station) | Open-Meteo | Keyless (CC BY 4.0, non-commercial) |
-| Live Flights | Public aircraft positions + route history | OpenSky + adsb.lol | Keyless (OpenSky key = more credits) |
-| Military Flights | ADS-B military traffic | adsb.lol | Keyless |
-| Live Vessels | Ships worldwide | AISStream | Free key |
-| Satellites | Catalog with class colors + Starlink DENSE option, SGP4 orbits | CelesTrak | Keyless |
-| Earthquakes | Last 24h global seismic activity | USGS | Keyless |
-| Active Fires | Trailing-24h detections | NASA FIRMS | Free key |
-| Space Missions | Rolling 30-day launches: pad, vehicle, payload, recovery | Launch Library 2 | Keyless (token raises allowance) |
-| Traffic | Measured aggregate congestion on OSM road segments; no individual vehicle tracking. Keyless = off with key prompt, nothing simulated | TomTom + OSM | Free key required |
-| CCTV Mesh | Public camera catalog and available stills/streams; estimated poses can be calibrated | City APIs | Keyless |
-| Radio | Geolocated stations with analog tuner | Radio Browser | Keyless |
-| Transit | Live buses/trams/metros/trains/ferries with delayed playback | Operator GTFS-Realtime | Keyless |
-| Bikeshare | Live station availability (US systems + Milan BikeMi) | GBFS | Keyless |
-| Directions | Click A/B street-following route, draped on terrain, flyable | OSRM / OSM | Keyless |
-| Mapped Installations | Viewport-bounded community-mapped site context, labeled incomplete | OpenStreetMap | Keyless |
-| Energy & Refining | Power plants, substations, refineries from community mapping (capped, incomplete by nature) | OpenStreetMap via Overpass | Keyless |
-| Disaster Alerts | Current floods, quakes, cyclones, volcanoes, droughts (severity-coded) | GDACS | Keyless (public domain) |
-| Bundled infrastructure | Datacenters, dams, submarine cables | Bundled extracts | Keyless |
+| Layer                  | What you get                                                                                                                         | Source                     | Auth                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
+| Map Stack              | Esri satellite, OSM fallback, optional ion-hosted stacks / Google Photorealistic 3D                                                  | Esri / OSM / ion / Google  | Keyless base; 3D via ion or Google key             |
+| Sat Fresh              | Yesterday's ~250m daily imagery + night lights + terminator                                                                          | NASA GIBS                  | Keyless                                            |
+| Sentinel Latest-Clear  | Latest S2 scene (date + cloud %) or S1 SAR footprint + browser link-outs                                                             | Copernicus Dataspace OData | Keyless search; free account reserved for download |
+| Atmosphere             | Current conditions + today/tomorrow + European AQI for the camera point (model readout, not a station)                               | Open-Meteo                 | Keyless (CC BY 4.0, non-commercial)                |
+| Live Flights           | Public aircraft positions + route history                                                                                            | OpenSky + adsb.lol         | Keyless (OpenSky key = more credits)               |
+| Military Flights       | ADS-B military traffic                                                                                                               | adsb.lol                   | Keyless                                            |
+| Live Vessels           | Ships worldwide                                                                                                                      | AISStream                  | Free key                                           |
+| Satellites             | Catalog with class colors + Starlink DENSE option, SGP4 orbits                                                                       | CelesTrak                  | Keyless                                            |
+| Earthquakes            | Last 24h global seismic activity                                                                                                     | USGS                       | Keyless                                            |
+| Active Fires           | Trailing-24h detections                                                                                                              | NASA FIRMS                 | Free key                                           |
+| Space Missions         | Rolling 30-day launches: pad, vehicle, payload, recovery                                                                             | Launch Library 2           | Keyless (token raises allowance)                   |
+| Traffic                | Measured aggregate congestion on OSM road segments; no individual vehicle tracking. Keyless = off with key prompt, nothing simulated | TomTom + OSM               | Free key required                                  |
+| CCTV Mesh              | Public camera catalog and available stills/streams; estimated poses can be calibrated                                                | City APIs                  | Keyless                                            |
+| Radio                  | Geolocated stations with analog tuner                                                                                                | Radio Browser              | Keyless                                            |
+| Transit                | Live buses/trams/metros/trains/ferries with delayed playback                                                                         | Operator GTFS-Realtime     | Keyless                                            |
+| Bikeshare              | Live station availability (US systems + Milan BikeMi)                                                                                | GBFS                       | Keyless                                            |
+| Directions             | Click A/B street-following route, draped on terrain, flyable                                                                         | OSRM / OSM                 | Keyless                                            |
+| Mapped Installations   | Viewport-bounded community-mapped site context, labeled incomplete                                                                   | OpenStreetMap              | Keyless                                            |
+| Energy & Refining      | Power plants, substations, refineries from community mapping (capped, incomplete by nature)                                          | OpenStreetMap via Overpass | Keyless                                            |
+| Disaster Alerts        | Current floods, quakes, cyclones, volcanoes, droughts (severity-coded)                                                               | GDACS                      | Keyless (public domain)                            |
+| Bundled infrastructure | Datacenters, dams, submarine cables                                                                                                  | Bundled extracts           | Keyless                                            |
 
 Italy coverage, honestly stated:
 
@@ -123,16 +143,16 @@ macOS shortcut: `./scripts/dev-fresh.sh` clears the Vite cache and pulls configu
 
 Add keys in-app via the **PROVIDER SETTINGS** chip (Provider Settings), not in files. Terminal clones read repo-root `.env` (see `.env.example`); server binds localhost; Provider Settings answers only from your machine.
 
-| Key | Why | Where |
-| --- | --- | --- |
-| Cesium ion | Google Photorealistic 3D + world terrain (eligible personal/non-commercial use; quotas apply) | cesium.com/ion |
-| Google Maps | Direct 3D + place search (metered) | Google Cloud Console |
-| OpenAI | Voice + AI HUD summary (metered; session cap enforced in-app) | platform.openai.com |
-| AISStream | Live ships | aisstream.io (free) |
-| NASA FIRMS | Live fires | firms.modaps.eosdis.nasa.gov (free) |
-| Copernicus Dataspace | Sentinel authenticated download (search already keyless) | dataspace.copernicus.eu (free) |
-| TomTom | Traffic flow (required for that layer) | developer.tomtom.com (free tier) |
-| OpenSky / LL2 | Higher polling allowances (optional) | opensky-network.org / thespacedevs.com |
+| Key                  | Why                                                                                           | Where                                  |
+| -------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Cesium ion           | Google Photorealistic 3D + world terrain (eligible personal/non-commercial use; quotas apply) | cesium.com/ion                         |
+| Google Maps          | Direct 3D + place search (metered)                                                            | Google Cloud Console                   |
+| OpenAI               | Voice + AI HUD summary (metered; session cap enforced in-app)                                 | platform.openai.com                    |
+| AISStream            | Live ships                                                                                    | aisstream.io (free)                    |
+| NASA FIRMS           | Live fires                                                                                    | firms.modaps.eosdis.nasa.gov (free)    |
+| Copernicus Dataspace | Sentinel authenticated download (search already keyless)                                      | dataspace.copernicus.eu (free)         |
+| TomTom               | Traffic flow (required for that layer)                                                        | developer.tomtom.com (free tier)       |
+| OpenSky / LL2        | Higher polling allowances (optional)                                                          | opensky-network.org / thespacedevs.com |
 
 `npm run doctor` reports readiness and where each provider was found without printing values. Restrict browser keys at their providers. See `SECURITY.md` before sharing on LAN (`--host 0.0.0.0` brokers your keys to anyone who can reach it; set throttles + provider budgets).
 
@@ -165,3 +185,7 @@ Public data, clear sources, local-first execution. This project models events, a
 ## License
 
 Source code under MIT — see `LICENSE` (copyright notice preserved there as required). Bundled datasets (`src/data/local_data/`), 3D models (`public/models/`), and all runtime-fetched provider data carry their own licenses/terms — see `DATA_SOURCES.md` and per-folder READMEs. Remove any dataset whose terms don't fit your use.
+
+The native Satellite section also supports [dated Sentinel-2 optical image requests](docs/SENTINEL2-OPTICAL.md). Upcoming registration, stable-control and infrastructure evaluation work is recorded in the [satellite analysis plan](docs/SATELLITE-ANALYSIS-PLAN.md).
+
+The native Satellite source selector now includes Sentinel-1, Sentinel-2, CBERS-4A WPM (public regional L4 PAN/RGB viewing) and PRISMA (registered ASI L2D product import with PAN/RGB/selected spectral-band views). See [source selection, coverage and optical detail limits](docs/OPTICAL-SATELLITE-SOURCES.md).

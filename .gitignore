@@ -14,3 +14,10 @@ pinokio/ENVIRONMENT
 pinokio/.installed
 GEV_FREE_SATELLITE_PLAN.md
 session-ses_f516.md
+
+# Native macOS build products
+native/macos/.build/
+native/macos/.swiftpm/
+
+# Generated native archive fingerprint forces SwiftPM relinking.
+native/macos/Sources/CScene/include/GodEyeSceneBuild.h
