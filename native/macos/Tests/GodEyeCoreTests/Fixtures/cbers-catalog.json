@@ -1,0 +1,57 @@
+{
+  "type": "FeatureCollection",
+  "links": [
+    {
+      "href": "https://data.inpe.br/bdc/stac/v1/search?collections=CB4A-WPM-L4-DN-1&limit=2&page=2",
+      "rel": "next"
+    }
+  ],
+  "context": {
+    "matched": 45446,
+    "returned": 2
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "CBERS_4A_WPM_20261003_198_130_L4",
+      "collection": "CB4A-WPM-L4-DN-1",
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/eo/v1.0.0/schema.json"
+      ],
+      "bbox": [
+        -41.534089465891746,
+        -14.03870340148688,
+        -40.48601537808366,
+        -12.985617260759708
+      ],
+      "assets": {
+        "BAND0": {
+          "href": "https://data.inpe.br/bdc/data/CB4A-WPM-L4-DN/2026_10/CBERS_4A_WPM_RAW_2026_10_03.12_39_15_ETC2/198_130_0/4_BC_UTM_WGS84/CBERS_4A_WPM_20261003_198_130_L4_BAND0.tif"
+        },
+        "BAND1": {
+          "href": "https://data.inpe.br/bdc/data/CB4A-WPM-L4-DN/2026_10/CBERS_4A_WPM_RAW_2026_10_03.12_39_15_ETC2/198_130_0/4_BC_UTM_WGS84/CBERS_4A_WPM_20261003_198_130_L4_BAND1.tif"
+        },
+        "BAND2": {
+          "href": "https://data.inpe.br/bdc/data/CB4A-WPM-L4-DN/2026_10/CBERS_4A_WPM_RAW_2026_10_03.12_39_15_ETC2/198_130_0/4_BC_UTM_WGS84/CBERS_4A_WPM_20261003_198_130_L4_BAND2.tif"
+        },
+        "BAND3": {
+          "href": "https://data.inpe.br/bdc/data/CB4A-WPM-L4-DN/2026_10/CBERS_4A_WPM_RAW_2026_10_03.12_39_15_ETC2/198_130_0/4_BC_UTM_WGS84/CBERS_4A_WPM_20261003_198_130_L4_BAND3.tif"
+        },
+        "BAND4": {
+          "href": "https://data.inpe.br/bdc/data/CB4A-WPM-L4-DN/2026_10/CBERS_4A_WPM_RAW_2026_10_03.12_39_15_ETC2/198_130_0/4_BC_UTM_WGS84/CBERS_4A_WPM_20261003_198_130_L4_BAND4.tif"
+        }
+      },
+      "properties": {
+        "datetime": "2026-10-03T12:43:23.000000Z",
+        "start_datetime": "2026-10-03T12:43:23.000000Z",
+        "end_datetime": "2026-10-03T12:43:23.000000Z",
+        "created": "2026-10-04T08:30:59.251444Z",
+        "updated": "2026-10-04T08:30:59.250774Z",
+        "row": "130",
+        "path": "198",
+        "eo:cloud_cover": null
+      }
+    }
+  ]
+}

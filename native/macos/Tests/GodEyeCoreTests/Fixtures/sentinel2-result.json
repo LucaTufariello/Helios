@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "state": "completed",
+  "workerPID": 97027,
+  "createdAt": "2026-10-04T18:37:49.918592+00:00",
+  "scene": {
+    "id": "S2C_T32TNR_20260927T102053_L2A",
+    "acquiredAt": "2026-09-27T10:28:15.042000Z",
+    "platform": "sentinel-2c",
+    "cloudCover": 0.010607,
+    "bounds": [8.999754, 45.056758, 10.418891, 46.053565],
+    "visualURL": "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/32/T/NR/2026/9/S2C_T32TNR_20260927T102053_L2A/TCI.tif"
+  },
+  "region": {
+    "west": 9.16,
+    "south": 45.43,
+    "east": 9.22,
+    "north": 45.49
+  },
+  "bounds": [9.16, 45.43, 9.22, 45.49],
+  "width": 471,
+  "height": 668,
+  "crs": "EPSG:4326",
+  "validFraction": 1.0,
+  "sourceResolutionMetres": [10.0, 10.0],
+  "preview": "preview.png",
+  "geotiff": "true-color.tif",
+  "limitations": [
+    "Dated optical image, not live imagery.",
+    "Provider-rendered 8-bit true colour; not a scientific reflectance export.",
+    "Cloud percentage describes the whole source tile; clouds and shadows are not automatically masked.",
+    "One selected tile only; requested regions may have partial coverage.",
+    "Large regions are downsampled to a maximum 2048 pixels per side."
+  ],
+  "completedAt": "2026-10-04T18:38:01.334483+00:00",
+  "elapsedSeconds": 11.415918459
+}

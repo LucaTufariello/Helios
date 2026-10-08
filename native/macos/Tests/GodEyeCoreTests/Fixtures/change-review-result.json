@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-04T17:44:29.883042+00:00",
+  "state": "completed",
+  "site": {
+    "id": "0b4796d8-fe8b-410a-b8e0-084bf62c48bd",
+    "name": "GENERATED QA \u00b7 industrial-site fixture",
+    "kind": "Infrastructure",
+    "createdAt": 812828543.5699,
+    "region": {
+      "west": 9.0009,
+      "south": 45.0847,
+      "east": 9.0153,
+      "north": 45.0991
+    }
+  },
+  "options": {
+    "polarization": "VV",
+    "thresholdDb": 3,
+    "averagingWindow": 5,
+    "minimumPixels": 25
+  },
+  "sourceJobIDs": [
+    "511CB47D-B06F-442F-857B-2DB5D97D7E56",
+    "491E2467-AB7F-44A0-8070-09FFB217A2A7"
+  ],
+  "evidence": [
+    {
+      "jobID": "511CB47D-B06F-442F-857B-2DB5D97D7E56",
+      "product": "GENERATED-QA-NOT-A-REAL-ACQUISITION.SAFE",
+      "metadata": {
+        "mission": "Sentinel-1",
+        "satellite": "Sentinel-1A",
+        "mode": "IW",
+        "productType": "GRD",
+        "acquisitionStart": "2026-09-01T05:00:00Z",
+        "acquisitionEnd": "2026-09-01T05:00:00Z",
+        "orbitDirection": "DESCENDING",
+        "relativeOrbit": 66,
+        "polarizations": ["VV"],
+        "bands": [
+          {
+            "polarization": "VV",
+            "width": 96,
+            "height": 96,
+            "sourcePixelSpacing": 20
+          }
+        ],
+        "inputName": "GENERATED-QA-NOT-A-REAL-ACQUISITION.SAFE"
+      },
+      "options": {
+        "polarizations": ["VV"],
+        "applyOrbit": true,
+        "speckle": false,
+        "pixelSpacing": 20,
+        "lowPercentile": 2,
+        "highPercentile": 98
+      },
+      "metadataSHA256": "f62a15117e22bfaa1d47c81d5d5d1235f88b3a18a8ea406fcef6629b733a0a58",
+      "scientific": "VV-sigma0.tif",
+      "engine": {
+        "name": "GENERATED QA fixture \u2014 no SNAP calibration performed",
+        "version": "fixture"
+      },
+      "processingStages": ["Calibration", "Terrain-Correction"],
+      "alignedSitePowerSHA256": "a5b117e15f037f3d7a028ad1fc4c2ecb721a46ce6c523f090b6baab12ad00493",
+      "scientificBytes": 1570
+    },
+    {
+      "jobID": "491E2467-AB7F-44A0-8070-09FFB217A2A7",
+      "product": "GENERATED-QA-NOT-A-REAL-ACQUISITION.SAFE",
+      "metadata": {
+        "mission": "Sentinel-1",
+        "satellite": "Sentinel-1A",
+        "mode": "IW",
+        "productType": "GRD",
+        "acquisitionStart": "2026-09-13T05:00:00Z",
+        "acquisitionEnd": "2026-09-13T05:00:00Z",
+        "orbitDirection": "DESCENDING",
+        "relativeOrbit": 66,
+        "polarizations": ["VV"],
+        "bands": [
+          {
+            "polarization": "VV",
+            "width": 96,
+            "height": 96,
+            "sourcePixelSpacing": 20
+          }
+        ],
+        "inputName": "GENERATED-QA-NOT-A-REAL-ACQUISITION.SAFE"
+      },
+      "options": {
+        "polarizations": ["VV"],
+        "applyOrbit": true,
+        "speckle": false,
+        "pixelSpacing": 20,
+        "lowPercentile": 2,
+        "highPercentile": 98
+      },
+      "metadataSHA256": "93613a7b5d86b7a25e3dd796d02f79126a1d4ee0e24422dad95ca312559345e1",
+      "scientific": "VV-sigma0.tif",
+      "engine": {
+        "name": "GENERATED QA fixture \u2014 no SNAP calibration performed",
+        "version": "fixture"
+      },
+      "processingStages": ["Calibration", "Terrain-Correction"],
+      "alignedSitePowerSHA256": "63b0302110e7ec3a21a633a41b94ea459ac9023f96024de9e629ef0439383d16",
+      "scientificBytes": 1706
+    }
+  ],
+  "candidates": [
+    {
+      "id": "1",
+      "direction": "increase",
+      "bounds": [9.00522, 45.08902, 9.01098, 45.09478],
+      "pixels": 1004,
+      "approximateAreaM2": 283946.9196488182,
+      "meanDeltaDb": 5.484219551086426,
+      "maximumAbsoluteDeltaDb": 6.020599842071533
+    },
+    {
+      "id": "2",
+      "direction": "decrease",
+      "bounds": [9.01008, 45.08578, 9.01332, 45.088119999999996],
+      "pixels": 230,
+      "approximateAreaM2": 65053.23865996277,
+      "meanDeltaDb": -5.541360378265381,
+      "maximumAbsoluteDeltaDb": 6.020599842071533
+    }
+  ],
+  "bounds": [9.0009, 45.0847, 9.0153, 45.0991],
+  "width": 80,
+  "height": 80,
+  "commonValidFraction": 0.95,
+  "sharedDisplayRangeDb": [-12.596373040342641, -3.979400022005456],
+  "changeDisplayRangeDb": [-6.0, 6.0],
+  "crs": "EPSG:4326",
+  "alignment": "Bilinear resampling of later linear power to baseline grid; geocoding is inherited, not independently validated.",
+  "quantity": "Local mean Sigma0 log ratio (after minus before in dB)",
+  "limitations": [
+    "Candidate patches are radar changes, not confirmed infrastructure events.",
+    "Moisture, vegetation, season, speckle and SAR viewing effects can cause changes.",
+    "Same-satellite/orbit checks do not verify sub-pixel co-registration or absolute radiometric accuracy.",
+    "Sigma0 is not radiometrically terrain-flattened; steep-terrain changes need extra scrutiny."
+  ],
+  "completedAt": "2026-10-04T17:44:30.038236+00:00"
+}
