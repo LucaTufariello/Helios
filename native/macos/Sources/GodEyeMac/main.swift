@@ -6,6 +6,7 @@ import SwiftUI
 @MainActor final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
   let model = WorkspaceModel()
   var window: NSWindow?
+  var missionWindow: NSWindow?
   func applicationDidFinishLaunching(_ notification: Notification) {
     let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 1360, height: 850),
@@ -17,11 +18,18 @@ import SwiftUI
     window.delegate = self
     window.isReleasedWhenClosed = false
     self.window = window
+    model.revealMap = { [weak self] in
+      self?.window?.makeKeyAndOrderFront(nil)
+      self?.model.setVisible(true)
+    }
+    model.revealMission = { [weak self] in self?.openMissionWindow() }
+    model.missionAutomation.start(model: model)
     window.center()
     window.makeKeyAndOrderFront(nil)
     NSApp.setActivationPolicy(.regular)
     installMenu()
     NSApp.activate(ignoringOtherApps: false)
+    if CommandLine.arguments.contains("--mission-validation") { runMissionValidation() }
     if CommandLine.arguments.contains("--native-smoke") {
       model.setEnabled(.earthquakes, true)
       Task { [weak self] in
@@ -46,17 +54,51 @@ import SwiftUI
       }
     }
   }
+  func openMissionWindow() {
+    if let missionWindow {
+      missionWindow.makeKeyAndOrderFront(nil)
+      return
+    }
+    let mission = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 1180, height: 800),
+      styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false
+    )
+    mission.title = "GodEye — Mission control"
+    mission.minSize = NSSize(width: 1000, height: 680)
+    mission.contentView = NSHostingView(
+      rootView: MissionControlView(
+        model: model, missions: model.missions,
+        optical: model.optical, sar: model.sar, satellite: model.satellite,
+        automation: model.missionAutomation, detection: model.missionDetection,
+        section: Binding(
+          get: { self.model.missions.section }, set: { self.model.missions.section = $0 })))
+    mission.delegate = self
+    mission.isReleasedWhenClosed = false
+    if !CommandLine.arguments.contains("--mission-validation") {
+      mission.setFrameAutosaveName("GodEyeMissionControl")
+    }
+    missionWindow = mission
+    mission.center()
+    mission.makeKeyAndOrderFront(nil)
+  }
   func application(_ application: NSApplication, open urls: [URL]) {
     for url in urls { model.open(url) }
   }
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     model.missions.resolveUnsavedChanges() ? .terminateNow : .terminateCancel
   }
-  func windowShouldClose(_ sender: NSWindow) -> Bool { model.missions.resolveUnsavedChanges() }
+  func windowShouldClose(_ sender: NSWindow) -> Bool {
+    if sender === window, missionWindow?.isVisible == true { return true }
+    return model.missions.resolveUnsavedChanges()
+  }
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
   func applicationWillTerminate(_ notification: Notification) { model.shutdown() }
-  func windowDidMiniaturize(_ notification: Notification) { model.setVisible(false) }
-  func windowDidDeminiaturize(_ notification: Notification) { model.setVisible(true) }
+  func windowDidMiniaturize(_ notification: Notification) {
+    if notification.object as? NSWindow === window { model.setVisible(false) }
+  }
+  func windowDidDeminiaturize(_ notification: Notification) {
+    if notification.object as? NSWindow === window { model.setVisible(true) }
+  }
   private func installMenu() {
     let root = NSMenu()
     let app = NSMenuItem()

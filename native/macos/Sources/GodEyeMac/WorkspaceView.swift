@@ -63,6 +63,16 @@ struct WorkspaceView: View {
           Spacer()
           statusBar
         }
+        if model.missionPick {
+          HStack {
+            Text("Click the map to place the object observation")
+            Button("Cancel") {
+              model.missionPick = false
+              model.revealMission?()
+            }
+          }.padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .padding(.top, 108).padding(.leading, 14)
+        }
         if model.drawing || model.routeEndpoint != nil {
           HStack {
             Text(
@@ -251,9 +261,7 @@ struct WorkspaceView: View {
       SatellitePanel(
         model: model, satellite: model.satellite, sar: model.sar, optical: model.optical)
     case .mission:
-      MissionPlannerView(
-        model: model, missions: model.missions, satellite: model.satellite, optical: model.optical,
-        sar: model.sar)
+      Button("Open mission window") { model.revealMission?() }
     case .raw: RawDataView(model: model)
     case .map: MapLayerView(model: model, missions: model.missions)
     case .tools: WorkspaceTools(model: model, onClose: { model.closePanel(.tools) })

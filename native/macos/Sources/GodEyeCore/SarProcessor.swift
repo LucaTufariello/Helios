@@ -157,11 +157,14 @@ public struct SarProcessor: Sendable {
       ], progress: progress)
     return try Self.read(SarResult.self, from: destination.appendingPathComponent("result.json"))
   }
-  public static func read<T: Decodable>(_ type: T.Type, from url: URL) throws -> T {
+  public static func read<T: Decodable>(
+    _ type: T.Type, from url: URL, maximumBytes: Int = 1024 * 1024
+  ) throws -> T {
+    guard (1...8 * 1024 * 1024).contains(maximumBytes) else { throw SarError.oversized }
     let handle = try FileHandle(forReadingFrom: url)
     defer { try? handle.close() }
-    let data = try handle.read(upToCount: 1024 * 1024 + 1) ?? Data()
-    guard data.count <= 1024 * 1024 else { throw SarError.oversized }
+    let data = try handle.read(upToCount: maximumBytes + 1) ?? Data()
+    guard data.count <= maximumBytes else { throw SarError.oversized }
     let decoder = JSONDecoder()
     // New portable review documents use ISO UTC dates. Accept the original
     // native JSON reference-date numbers when loading previous local documents.

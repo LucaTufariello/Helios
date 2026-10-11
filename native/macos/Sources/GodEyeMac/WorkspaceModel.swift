@@ -8,6 +8,14 @@ import SwiftUI
   let satellite = SatelliteWorkspace()
   let optical = OpticalWorkspace()
   let missions = MissionWorkspace()
+  let missionAutomation = MissionAutomationRunner()
+  let missionDetection = MissionDetection()
+  var revealMap: (() -> Void)?
+  var revealMission: (() -> Void)?
+  @Published var missionFocus: GeoRecord? { didSet { rebuildRecords() } }
+  @Published var missionPick = false
+  @Published var missionPickedCoordinate: Coordinate?
+  @Published var missionAreaCapture = false
   @Published var workspaceSection = "Map" {
     didSet {
       guard workspaceSection != oldValue else { return }
@@ -15,7 +23,7 @@ import SwiftUI
       panels.removeAll { [.sources, .satellite, .mission].contains($0) }
       switch workspaceSection {
       case "Satellite": openPanel(.satellite)
-      case "Mission planner": openPanel(.mission)
+      case "Mission planner": revealMission?()
       case "Marine", "Sky", "Ground": openPanel(.sources)
       default:
         panels.removeAll()
@@ -30,7 +38,7 @@ import SwiftUI
     }
     switch section {
     case "Satellite": openPanel(.satellite)
-    case "Mission planner": openPanel(.mission)
+    case "Mission planner": revealMission?()
     case "Map":
       panels.removeAll()
       showTools = false
@@ -41,6 +49,10 @@ import SwiftUI
   @Published var rasterMode = "None"
   @Published var rawScope = "Selected record"
   func openPanel(_ panel: WorkspacePanel) {
+    if panel == .mission {
+      revealMission?()
+      return
+    }
     panels.removeAll { $0 == panel }
     panels.append(panel)
   }
@@ -72,6 +84,8 @@ import SwiftUI
   @Published var sarRegionFirstCorner: Coordinate?
   @Published var sarSceneFootprints: [[Coordinate]] = []
   func beginSarRegionSelection() {
+    missionPick = false
+    missionAreaCapture = false
     drawing = false
     routeEndpoint = nil
     sarRegionFirstCorner = nil
@@ -82,6 +96,7 @@ import SwiftUI
     closePanel(.satellite)
   }
   func cancelSarRegionSelection() {
+    missionAreaCapture = false
     sarRegionSelecting = false
     sarRegionFirstCorner = nil
   }
@@ -291,6 +306,7 @@ import SwiftUI
           ? history.delayed(record, at: playbackTime) : record
       }
     }
+    if let missionFocus { records.append(missionFocus) }
     recordsByID = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
     updateFilteredRecords()
   }
@@ -503,9 +519,7 @@ import SwiftUI
       result.append(ScenePath(points: region.outline, kind: .annotation))
     }
     result += sarSceneFootprints.map { ScenePath(points: $0, kind: .reference) }
-    if workspaceSection == "Satellite", satellite.page == "Infrastructure review",
-      !reviewOutline.isEmpty
-    {
+    if !reviewOutline.isEmpty {
       result.append(ScenePath(points: reviewOutline, kind: .reference))
     }
     if let route { result.append(ScenePath(points: route.points, kind: .route)) }
@@ -681,13 +695,25 @@ import SwiftUI
     rebuildRecords()
   }
   func mapClick(at coordinate: Coordinate) -> Bool {
+    if missionPick {
+      missionPickedCoordinate = coordinate
+      missionPick = false
+      revealMission?()
+      return true
+    }
     if sarRegionSelecting {
       if let first = sarRegionFirstCorner {
         do {
           setSarSearchRegion(try SentinelRegion(corners: first, coordinate))
+          let returnToMission = missionAreaCapture
           cancelSarRegionSelection()
-          workspaceSection = "Satellite"
-          openPanel(.satellite)
+          if returnToMission {
+            missionAreaCapture = false
+            revealMission?()
+          } else {
+            workspaceSection = "Satellite"
+            openPanel(.satellite)
+          }
         } catch { sarAcquisition.error = error.localizedDescription }
       } else {
         sarRegionFirstCorner = coordinate
@@ -814,6 +840,8 @@ import SwiftUI
     }
   }
   func shutdown() {
+    missionAutomation.stop()
+    missionDetection.cancel()
     sar.cancel()
     satellite.cancel()
     optical.cancelAll()

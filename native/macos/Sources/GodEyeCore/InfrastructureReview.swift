@@ -236,13 +236,16 @@ public enum SatelliteDocuments {
     try moveToTrash(directory)
   }
   public static func save<T: Encodable>(
-    _ value: T, to url: URL, dateEncodingStrategy: JSONEncoder.DateEncodingStrategy = .iso8601
+    _ value: T, to url: URL, dateEncodingStrategy: JSONEncoder.DateEncodingStrategy = .iso8601,
+    maximumBytes: Int = 1024 * 1024
   ) throws {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     encoder.dateEncodingStrategy = dateEncodingStrategy
     let data = try encoder.encode(value)
-    guard data.count <= 1024 * 1024 else { throw FeedError.oversized }
+    guard (1...8 * 1024 * 1024).contains(maximumBytes), data.count <= maximumBytes else {
+      throw FeedError.oversized
+    }
     try FileManager.default.createDirectory(
       at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     try data.write(to: url, options: .atomic)

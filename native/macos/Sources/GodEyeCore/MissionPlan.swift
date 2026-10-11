@@ -47,6 +47,7 @@ public struct MissionItem: Codable, Identifiable, Equatable, Sendable {
   public var site: InfrastructureSite?
   public var record: MissionRecord?
   public var annotation: LocalAnnotation?
+  public var acquisition: MissionAcquisition?
   public init(kind: MissionItemKind, referenceID: String, title: String) {
     self.kind = kind
     self.referenceID = referenceID
@@ -54,7 +55,8 @@ public struct MissionItem: Codable, Identifiable, Equatable, Sendable {
   }
   public var isValid: Bool {
     guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, title.count <= 1024,
-      !referenceID.isEmpty, referenceID.count <= 512, savedAt.timeIntervalSince1970.isFinite
+      !referenceID.isEmpty, referenceID.count <= 512, savedAt.timeIntervalSince1970.isFinite,
+      acquisition?.isValid ?? true, acquisition == nil || kind == .radar || kind == .optical
     else { return false }
     switch kind {
     case .view: return camera != nil && site == nil && record == nil && annotation == nil
@@ -98,9 +100,11 @@ public struct MissionPlan: Codable, Identifiable, Equatable, Sendable {
   public var updatedAt = Date()
   public var items: [MissionItem] = []
   public var comparison: MissionComparison?
+  public var brief: MissionBrief?
   public init(name: String) { self.name = name.trimmingCharacters(in: .whitespacesAndNewlines) }
   public var isValid: Bool {
     !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && name.count <= 120
+      && (brief?.isValid(evidence: Set(items.map(\.id))) ?? true)
       && (comparison?.isValid ?? true) && objective.count <= 4000 && notes.count <= 32_000
       && items.count <= 500
       && items.allSatisfy(\.isValid) && Set(items.map(\.id)).count == items.count
@@ -110,7 +114,7 @@ public struct MissionPlan: Codable, Identifiable, Equatable, Sendable {
 public enum MissionDocuments {
   public static func load(from url: URL) throws -> [MissionPlan] {
     guard FileManager.default.fileExists(atPath: url.path) else { return [] }
-    let plans = try SarProcessor.read([MissionPlan].self, from: url)
+    let plans = try SarProcessor.read([MissionPlan].self, from: url, maximumBytes: 8 * 1024 * 1024)
     guard plans.count <= 200, plans.allSatisfy(\.isValid), Set(plans.map(\.id)).count == plans.count
     else { throw FeedError.malformed }
     return plans
@@ -118,9 +122,19 @@ public enum MissionDocuments {
   public static func save(_ plans: [MissionPlan], to url: URL) throws {
     guard plans.count <= 200, plans.allSatisfy(\.isValid), Set(plans.map(\.id)).count == plans.count
     else { throw FeedError.malformed }
-    _ = try load(from: url)  // Never overwrite an unreadable existing library.
+    let previous = try load(from: url)  // Never overwrite an unreadable existing library.
+    if previous.contains(where: { $0.brief == nil }), plans.contains(where: { $0.brief != nil }),
+      FileManager.default.fileExists(atPath: url.path)
+    {
+      let backup = url.deletingLastPathComponent().appendingPathComponent(
+        "plans-before-mission-control.json")
+      if !FileManager.default.fileExists(atPath: backup.path) {
+        try FileManager.default.copyItem(at: url, to: backup)
+      }
+    }
     // Numeric Foundation dates preserve subsecond observation times in record snapshots.
-    try SatelliteDocuments.save(plans, to: url, dateEncodingStrategy: .deferredToDate)
+    try SatelliteDocuments.save(
+      plans, to: url, dateEncodingStrategy: .deferredToDate, maximumBytes: 8 * 1024 * 1024)
   }
 }
 
