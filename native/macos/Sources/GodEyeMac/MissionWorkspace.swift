@@ -3,6 +3,24 @@ import GodEyeCore
 import SwiftUI
 
 @MainActor final class MissionWorkspace: ObservableObject {
+  @Published var section = "Overview"
+  @Published var pendingForms = false
+  @Published var reviewDrafts: [UUID: (MissionReviewState, String)] = [:]
+  var discardForms: (() -> Void)?
+  private func resolveForms() -> Bool {
+    guard pendingForms || !reviewDrafts.isEmpty else { return true }
+    let alert = NSAlert()
+    alert.messageText = "Unsubmitted mission entries"
+    alert.informativeText =
+      "A new area, note, object, task or object review has not been submitted. Return to finish it, or discard those drafts."
+    alert.addButton(withTitle: "Return to mission")
+    alert.addButton(withTitle: "Discard drafts")
+    guard alert.runModal() == .alertSecondButtonReturn else { return false }
+    discardForms?()
+    pendingForms = false
+    reviewDrafts = [:]
+    return true
+  }
   @Published var plans: [MissionPlan] = []
   @Published var selectedID: UUID?
   @Published var name = ""
@@ -43,6 +61,7 @@ import SwiftUI
     comparisonEnabled = false
   }
   func resolveUnsavedChanges() -> Bool {
+    guard resolveForms() else { return false }
     guard dirty else { return true }
     let alert = NSAlert()
     alert.messageText = "Save changes to this mission?"
@@ -62,6 +81,7 @@ import SwiftUI
     setSelection(id)
   }
   func create() {
+    guard resolveForms() else { return }
     if dirty, !save() { return }
     let alert = NSAlert()
     alert.messageText = "New mission"
@@ -138,6 +158,16 @@ import SwiftUI
     guard save(), let index = plans.firstIndex(where: { $0.id == selectedID }) else { return }
     var next = plans
     next[index].items.removeAll { $0.id == id }
+    if var brief = next[index].brief {
+      for i in brief.notes.indices where brief.notes[i].evidenceID == id {
+        brief.notes[i].evidenceID = nil
+      }
+      for i in brief.observations.indices where brief.observations[i].evidenceID == id {
+        brief.observations[i].evidenceID = nil
+      }
+      brief.record("Evidence link removed; associated notes and observations retained.")
+      next[index].brief = brief
+    }
     next[index].updatedAt = Date()
     do {
       try MissionDocuments.save(next, to: Self.file)
@@ -150,7 +180,10 @@ import SwiftUI
     let panel = NSSavePanel()
     panel.nameFieldStringValue = "\(plan.name)-mission.json"
     guard panel.runModal() == .OK, let url = panel.url else { return }
-    do { try SatelliteDocuments.save(plan, to: url, dateEncodingStrategy: .deferredToDate) } catch {
+    do {
+      try SatelliteDocuments.save(
+        plan, to: url, dateEncodingStrategy: .deferredToDate, maximumBytes: 8 * 1024 * 1024)
+    } catch {
       self.error = "The mission could not be exported."
     }
   }
@@ -219,16 +252,21 @@ extension WorkspaceModel {
   }
   func addMissionOptical() {
     guard let image = optical.image else { return }
-    missions.add(MissionItem(kind: .optical, referenceID: image.id.uuidString, title: image.title))
+    var item = MissionItem(kind: .optical, referenceID: image.id.uuidString, title: image.title)
+    item.acquisition = acquisitionSnapshot(item)
+    missions.add(item)
   }
   func addMissionRadar() {
     guard let job = sar.currentJob else { return }
-    missions.add(
-      MissionItem(
-        kind: .radar, referenceID: job.id,
-        title: "SAR · \(job.result.metadata?.acquisitionStart ?? job.id)"))
+    var item = MissionItem(
+      kind: .radar, referenceID: job.id,
+      title: "SAR · \(job.result.metadata?.acquisitionStart ?? job.id)")
+    item.acquisition = acquisitionSnapshot(item)
+    missions.add(item)
   }
   func openMissionItem(_ item: MissionItem) {
+    missionFocus = nil
+    reviewOutline = []
     missions.comparisonEnabled = false
     switch item.kind {
     case .view:
@@ -239,8 +277,12 @@ extension WorkspaceModel {
     case .record:
       if let record = item.record {
         fly(to: record.coordinate, altitude: 20_000)
-        if !enabled.contains(record.feed) { setEnabled(record.feed, true) }
-        selectedID = record.id
+        missionFocus = GeoRecord(
+          id: "mission:\(item.id)", feed: .annotations, label: record.label,
+          coordinate: record.coordinate, altitude: record.altitude, observedAt: record.observedAt,
+          source: record.source + " · saved mission snapshot", details: record.details,
+          footprint: record.footprint, paths: record.paths)
+        selectedID = missionFocus?.id
       }
     case .site:
       if let site = item.site {
@@ -251,7 +293,15 @@ extension WorkspaceModel {
         ])
       }
     case .annotation:
-      if let point = item.annotation?.points.first { fly(to: point, altitude: 20_000) }
+      if let annotation = item.annotation, let record = annotation.record {
+        fly(to: record.coordinate, altitude: 20_000)
+        missionFocus = GeoRecord(
+          id: "mission:\(item.id)", feed: .annotations, label: record.label,
+          coordinate: record.coordinate, altitude: record.altitude, observedAt: record.observedAt,
+          source: "Saved mission annotation", details: record.details,
+          footprint: record.footprint, paths: record.paths)
+        selectedID = missionFocus?.id
+      }
     case .optical:
       guard let image = optical.images.first(where: { $0.id.uuidString == item.referenceID }) else {
         missions.error = "This image was removed from the local library."

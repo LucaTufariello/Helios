@@ -2,7 +2,7 @@
 
 GodEye opens on the native Metal map with no fixed sidebars. The horizontal bar
 contains **Map**, **Satellite**, **Marine**, **Sky**, **Ground**, and **Mission
-planner**. Opening a section shows its floating tool palette. The map remains
+planner**. Map sections open floating tool palettes; Mission planner now opens a separate native window. See [Mission control](MISSION-CONTROL.md) for the current mission workflow. The map remains
 interactive outside palettes and remains the rendering surface for all sections.
 
 - **Satellite:** SAR acquisition/download/processing, optical sources, saved library,
@@ -27,7 +27,10 @@ Keyboard shortcuts: Command-1 Map, Command-2 Satellite, Command-3 Marine,
 Command-4 Sky, Command-5 Ground, Command-6 Mission planner. Existing navigation,
 source refresh and view-link shortcuts remain available.
 
-## A mission workflow
+## Original map integration workflow
+
+The separate mission window supersedes the mission palette described below; saved
+views, record snapshots, comparison and export behavior remain supported.
 
 1. Open Mission planner and press **+** to create a named plan.
 2. Enter an objective. Name a location and choose **Save current map view**.
@@ -74,7 +77,7 @@ palette does not cancel a dataset processing job. Existing cancellations remain 
 the SAR/optical tools.
 
 `MissionPlan.swift` owns validated bounded mission documents. Atomic storage is
-`~/Library/Application Support/GodEye/Missions/plans.json`, with a 1 MB document cap,
+`~/Library/Application Support/GodEye/Missions/plans.json`, with an 8 MB document cap,
 200-plan cap, 500-item cap per plan, 120-character names, 4,000-character objectives
 and 32,000-character notes. Unreadable previous files are preserved. Numeric
 Foundation dates retain subsecond timestamps; shared decoders also admit ISO date
