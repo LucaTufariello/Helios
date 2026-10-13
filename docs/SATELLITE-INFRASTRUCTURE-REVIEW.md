@@ -1,6 +1,6 @@
 # Satellite analysis and infrastructure change review
 
-GodEye now has a dedicated native **Satellite** section beside **Workspace**. Its three pages are **SAR workflow**, **Infrastructure review**, and **Reference imagery**. The existing Copernicus search/download, SAFE import, SNAP processing, saved SAR results, engine setup and exports live in SAR workflow. The central map remains the existing SwiftUI/AppKit/Metal globe. No browser view, web backend or new hosted processing service is introduced.
+GodEye's **Satellite** section contains **Library**, **SAR**, **Optical** and **Site review**. Copernicus search/download, SAFE import, SNAP processing, saved SAR results, engine setup and exports live in SAR. The map is the shared SwiftUI/AppKit/Metal globe, with Mission Control available in a separate native window.
 
 This is an initial **human review workflow for site-scale radar changes**. It does not classify construction, materials, vehicles, structural damage or operating status, and it does not certify radiometric/geographic accuracy. These limits remain visible in the interface and exported evidence.
 

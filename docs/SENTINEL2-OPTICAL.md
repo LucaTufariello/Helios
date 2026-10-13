@@ -2,7 +2,7 @@
 
 Satellite → Reference imagery now requests dated Sentinel-2 Collection-1 Level-2A true-colour images. Catalogue discovery uses [Earth Search](https://element84.com/earth-search/examples/), and image blocks come from the public [Sentinel-2 COG archive](https://registry.opendata.aws/sentinel-2-l2a-cogs/) maintained by Element 84. No login, AWS account, paid Sentinel Hub API, browser view or SNAP invocation is required. Network access and the existing Python Rasterio/GDAL, NumPy and Pillow environment are required.
 
-The previous web Sentinel feature provides Copernicus catalogue metadata and external viewer links. This native workflow adds actual georeferenced optical pixels inside GodEye; it does not rely on those external viewers.
+This native workflow retrieves and displays actual georeferenced optical pixels inside GodEye, with dated acquisition metadata and local exports.
 
 ## Request and view
 
@@ -47,7 +47,7 @@ Temporary UUID request files are removed after completion/failure/cancellation. 
 
 ## Checks
 
-Run `native/macos/test.sh`, `native/macos/test-sar.sh` and `npm run macos:format:check`. New native tests cover UTC/cloud queries, real public catalogue metadata, URL/size admission, typed result provenance and the Swift-to-Python failure/cleanup boundary. Generated RGB tests cover source channel order, valid CRS/bounds, nodata transparency, region clipping, large-source downsampling, invalid/no-coverage rejection, request bounds and failure cleanup. Fixtures are testing inputs, not fabricated operational acquisitions.
+Run `native/macos/test.sh`, `native/macos/test-sar.sh` and `make format-check`. New native tests cover UTC/cloud queries, real public catalogue metadata, URL/size admission, typed result provenance and the Swift-to-Python failure/cleanup boundary. Generated RGB tests cover source channel order, valid CRS/bounds, nodata transparency, region clipping, large-source downsampling, invalid/no-coverage rejection, request bounds and failure cleanup. Fixtures are testing inputs, not fabricated operational acquisitions.
 
 A real live request on October 4 retrieved `S2C_T32TNR_20260927T102053_L2A` over central Milan, rendered it using its actual projected source CRS, and exported EPSG:4326 RGBA with the recorded acquisition date. Live service availability is separate from deterministic test results.
 
@@ -58,3 +58,46 @@ Native UI verification also completed a city-sized 1014 × 1303 request in appro
 Sentinel-2 visible bands have approximately 10 m spatial resolution. A 1.5–2 km request may contain only about 150–200 pixels per side; fitting this onto a large Retina map magnifies each pixel. This cannot establish small-building or vehicle detail. Pixel-grid display defaults to nearest-neighbour sampling and full opacity, with optional smooth map sampling; an enlargement notice makes the limitation explicit. New native-spacing requests use nearest-neighbour geocoding to avoid a second smoothing step; downsampled regions use area averaging. Reload an older acquisition to replace its earlier bilinear-rendered preview. Scientific spatial detail is never fabricated through sharpening or enlargement. Choose **Show detailed basemap context** for finer visual context from Esri, with its varying, unspecified acquisition dates.
 
 Additional sources and their access/resolution constraints are described in [Native optical satellite sources](OPTICAL-SATELLITE-SOURCES.md). Sentinel-2 remains the default optical source; a Satellite source menu routes radar to its existing workflow.
+
+## Interrupted or slow archive transfers
+
+The public image archive supplies compressed TIFF tiles through HTTP range requests.
+Even a small area can require a multi-megabyte source tile. A catalogue search can
+succeed while the image transfer is slow or interrupted; this does not by itself
+indicate a missing Python installation.
+
+Remote Sentinel-2 and CBERS reads now allow an active transfer up to 600 seconds per
+HTTP request, with a 15-second connection timeout and a low-speed threshold of
+1 KiB/s over 20 seconds. Read failures have at most three application attempts;
+subsequent attempts reopen the admitted asset with fresh cached state and serial
+HTTP/1.1 transfers. HTTP-level retries remain bounded as well. These limits are per
+request, not an overall job duration; regions requiring several tiles can take
+longer. See [GDAL HTTP options](https://gdal.org/en/stable/user/configoptions.html)
+and [remote-file cache behavior](https://gdal.org/en/stable/user/virtual_file_systems.html).
+
+Retries keep the exact acquisition and region. They never replace failed imagery
+with another date, a basemap or invented pixels. Product validation, cancellation,
+known unavailable assets and export failures are distinguished from retryable
+remote reads. Progress reports retry attempts, and **Show diagnostic log in Finder**
+is available after a worker failure. The log keeps at most 16,000 characters,
+including retry failures when a later attempt succeeds.
+
+**Cancel optical request** first asks the worker to stop. If it remains blocked in
+native raster/network code, GodEye force-stops that optical worker after three
+seconds and removes its known partial outputs. Existing saved imagery and source
+products are retained. This optical-only fallback does not change SNAP/GPT process
+group cancellation or SAR scientific processing.
+
+Regression tests include a real local HTTP server returning a truncated TIFF body,
+fresh-cache recovery, bounded retry exhaustion, unavailable assets, export errors,
+backoff cancellation and an unresponsive worker with partial-output cleanup.
+
+Verification on 12 October 2026: the user's failing acquisition
+`S2A_T33TVL_20261003T100349_L2A` and original region were reproduced with the old
+60-second limit (incomplete tile), then successfully rendered with the fix in
+486.6 seconds on the observed slow archive connection. The 265 × 261 RGBA preview
+matched the EPSG:4326 GeoTIFF exactly, with 100% non-nodata coverage. This verifies
+transfer/rendering, not cloud-free coverage or independent sensor geolocation.
+The native suite passed 167 tests (10 optional live tests skipped); all 62 Python
+SAR/optical tests passed. The arm64 release build and signature verification passed.
+Local reports are in `output/qa/optical-recovery-2026-10-12`.

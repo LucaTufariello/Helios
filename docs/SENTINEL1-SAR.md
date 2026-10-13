@@ -2,7 +2,7 @@
 
 ## Architecture and scope
 
-The production application is `native/macos`: Swift 6, macOS 14+, arm64, SwiftUI/AppKit, Metal and Foundation. The legacy web client and Node services remain a parity/reference implementation; this feature does not add web endpoints, JavaScript, a server or a browser runtime.
+The production application is `native/macos`: Swift 6, macOS 14+, arm64, SwiftUI/AppKit, Metal and Foundation. The interface, orchestration and storage are native; optional scientific workers are local background processes.
 
 The existing native application uses `NSOpenPanel` / `NSSavePanel`, Swift tasks, Codable JSON documents, and local Application Support files. It has no general durable job queue or database. SAR follows these conventions:
 
@@ -128,7 +128,6 @@ Run the tests:
 ```sh
 native/macos/test.sh
 native/macos/test-sar.sh
-npm test
 native/macos/build-app.sh
 ```
 

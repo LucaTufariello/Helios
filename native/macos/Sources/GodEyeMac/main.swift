@@ -63,7 +63,7 @@ import SwiftUI
       contentRect: NSRect(x: 0, y: 0, width: 1180, height: 800),
       styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false
     )
-    mission.title = "GodEye — Mission control"
+    mission.title = "GodEye — Mission Control"
     mission.minSize = NSSize(width: 1000, height: 680)
     mission.contentView = NSHostingView(
       rootView: MissionControlView(
@@ -148,7 +148,7 @@ import SwiftUI
     viewMenu.addItem(withTitle: "Ground", action: #selector(showGround), keyEquivalent: "5")
       .target = self
     viewMenu.addItem(
-      withTitle: "Mission Planner", action: #selector(showMission), keyEquivalent: "6"
+      withTitle: "Mission Control", action: #selector(showMission), keyEquivalent: "6"
     ).target = self
     viewMenu.addItem(withTitle: "Full Globe", action: #selector(fullGlobe), keyEquivalent: "0")
       .target = self
@@ -185,7 +185,7 @@ import SwiftUI
   @objc private func fullGlobe() { model.resetGlobe() }
   @objc private func refresh() { model.refresh() }
   @objc private func copyLink() { model.copyLink() }
-  @objc private func about() { model.showMigration = true }
+  @objc private func about() { model.showAbout = true }
 }
 
 let application = NSApplication.shared

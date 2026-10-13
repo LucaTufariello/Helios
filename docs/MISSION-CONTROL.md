@@ -1,8 +1,30 @@
 # Native mission control
 
-Mission planner (Command-6) opens a separate, resizable macOS window. It shares
+Mission Control (Command-6) opens a separate, resizable macOS window. It shares
 GodEye's existing map, imagery libraries and selected mission. Move it to another
 display if useful; **Show map** returns to the geographic context.
+
+## Workspace navigation
+
+The map remains the main workspace. The top bar groups Map, Satellite, Marine,
+Sky and Ground; **Mission Control** opens the separate mission window. Labels on
+**Layers**, **Inspect** and **Data** make the map tools discoverable. Floating panels
+can be moved, resized, collapsed or closed; their **…** menu resets their size and
+position. Selecting a panel brings it forward. Satellite and setup panels retain
+minimum widths so their controls remain readable.
+
+In **Satellite → Library**, search saved sites and acquisitions by name, sensor,
+date or source identifier. Optical entries have bounded, asynchronously loaded
+thumbnails. Opening an entry selects that acquisition and focuses its map extent.
+Use **Find optical imagery**, **Open SAR workflow** or **Create a site** to add data.
+The library shows stored jobs and their actual status, including failures.
+
+Mission Control groups its sections into Plan, Analysis and Coordination. Its
+**Overview** starts with clickable counts for areas, evidence, unreviewed observations
+and open tasks, followed by the first three open tasks in saved order. The brief
+and map bookmarks remain editable below; working notes expand on demand. Counts
+summarize stored items, not mission readiness or independently validated findings.
+Shared semantic macOS surfaces support light and dark appearance.
 
 ## Start a review
 
@@ -110,7 +132,7 @@ or collaborative audit log. Provider credentials are not copied into mission exp
 ## Validation
 
 Run `native/macos/test.sh`, `native/macos/test-sar.sh`, and
-`npm run macos:format:check`. Build with `native/macos/build-app.sh`.
+`make format-check`. Build with `native/macos/build-app.sh`.
 The new core tests cover legacy migration, rich document limits, references,
 corruption preservation, model scores, schedule recovery/deduplication and normalized
 box orientation/invalid coordinates.
@@ -130,12 +152,10 @@ not independently validate satellite radiometry, image registration or model acc
 - Native core suite: 157 passed, 10 opt-in live checks skipped, zero failures.
 - The new live mission catalogue check was then run separately and passed with
   five Sentinel-2 and eleven Sentinel-1 acquisitions for its test area.
-- SAR/optical processing suite: 56 passed. Legacy web regressions: 3,899 passed,
-  one skipped; two Node-version-specific allocation benchmarks were not run.
+- SAR/optical processing suite: 56 passed.
 - Release app: arm64 build and local signature verification passed. The native
   map smoke check rendered on Apple M2, loaded 43 tiles and 37 earthquake records,
-  and reported no renderer/tile failures. Web build,
-  source boundaries, Swift formatting and repository formatting checks passed.
+  and reported no renderer/tile failures. Swift formatting checks passed.
 - Isolated release application validation: 24 checks passed, including native
   window reopening, area drawing/point selection, shared map/evidence state,
   linked notes, observation review, tasks, evidence automation, migration backup,

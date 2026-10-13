@@ -1,23 +1,19 @@
-node_modules
-dist
-.env
-*.log
-screenshots/
-qa-shots/
-output/
-.gev-logs/
-.gev-cache/
 .DS_Store
-.gstack/
-3d-models/
-pinokio/ENVIRONMENT
-pinokio/.installed
-GEV_FREE_SATELLITE_PLAN.md
-session-ses_f516.md
+*.log
+output/
 
-# Native macOS build products
+# Native macOS build products and downloaded engine dependencies.
 native/macos/.build/
 native/macos/.swiftpm/
-
-# Generated native archive fingerprint forces SwiftPM relinking.
+native/shared/.build/
+native/shared/.swiftpm/
 native/macos/Sources/CScene/include/GodEyeSceneBuild.h
+
+# Local Python environments and bytecode.
+.venv/
+__pycache__/
+*.py[cod]
+
+# Personal working notes, not application sources.
+GEV_FREE_SATELLITE_PLAN.md
+session-ses_f516.md

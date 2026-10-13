@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        The project only ships public data with a license that allows redistribution, and it does not build features for identifying or tracking individuals. Read the "Responsible & Open" section of the README before proposing a data source.
+        GodEye is a native macOS analysis workspace for public assets, infrastructure and systems. Review DATA_SOURCES.md for attribution and use restrictions before proposing a source; do not propose identification or tracking of individuals.
   - type: textarea
     id: problem
     attributes:

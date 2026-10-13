@@ -56,6 +56,11 @@ import SwiftUI
     panels.removeAll { $0 == panel }
     panels.append(panel)
   }
+  /// A click may finish after its child control closes a panel. Never reopen it.
+  func focusPanel(_ panel: WorkspacePanel) {
+    guard panels.contains(panel), panels.last != panel else { return }
+    openPanel(panel)
+  }
   func closePanel(_ panel: WorkspacePanel) {
     panels.removeAll { $0 == panel }
     if panel == .tools { showTools = false }
@@ -281,7 +286,7 @@ import SwiftUI
   @Published var searchLoading = false
   @Published var imageryStatus = "Loading dated Esri imagery…"
   @Published var renderError: String?
-  @Published var showMigration = false
+  @Published var showAbout = false
   var renderer: GlobeRenderer?
   let transport = Transport()
   private var tasks: [FeedKind: Task<Void, Never>] = [:]

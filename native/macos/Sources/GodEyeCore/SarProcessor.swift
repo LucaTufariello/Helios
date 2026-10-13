@@ -204,8 +204,28 @@ public struct SarProcessor: Sendable {
         "Configure the Python raster environment in Satellite → SAR workflow → Processing engine setup. SNAP is not required for optical viewing."
       )
     }
-    try await invoke(
-      ["render", "--input", request.path, "--output", destination.path], progress: progress)
+    let destinationExisted = FileManager.default.fileExists(atPath: destination.path)
+    do {
+      try await invoke(
+        ["render", "--input", request.path, "--output", destination.path], progress: progress)
+    } catch is CancellationError {
+      guard !destinationExisted else { throw CancellationError() }
+      // Optical workers have no GPT child. Forced cancellation can interrupt GDAL
+      // before Python gets to its cleanup handler; remove only known partial products.
+      for name in [
+        "preview.png", "true-color.tif", "source-values.tif", "selected.tmp.tif", "result.tmp",
+      ] {
+        try? FileManager.default.removeItem(at: destination.appendingPathComponent(name))
+      }
+      if var result = try? Self.read(
+        SentinelOpticalResult.self, from: destination.appendingPathComponent("result.json"))
+      {
+        result.state = .failed
+        result.error = "Optical request cancelled. Partial images were removed."
+        try? SatelliteDocuments.save(result, to: destination.appendingPathComponent("result.json"))
+      }
+      throw CancellationError()
+    }
     let result = try Self.read(
       SentinelOpticalResult.self, from: destination.appendingPathComponent("result.json"))
     guard result.isValid, result.state == .completed else {
@@ -219,7 +239,7 @@ public struct SarProcessor: Sendable {
     guard FileManager.default.isExecutableFile(atPath: python.path), worker.isFileURL else {
       throw SarError.setup
     }
-    let control = SarProcessControl()
+    let control = SarProcessControl(forceStopOnCancel: arguments.first == "render")
     try await withTaskCancellationHandler {
       try await Task.detached(priority: .userInitiated) {
         let process = Process()
@@ -278,6 +298,8 @@ private final class SarProcessControl: @unchecked Sendable {
   private let lock = NSLock()
   private var process: Process?
   private var wasCancelled = false
+  private let forceStopOnCancel: Bool
+  init(forceStopOnCancel: Bool) { self.forceStopOnCancel = forceStopOnCancel }
   var cancelled: Bool { lock.withLock { wasCancelled } }
   func start(_ process: Process) throws {
     try lock.withLock {
@@ -289,7 +311,17 @@ private final class SarProcessControl: @unchecked Sendable {
   func cancel() {
     lock.withLock {
       wasCancelled = true
-      if let process, process.isRunning { process.terminate() }
+      if let process, process.isRunning {
+        process.terminate()
+        if forceStopOnCancel {
+          DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3) { [self] in
+            lock.withLock {
+              // Recheck this Process, not a saved PID that could have been reused.
+              if process.isRunning { _ = Darwin.kill(process.processIdentifier, SIGKILL) }
+            }
+          }
+        }
+      }
     }
   }
 }

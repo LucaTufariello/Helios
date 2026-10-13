@@ -82,7 +82,7 @@ def render_dataset(dataset, bounds, destination, scene, emit):
     scale = max(1, columns/MAX_SIDE, rows/MAX_SIDE)
     width, height = min(MAX_SIDE, max(1, math.ceil(columns/scale))), min(MAX_SIDE, max(1, math.ceil(rows/scale)))
     transform = from_bounds(*clipped, width, height)
-    emit('processing', 'Reading optical image blocks and geocoding the selected region', None)
+    emit('processing', 'Reading optical image tiles; slow archive connections can take several minutes', None)
     # Bounded destination arrays. GDAL reads COG ranges/overviews rather than
     # copying a SAFE scene or downloading/loading a complete source raster.
     with WarpedVRT(dataset, crs='EPSG:4326', transform=transform, width=width, height=height,
@@ -127,6 +127,65 @@ def validate_region(region):
     return bounds
 
 
+REMOTE_ATTEMPTS = 3
+
+
+def record_diagnostic(destination, text):
+    """Retain bounded developer detail across retries, including successful recovery."""
+    path = destination/'diagnostics.log'
+    previous = path.read_text(encoding='utf-8') if path.exists() else ''
+    path.write_text((previous + text + '\n')[-16000:], encoding='utf-8')
+
+
+def render_remote(scene, bounds, destination, mode, sensor, emit):
+    import rasterio
+    from rasterio.errors import RasterioIOError
+    if sensor == 'sentinel2':
+        urls = [scene['visualURL']]  # Already admitted by validate_request.
+        helper = None
+    else:
+        helper = extra_sources()
+        helper.validate_cbers(scene, mode)  # Admit all requested URLs before opening any.
+        keys = ['BAND0'] if mode == 'pan' else ['BAND3', 'BAND2', 'BAND1']
+        urls = [scene['bands'][key] for key in keys]
+    # GDAL's curl cache otherwise outlives dataset.close(), retaining an incomplete
+    # range across retries. Discard these specific remote handles on every close.
+    # https://gdal.org/en/stable/user/virtual_file_systems.html#vsicurl-http-https-ftp-files-random-access
+    non_cached = ':'.join('/vsicurl/' + url for url in urls)
+    for attempt in range(1, REMOTE_ATTEMPTS + 1):
+        exporting = False
+        def stage(state, message, progress=None):
+            nonlocal exporting
+            exporting = exporting or state == 'exporting'
+            emit(state, message, progress)
+        options = dict(CPL_VSIL_CURL_NON_CACHED=non_cached)
+        if attempt > 1:
+            # A fresh, serialized HTTP/1.1 read also avoids a failed multiplexed
+            # range transfer. Keep TLS verification and the original acquisition.
+            options.update(GDAL_HTTP_MULTIRANGE='SERIAL', GDAL_HTTP_MULTIPLEX='NO',
+                           GDAL_HTTP_VERSION='1.1')
+        try:
+            with rasterio.Env(**options):
+                stage('processing', f'Opening public optical raster (attempt {attempt}/{REMOTE_ATTEMPTS})')
+                if sensor == 'sentinel2':
+                    with rasterio.open(scene['visualURL'], driver='GTiff') as dataset:
+                        return render_dataset(dataset, bounds, destination, scene, stage)
+                return helper.render_cbers(scene, bounds, destination, mode, stage)
+        except RasterioIOError as error:
+            record_diagnostic(destination, f'Remote raster attempt {attempt}/{REMOTE_ATTEMPTS}\n' + traceback.format_exc())
+            # A disk/export failure is not a remote-read retry. Cancellation and
+            # validation exceptions also propagate immediately, without retrying.
+            if exporting:
+                raise OpticalError('The optical image was read but could not be saved. Check available disk space and folder permissions.') from error
+            detail = str(error).lower()
+            if any(code in detail for code in ('response code: 401', 'response code: 403', 'response code: 404', 'response code: 410')):
+                raise OpticalError('This optical asset is unavailable from the archive. Search again or choose another acquisition.') from error
+            if attempt == REMOTE_ATTEMPTS:
+                raise OpticalError(f'The archive image could not be read completely after {REMOTE_ATTEMPTS} attempts. Retry the load or choose another acquisition. The diagnostic log contains the transfer details.') from error
+            emit('processing', f'Optical image transfer interrupted; retrying with fresh connections (attempt {attempt+1}/{REMOTE_ATTEMPTS})', None)
+            time.sleep(2 * attempt)
+
+
 def run(request_file, destination):
     destination = Path(destination)
     if destination.exists():
@@ -157,16 +216,16 @@ def run(request_file, destination):
         elif sensor != 'prisma':
             raise OpticalError('Unsupported optical source.')
         import rasterio
+        # Large compressed COG tiles can take minutes on slow archive links.
+        # Allow an actively transferring response up to ten minutes, while aborting
+        # connections that cannot sustain 1 KiB/s for twenty seconds.
         # Explicit GTiff admission excludes network VRTs and their external paths.
-        with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR', GDAL_HTTP_TIMEOUT='60',
-                          GDAL_HTTP_MAX_RETRY='1', GDAL_HTTP_RETRY_DELAY='1', GDAL_CACHEMAX=64*1024*1024,
+        with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR', GDAL_HTTP_TIMEOUT='600',
+                          GDAL_HTTP_MAX_RETRY='1', GDAL_HTTP_RETRY_DELAY='1', GDAL_HTTP_CONNECTTIMEOUT='15',
+                          GDAL_HTTP_LOW_SPEED_LIMIT='1024', GDAL_HTTP_LOW_SPEED_TIME='20', GDAL_CACHEMAX=64*1024*1024,
                           CPL_VSIL_CURL_CACHE_SIZE=8*1024*1024, GDAL_HTTP_HEADERS='', GDAL_HTTP_HEADER_FILE=''):
-            if sensor == 'sentinel2':
-                emit('processing','Opening public Sentinel-2 true-colour COG',None)
-                with rasterio.open(scene['visualURL'],driver='GTiff') as dataset:
-                    result.update(render_dataset(dataset,bounds,destination,scene,emit))
-            elif sensor == 'cbers4a':
-                result.update(extra_sources().render_cbers(scene,bounds,destination,request.get('mode','pan'),emit))
+            if sensor in ('sentinel2', 'cbers4a'):
+                result.update(render_remote(scene, bounds, destination, request.get('mode','pan'), sensor, emit))
             else:
                 if request.get('region'):
                     validate_region(request['region'])
@@ -174,7 +233,7 @@ def run(request_file, destination):
         result.update(completedAt=dt.datetime.now(dt.timezone.utc).isoformat(), elapsedSeconds=time.monotonic()-started)
         emit('completed', 'Optical image ready', 1)
     except BaseException as error:
-        (destination/'diagnostics.log').write_text(traceback.format_exc()[-16000:], encoding='utf-8')
+        record_diagnostic(destination, traceback.format_exc())
         for file in destination.iterdir():
             if file.name not in ('result.json', 'events.jsonl', 'diagnostics.log'):
                 file.unlink()

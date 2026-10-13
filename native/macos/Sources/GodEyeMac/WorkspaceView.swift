@@ -9,7 +9,7 @@ enum WorkspacePanel: String, CaseIterable, Identifiable {
     switch self {
     case .sources: "Data sources"
     case .satellite: "Satellite analysis"
-    case .mission: "Mission planner"
+    case .mission: "Mission Control"
     case .inspector: "Inspector & records"
     case .raw: "Raw data"
     case .map: "Map & layers"
@@ -25,6 +25,14 @@ enum WorkspacePanel: String, CaseIterable, Identifiable {
     case .raw: "curlybraces"
     case .map: "map"
     case .tools: "slider.horizontal.3"
+    }
+  }
+  var minimumWidth: CGFloat {
+    switch self {
+    case .satellite, .tools: 500
+    case .raw: 440
+    case .inspector: 340
+    default: 320
     }
   }
   var width: CGFloat {
@@ -96,7 +104,9 @@ struct WorkspaceView: View {
         ForEach(model.panels) { panel in
           FloatingWorkspacePanel(
             panel: panel, available: geometry.size,
-            close: { model.closePanel(panel) }
+            close: { model.closePanel(panel) },
+            focus: { model.focusPanel(panel) },
+            isFrontmost: model.panels.last == panel
           ) {
             panelContent(panel)
           }.zIndex(Double((model.panels.firstIndex(of: panel) ?? 0) + 1))
@@ -104,13 +114,14 @@ struct WorkspaceView: View {
       }
     }
     .sheet(item: $model.cameraRecord) { CameraViewer(record: $0) }
-    .sheet(isPresented: $model.showMigration) { MigrationView() }
+    .sheet(isPresented: $model.showAbout) { AboutView() }
     .onChange(of: model.showTools) { _, value in
       if value { model.openPanel(.tools) } else { model.closePanel(.tools) }
     }
     .onChange(of: model.selectedID) { _, id in
       if id != nil { model.openPanel(.inspector) }
     }
+    .groupBoxStyle(AnalystGroupBoxStyle())
     .frame(minWidth: 1080, minHeight: 620)
   }
   private var navigation: some View {
@@ -119,12 +130,12 @@ struct WorkspaceView: View {
         Image(systemName: "globe.europe.africa.fill").foregroundStyle(.tint)
         Text("GodEye").font(.system(size: 15, weight: .semibold))
       }.padding(.leading, 4).padding(.trailing, 18)
-      ForEach(["Map", "Satellite", "Marine", "Sky", "Ground", "Mission planner"], id: \.self) {
+      ForEach(["Map", "Satellite", "Marine", "Sky", "Ground"], id: \.self) {
         section in
         Button {
           model.showSection(section)
         } label: {
-          Text(section).font(.system(size: 12, weight: .medium))
+          Label(section, systemImage: sectionIcon(section)).font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 12).padding(.vertical, 9)
             .foregroundStyle(model.workspaceSection == section ? Color.accentColor : Color.primary)
             .background(
@@ -133,7 +144,17 @@ struct WorkspaceView: View {
         }.buttonStyle(.plain).accessibilityIdentifier("section-\(section)")
       }
       Spacer(minLength: 8)
-      Text("\(model.enabled.count) active sources").font(.caption).foregroundStyle(.secondary)
+      Text("\(model.enabled.count) sources on").font(.caption).foregroundStyle(.secondary)
+      Divider().frame(height: 20).padding(.horizontal, 6)
+      Button {
+        model.showSection("Mission planner")
+      } label: {
+        Label("Mission Control", systemImage: "rectangle.on.rectangle")
+          .font(.system(size: 12, weight: .semibold)).padding(.horizontal, 10).padding(.vertical, 8)
+          .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+          .foregroundStyle(.tint)
+      }.buttonStyle(.plain).help("Open the mission workspace in a separate window")
+        .accessibilityIdentifier("section-Mission planner")
       Button {
         model.panels.removeAll()
         model.showTools = false
@@ -142,6 +163,15 @@ struct WorkspaceView: View {
       }.help("Hide floating panels").accessibilityIdentifier("hide-panels")
     }.padding(.horizontal, 12).padding(.vertical, 6).background(.bar)
       .overlay(alignment: .bottom) { Divider() }
+  }
+  private func sectionIcon(_ section: String) -> String {
+    switch section {
+    case "Satellite": "antenna.radiowaves.left.and.right"
+    case "Marine": "water.waves"
+    case "Sky": "airplane"
+    case "Ground": "building.2"
+    default: "map"
+    }
   }
   private var searchBar: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -180,9 +210,9 @@ struct WorkspaceView: View {
   }
   private var mapActions: some View {
     HStack(spacing: 0) {
-      toolButton("Map & layers", "square.3.layers.3d", .map)
-      toolButton("Inspector", "scope", .inspector)
-      toolButton("Raw data", "curlybraces", .raw)
+      toolButton("Layers", "square.3.layers.3d", .map)
+      toolButton("Inspect", "scope", .inspector)
+      toolButton("Data", "curlybraces", .raw)
       Menu {
         Button("All data sources") {
           model.workspaceSection = "Map"
@@ -195,7 +225,7 @@ struct WorkspaceView: View {
             model.showTools = true
           }
         }
-        Button("Feature parity status") { model.showMigration = true }
+        Button("About GodEye") { model.showAbout = true }
       } label: {
         Image(systemName: "slider.horizontal.3").frame(width: 38, height: 34)
       }
@@ -223,7 +253,9 @@ struct WorkspaceView: View {
     Button {
       model.openPanel(panel)
     } label: {
-      Image(systemName: icon).frame(width: 38, height: 34)
+      Label(title, systemImage: icon).font(.system(size: 11, weight: .medium))
+        .padding(.horizontal, 9).frame(height: 34)
+        .foregroundStyle(model.panels.contains(panel) ? Color.accentColor : Color.primary)
     }
     .help(title).accessibilityLabel(title)
   }
@@ -274,6 +306,8 @@ struct FloatingWorkspacePanel<Content: View>: View {
   var panel: WorkspacePanel
   var available: CGSize
   var close: () -> Void
+  var focus: () -> Void
+  var isFrontmost: Bool
   @ViewBuilder var content: () -> Content
   @State private var offset = CGSize.zero
   @State private var width: CGFloat = 0
@@ -282,7 +316,9 @@ struct FloatingWorkspacePanel<Content: View>: View {
   @GestureState private var drag = CGSize.zero
   @GestureState private var resize = CGSize.zero
   private var panelWidth: CGFloat {
-    min(max(320, (width == 0 ? panel.width : width) + resize.width), available.width - 24)
+    min(
+      max(panel.minimumWidth, (width == 0 ? panel.width : width) + resize.width),
+      available.width - 24)
   }
   private var panelHeight: CGFloat {
     collapsed ? 42 : min(max(280, height + resize.height), available.height - 150)
@@ -298,9 +334,32 @@ struct FloatingWorkspacePanel<Content: View>: View {
   var body: some View {
     VStack(spacing: 0) {
       HStack(spacing: 9) {
-        Image(systemName: panel.icon).foregroundStyle(.secondary)
-        Text(panel.title).font(.system(size: 13, weight: .semibold))
-        Spacer()
+        HStack(spacing: 9) {
+          Image(systemName: panel.icon).foregroundStyle(.tint)
+          Text(panel.title).font(.system(size: 13, weight: .semibold))
+          Spacer()
+        }.frame(height: 42).contentShape(Rectangle())
+          .gesture(
+            DragGesture(minimumDistance: 2, coordinateSpace: .global).updating($drag) {
+              value, state, _ in state = value.translation
+            }
+            .onEnded { value in
+              focus()
+              offset.width += value.translation.width
+              offset.height += value.translation.height
+            })
+        Menu {
+          Button("Reset size and position") {
+            offset = .zero
+            width = 0
+            height = 580
+            collapsed = false
+            focus()
+          }
+        } label: {
+          Image(systemName: "ellipsis")
+        }
+        .menuStyle(.borderlessButton).fixedSize().help("Panel layout")
         Button {
           collapsed.toggle()
         } label: {
@@ -310,15 +369,7 @@ struct FloatingWorkspacePanel<Content: View>: View {
           "Collapse or expand \(panel.title)")
         Button(action: close) { Image(systemName: "xmark") }
           .help("Close panel").accessibilityLabel("Close \(panel.title)")
-      }.buttonStyle(.plain).padding(.horizontal, 14).frame(height: 42).contentShape(Rectangle())
-        .gesture(
-          DragGesture(minimumDistance: 2, coordinateSpace: .global).updating($drag) {
-            value, state, _ in state = value.translation
-          }
-          .onEnded { value in
-            offset.width += value.translation.width
-            offset.height += value.translation.height
-          })
+      }.buttonStyle(.plain).padding(.horizontal, 14).frame(height: 42)
       if !collapsed {
         Divider()
         content().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -327,7 +378,10 @@ struct FloatingWorkspacePanel<Content: View>: View {
       .background(
         Color(nsColor: .windowBackgroundColor).opacity(0.98), in: RoundedRectangle(cornerRadius: 10)
       )
-      .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.gray.opacity(0.3), lineWidth: 1))
+      .overlay(
+        RoundedRectangle(cornerRadius: 10).strokeBorder(
+          isFrontmost ? Color.accentColor.opacity(0.4) : WorkspaceDesign.border, lineWidth: 1)
+      )
       .shadow(color: .black.opacity(0.2), radius: 14, y: 5)
       .overlay(alignment: .bottomTrailing) {
         if !collapsed {
@@ -341,13 +395,15 @@ struct FloatingWorkspacePanel<Content: View>: View {
             }
             .onEnded { value in
               width = min(
-                max(320, (width == 0 ? panel.width : width) + value.translation.width),
+                max(
+                  panel.minimumWidth, (width == 0 ? panel.width : width) + value.translation.width),
                 available.width - 24)
               height = min(max(280, height + value.translation.height), available.height - 150)
             }
           ).help("Drag to resize panel")
         }
-      }.offset(x: x, y: y).accessibilityIdentifier("floating-\(panel.rawValue)")
+      }.simultaneousGesture(TapGesture().onEnded { focus() })
+      .offset(x: x, y: y).accessibilityIdentifier("floating-\(panel.rawValue)")
   }
 }
 
@@ -372,7 +428,7 @@ struct MapLayerView: View {
         }
         Toggle("Mission comparison layers", isOn: $missions.comparisonEnabled)
         Text(
-          "Select the acquisition in Satellite analysis, or choose a pair in Mission planner → Compare."
+          "Select the acquisition in Satellite analysis, or choose a pair in Mission Control → Evidence."
         )
         .font(.caption).foregroundStyle(.secondary)
         Divider()
@@ -581,30 +637,45 @@ struct RecordInspectorView: View {
     }.padding(16)
   }
 }
-struct MigrationView: View {
+struct AboutView: View {
   @Environment(\.dismiss) var dismiss
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text("Native feature parity").font(.title2.bold())
-      Text("Available in this target").font(.headline)
+    VStack(alignment: .leading, spacing: 18) {
+      HStack(spacing: 14) {
+        Image(systemName: "globe.europe.africa.fill").font(.system(size: 36)).foregroundStyle(.tint)
+        VStack(alignment: .leading, spacing: 4) {
+          Text("GodEye").font(.largeTitle.weight(.semibold))
+          Text("Native geospatial analysis for macOS · Apple Silicon")
+            .font(.callout).foregroundStyle(.secondary)
+        }
+      }
+      Divider()
+      Text("Map & sources").font(.headline)
       Text(
-        "Satellite TLE catalogs with native SGP4/SDP4 propagation and sampled estimated orbits; AISStream vessel positions with a provider key; bounded TomTom road-flow tiles with a provider key; Space Missions launch-site metadata; public operator GTFS-realtime transit; TfL/Fintraffic camera catalogs and native media inspection; NASA FIRMS thermal detections with a provider key; bundled datacenters, dams, submarine cables; Sentinel catalog metadata and footprints; local Sentinel-1 GRD import, external SNAP processing workflow, scientific TIFF/preview export and radar overlays (engine setup and real-product validation required); native directions with turns and route navigation; persistent local annotations; observed movement history, target following and delayed retained-fix playback; native workspace import/export and view-state links; raster map choices and labeled shader effects; viewport-bounded mapped installations with selected outlines, energy/refining sites, an approximate solar terminator, native Metal terrain and 3D Tiles with loaded-surface picking, tilt/heading and collision clearance, Esri raster tiles and dated NASA GIBS overlays, geographic navigation, Photon search, USGS earthquake records, OpenSky flights with adsb.lol regional fallback, military aircraft, GDACS alerts, Open-Meteo weather / CAMS air-quality model readouts, source controls, selection, record inspection, view links, and demand-driven rendering."
+        "Explore terrain and 3D Tiles, inspect public aircraft and vessel reports, and connect infrastructure, environmental and satellite data with source attribution."
       )
-      Text("Still requiring native ports").font(.headline)
+      Text("Satellite analysis").font(.headline)
       Text(
-        "Additional terrain/3D provider integrations and full format/material coverage; full camera catalog coverage and calibrated camera projection; broader imagery/provider settings and legacy share compatibility; matched mission orbit records and dense catalog refinements; regional context staging; full tracking/trail timing and interaction parity. See the migration report for detailed limits."
+        "Find dated optical imagery, process Sentinel-1 GRD radar data with SNAP, and review measured changes over saved sites. Source resolution, coverage and processing quality determine what can be inferred."
       )
+      Text("Mission Control").font(.headline)
       Text(
-        "Excluded by request: bike share, radio, cockpit, voice and San Francisco neighborhood boundaries."
-      ).font(
-        .callout)
+        "Organize areas, evidence, notes, observations, tasks and acquisition checks in a separate window connected to the map. Mission documents and image libraries are stored on this Mac; provider credentials use macOS Keychain."
+      )
+      Text("Scientific limits").font(.headline)
       Text(
-        "The existing application remains intact as the feature-parity reference. No missing feature is simulated here."
-      ).foregroundStyle(.secondary)
+        "Radar changes and model suggestions are evidence for review. Independent radiometric/geographic validation and evaluation against documented events remain necessary. Camera clearance uses loaded map geometry and is not certified for real-world navigation."
+      )
+      .font(.callout).foregroundStyle(.secondary)
       HStack {
+        if let notices = Bundle.main.url(forResource: "SCENE-NOTICES", withExtension: "txt") {
+          Button("Component notices") {
+            NSWorkspace.shared.open(notices)
+          }
+        }
         Spacer()
         Button("Close") { dismiss() }.keyboardShortcut(.defaultAction)
       }
-    }.padding(24).frame(width: 600)
+    }.padding(24).frame(width: 580)
   }
 }

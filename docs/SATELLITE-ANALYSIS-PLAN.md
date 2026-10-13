@@ -1,8 +1,10 @@
 # Satellite analysis plan
 
-Updated October 4, 2026. The following validation work is planned for the next working session, October 5. This is a project plan, not a scheduled automation or a claim that the checks are implemented.
+Updated October 12, 2026. This detailed scientific backlog supports milestones 1–2
+of the [GodEye product roadmap](ROADMAP.md). It is planned validation work, not a
+scheduled automation or a claim that the checks are implemented.
 
-## Next session: validate infrastructure change review
+## Next scientific milestone: validate infrastructure change review
 
 1. **Real evaluation cases:** choose a documented, substantial industrial/logistics construction or expansion on relatively flat terrain. Retain dated reference evidence and nearby stable control areas. Collect multiple comparable before/after Sentinel-1 acquisitions; keep changed, unchanged and uncertain labels separate.
 2. **Pair registration:** measure offsets across stable areas, report east/north residuals in metres and analysis pixels, verify on held-out controls, and reject unreliable matches. Any correction must retain its parameters and original imagery. A residual below half an analysis pixel is a provisional engineering goal, to be evaluated rather than advertised as current accuracy. Grid resampling alone is not registration validation.
@@ -15,6 +17,6 @@ Start with registration measurements and stable controls alongside one independe
 
 See [current review workflow](SATELLITE-INFRASTRUCTURE-REVIEW.md) and [existing SAR numerical checks](SAR-QUALITY-AND-MONITORING.md).
 
-## Current session: dated Sentinel-2 optical context
+## Existing capability: dated Sentinel-2 optical context
 
 Implemented public Sentinel-2 Collection-1 L2A search and true-colour viewing inside Satellite → Reference imagery ([guide](SENTINEL2-OPTICAL.md)). Request a region/date range/cloud threshold, select an acquisition, retrieve COG image blocks and display a georeferenced native overlay. Retain acquisition metadata and export the bounded rendered image. This adds optical evidence context; it does not implement the validation/detector work above.

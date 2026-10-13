@@ -1,4 +1,5 @@
 import Foundation
+import GodEyeSpatial
 import simd
 
 public struct Coordinate: Codable, Hashable, Sendable {
@@ -26,14 +27,11 @@ public struct Coordinate: Codable, Hashable, Sendable {
   }
   public var radians: SIMD2<Double> { SIMD2(longitude * .pi / 180, latitude * .pi / 180) }
   public func ecef(altitude: Double = 0) -> SIMD3<Double> {
-    let longitude = radians.x
-    let latitude = radians.y
-    let a = 6_378_137.0
-    let e2 = 0.0066943799901413165
-    let n = a / sqrt(1 - e2 * pow(sin(latitude), 2))
-    return SIMD3(
-      (n + altitude) * cos(latitude) * cos(longitude),
-      (n + altitude) * cos(latitude) * sin(longitude), (n * (1 - e2) + altitude) * sin(latitude))
+    var point = GEVector3()
+    guard ge_wgs84_to_ecef(latitude, longitude, altitude, &point) != 0 else {
+      return SIMD3(repeating: .nan)
+    }
+    return SIMD3(point.x, point.y, point.z)
   }
 }
 
