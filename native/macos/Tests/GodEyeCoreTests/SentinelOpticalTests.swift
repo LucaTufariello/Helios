@@ -113,4 +113,71 @@ final class SentinelOpticalTests: XCTestCase {
       FileManager.default.fileExists(
         atPath: destination.appendingPathComponent("diagnostics.log").path))
   }
+  func testCancellationStopsUnresponsiveOpticalWorkerAndRemovesPartialImages() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let worker = root.appendingPathComponent("stalled.py")
+    try """
+    import json, os, pathlib, signal, sys, time
+    output = pathlib.Path(sys.argv[sys.argv.index('--output') + 1])
+    output.mkdir()
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    (output/'result.json').write_text(json.dumps(dict(version=1, state='processing', workerPID=os.getpid(), createdAt='2026-10-12T10:00:00Z')))
+    for name in ['preview.png', 'true-color.tif', 'source-values.tif', 'selected.tmp.tif']:
+        (output/name).write_bytes(b'partial')
+    (output/'diagnostics.log').write_text('Generated stalled-worker fixture')
+    print(json.dumps(dict(state='processing', stage='Generated stalled worker')), flush=True)
+    time.sleep(20)
+    """.write(to: worker, atomically: true, encoding: .utf8)
+    let destination = root.appendingPathComponent("image")
+    let ready = expectation(description: "Worker is running")
+    let task = Task {
+      try await SarProcessor(python: URL(fileURLWithPath: "/usr/bin/python3"), worker: worker)
+        .renderOptical(
+          request: root.appendingPathComponent("unused.json"), destination: destination
+        ) { _ in ready.fulfill() }
+    }
+    await fulfillment(of: [ready], timeout: 5)
+    let start = Date()
+    task.cancel()
+    do {
+      _ = try await task.value
+      XCTFail("Expected cancellation")
+    } catch { XCTAssertTrue(error is CancellationError) }
+    XCTAssertLessThan(Date().timeIntervalSince(start), 6)
+    for name in ["preview.png", "true-color.tif", "source-values.tif", "selected.tmp.tif"] {
+      XCTAssertFalse(
+        FileManager.default.fileExists(atPath: destination.appendingPathComponent(name).path))
+    }
+    let result = try SarProcessor.read(
+      SentinelOpticalResult.self, from: destination.appendingPathComponent("result.json"))
+    XCTAssertEqual(result.state, .failed)
+    XCTAssertTrue(result.error?.contains("cancelled") == true)
+    XCTAssertTrue(
+      FileManager.default.fileExists(
+        atPath: destination.appendingPathComponent("diagnostics.log").path))
+  }
+
+  func testCancellationPreservesAnExistingDestination() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let preview = root.appendingPathComponent("preview.png")
+    let original = Data("existing saved image".utf8)
+    try original.write(to: preview)
+    let worker = root.appendingPathComponent("worker.py")
+    try "import time; time.sleep(10)".write(to: worker, atomically: true, encoding: .utf8)
+    let task = Task {
+      try await SarProcessor(python: URL(fileURLWithPath: "/usr/bin/python3"), worker: worker)
+        .renderOptical(request: root.appendingPathComponent("unused"), destination: root) { _ in }
+    }
+    task.cancel()
+    do {
+      _ = try await task.value
+      XCTFail("Expected cancellation")
+    } catch { XCTAssertTrue(error is CancellationError) }
+    XCTAssertEqual(try Data(contentsOf: preview), original)
+  }
+
 }

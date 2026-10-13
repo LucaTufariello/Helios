@@ -112,6 +112,123 @@ class SentinelOpticalTests(unittest.TestCase):
         self.assertEqual(json.loads((target/'events.jsonl').read_text().splitlines()[0])['state'],'validating')
         self.assertTrue(self.source.exists())
 
+    def test_remote_read_reopens_after_interruption_without_stale_cache(self):
+        from rasterio.errors import RasterioIOError
+        events=[]
+        actual_open=rasterio.open
+        calls=[]
+        def open_source(*args, **kwargs):
+            if str(args[0]).startswith('https:'):
+                calls.append(rasterio.env.getenv())
+                return actual_open(self.source)
+            return actual_open(*args, **kwargs)
+        real_render=optical.render_dataset
+        count=0
+        def interrupted(*args):
+            nonlocal count
+            count+=1
+            if count==1:raise RasterioIOError('TIFFReadEncodedTile() failed: short transfer')
+            return real_render(*args)
+        with patch.object(rasterio,'open',side_effect=open_source), patch.object(optical,'render_dataset',side_effect=interrupted), patch.object(optical.time,'sleep'):
+            result=optical.render_remote(SCENE,self.bounds,self.destination,'rgb','sentinel2',lambda *e:events.append(e))
+        self.assertGreater(result['validFraction'],0)
+        self.assertEqual(len(calls),2)
+        self.assertIn('/vsicurl/'+SCENE['visualURL'],calls[0]['CPL_VSIL_CURL_NON_CACHED'])
+        self.assertEqual(calls[1]['GDAL_HTTP_MULTIRANGE'],'SERIAL')
+        self.assertEqual(calls[1]['GDAL_HTTP_VERSION'],'1.1')
+        self.assertTrue(any('retrying' in e[1] for e in events))
+        self.assertIn('short transfer',(self.destination/'diagnostics.log').read_text())
+        with rasterio.open(self.destination/'true-color.tif') as output:
+            self.assertEqual(output.crs.to_epsg(),4326)
+
+    def test_remote_retry_exhaustion_is_bounded_and_cleans_partial_files(self):
+        from rasterio.errors import RasterioIOError
+        request=self.root/'request.json';request.write_text(json.dumps(self.request))
+        target=self.root/'retries-failed'
+        calls=0
+        def fail(*args, **kwargs):
+            nonlocal calls
+            calls+=1
+            (target/'preview.png').write_bytes(b'partial')
+            raise RasterioIOError('Read failed: '+('diagnostic detail '*2000))
+        with patch.object(rasterio,'open',side_effect=fail), patch.object(optical.time,'sleep'):
+            with self.assertRaisesRegex(optical.OpticalError,'after 3 attempts'):optical.run(request,target)
+        self.assertEqual(calls,3)
+        self.assertFalse((target/'preview.png').exists())
+        self.assertLessEqual(len((target/'diagnostics.log').read_text()),16000)
+        self.assertEqual(json.loads((target/'result.json').read_text())['state'],'failed')
+        self.assertNotIn('diagnostic detail',json.loads((target/'result.json').read_text())['error'])
+
+    def test_unavailable_remote_asset_is_not_retried(self):
+        from rasterio.errors import RasterioIOError
+        with patch.object(rasterio,'open',side_effect=RasterioIOError('HTTP response code: 404')) as opener, patch.object(optical.time,'sleep') as sleep:
+            with self.assertRaisesRegex(optical.OpticalError,'unavailable from the archive'):
+                optical.render_remote(SCENE,self.bounds,self.destination,'rgb','sentinel2',lambda *e:None)
+        self.assertEqual(opener.call_count,1)
+        sleep.assert_not_called()
+
+    def test_export_failure_does_not_restart_remote_reads(self):
+        from rasterio.errors import RasterioIOError
+        actual_open=rasterio.open
+        def fail_export(dataset,bounds,destination,scene,emit):
+            emit('exporting','Saving',.9)
+            raise RasterioIOError('Disk full')
+        with patch.object(rasterio,'open',side_effect=lambda *a, **kw: actual_open(self.source)) as opener, patch.object(optical,'render_dataset',side_effect=fail_export), patch.object(optical.time,'sleep') as sleep:
+            with self.assertRaisesRegex(optical.OpticalError,'could not be saved'):
+                optical.render_remote(SCENE,self.bounds,self.destination,'rgb','sentinel2',lambda *e:None)
+        self.assertEqual(opener.call_count,1)
+        sleep.assert_not_called()
+
+    def test_cancel_during_retry_backoff_stops_without_new_attempt(self):
+        from rasterio.errors import RasterioIOError
+        with patch.object(rasterio,'open',side_effect=RasterioIOError('Read failed')) as opener, patch.object(optical.time,'sleep',side_effect=optical.OpticalError('Optical image request cancelled.')):
+            with self.assertRaisesRegex(optical.OpticalError,'cancelled'):
+                optical.render_remote(SCENE,self.bounds,self.destination,'rgb','sentinel2',lambda *e:None)
+        self.assertEqual(opener.call_count,1)
+
+
+    def test_truncated_http_response_recovers_with_real_gdal(self):
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        import threading
+        payload=self.source.read_bytes()
+        requests=[]
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *args):pass
+            def do_HEAD(self):
+                self.send_response(200)
+                self.send_header('Content-Length',str(len(payload)))
+                self.send_header('Accept-Ranges','bytes')
+                self.end_headers()
+            def do_GET(self):
+                value=self.headers.get('Range','bytes=0-'+str(len(payload)-1))
+                start,end=map(int,value.removeprefix('bytes=').split('-'))
+                end=min(end,len(payload)-1)
+                body=payload[start:end+1]
+                requests.append((start,end))
+                self.send_response(206)
+                self.send_header('Content-Length',str(len(body)))
+                self.send_header('Content-Range',f'bytes {start}-{end}/{len(payload)}')
+                self.end_headers()
+                # Correct headers, abruptly truncated body: same failure class as
+                # the real archive response, without external network dependence.
+                self.wfile.write(body[:512] if len(requests)==1 else body)
+                self.close_connection=True
+        server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            scene=dict(SCENE,visualURL=f'http://127.0.0.1:{server.server_port}/rgb.tif')
+            events=[]
+            with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',GDAL_HTTP_MAX_RETRY='0',GDAL_HTTP_TIMEOUT='3'), patch.object(optical.time,'sleep'):
+                result=optical.render_remote(scene,self.bounds,self.destination,'rgb','sentinel2',lambda *e:events.append(e))
+            self.assertGreater(result['validFraction'],0)
+            self.assertTrue(any('retrying' in event[1] for event in events))
+            self.assertGreaterEqual(len(requests),2)
+            with rasterio.open(self.destination/'true-color.tif') as raster:
+                self.assertEqual(tuple(raster.read()[:,30,30]),(120,80,40,255))
+        finally:
+            server.shutdown();server.server_close();thread.join(timeout=2)
+
+
     def test_request_json_size_limit_and_destination_collision(self):
         file=self.root/'large.json';file.write_bytes(b' '*(optical.MAX_JSON+1))
         with self.assertRaises(optical.OpticalError):optical.read_json(file)

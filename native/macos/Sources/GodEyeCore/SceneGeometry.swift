@@ -1,29 +1,26 @@
 import Foundation
+import GodEyeSpatial
 import simd
+
+private func spatialVector(_ point: SIMD3<Double>) -> GEVector3 {
+  GEVector3(x: point.x, y: point.y, z: point.z)
+}
+
+private func swiftVector(_ point: GEVector3) -> SIMD3<Double> {
+  SIMD3(point.x, point.y, point.z)
+}
 
 public struct SurfacePoint: Sendable, Equatable {
   public let coordinate: Coordinate
   public let height: Double
   public init?(ecef p: SIMD3<Double>) {
-    guard p.x.isFinite, p.y.isFinite, p.z.isFinite, simd_length(p) > 1 else { return nil }
-    let a = 6_378_137.0
-    let e2 = 0.0066943799901413165
-    let horizontal = hypot(p.x, p.y)
-    var latitude = atan2(p.z, horizontal * (1 - e2))
-    for _ in 0..<10 {
-      let n = a / sqrt(1 - e2 * pow(sin(latitude), 2))
-      let next = atan2(p.z + e2 * n * sin(latitude), horizontal)
-      if abs(next - latitude) < 1e-13 { break }
-      latitude = next
-    }
-    let n = a / sqrt(1 - e2 * pow(sin(latitude), 2))
-    let height = horizontal > 1e-6 ? horizontal / cos(latitude) - n : abs(p.z) - a * sqrt(1 - e2)
+    var point = GEGeographicPoint()
     guard
-      let coordinate = Coordinate(
-        latitude: latitude * 180 / .pi, longitude: atan2(p.y, p.x) * 180 / .pi), height.isFinite
+      ge_wgs84_from_ecef(spatialVector(p), &point) != 0,
+      let coordinate = Coordinate(latitude: point.latitude, longitude: point.longitude)
     else { return nil }
     self.coordinate = coordinate
-    self.height = height
+    self.height = point.height
   }
 }
 
@@ -31,41 +28,24 @@ public struct SceneRay: Sendable {
   public let origin: SIMD3<Double>
   public let direction: SIMD3<Double>
   public init?(origin: SIMD3<Double>, direction: SIMD3<Double>) {
-    guard
-      [origin.x, origin.y, origin.z, direction.x, direction.y, direction.z].allSatisfy(\.isFinite),
-      simd_length(direction) > 1e-12
-    else { return nil }
-    self.origin = origin
-    self.direction = simd_normalize(direction)
+    var ray = GERay()
+    guard ge_ray_make(spatialVector(origin), spatialVector(direction), &ray) != 0 else {
+      return nil
+    }
+    self.origin = swiftVector(ray.origin)
+    self.direction = swiftVector(ray.direction)
   }
   public func ellipsoidDistance() -> Double? {
-    let radii = SIMD3<Double>(6_378_137, 6_378_137, 6_356_752.314245)
-    let o = origin / radii
-    let d = direction / radii
-    let a = simd_dot(d, d)
-    let b = 2 * simd_dot(o, d)
-    let c = simd_dot(o, o) - 1
-    let disc = b * b - 4 * a * c
-    guard disc >= 0 else { return nil }
-    let near = (-b - sqrt(disc)) / (2 * a)
-    let far = (-b + sqrt(disc)) / (2 * a)
-    return near >= 0 ? near : far >= 0 ? far : nil
+    var distance = 0.0
+    let ray = GERay(origin: spatialVector(origin), direction: spatialVector(direction))
+    return ge_ray_ellipsoid_distance(ray, &distance) != 0 ? distance : nil
   }
   public func triangle(_ a: SIMD3<Double>, _ b: SIMD3<Double>, _ c: SIMD3<Double>) -> Double? {
-    let edge1 = b - a
-    let edge2 = c - a
-    let p = simd_cross(direction, edge2)
-    let determinant = simd_dot(edge1, p)
-    guard abs(determinant) > 1e-10 else { return nil }
-    let inverse = 1 / determinant
-    let t = origin - a
-    let u = simd_dot(t, p) * inverse
-    guard u >= -1e-10, u <= 1 + 1e-10 else { return nil }
-    let q = simd_cross(t, edge1)
-    let v = simd_dot(direction, q) * inverse
-    guard v >= -1e-10, u + v <= 1 + 1e-10 else { return nil }
-    let distance = simd_dot(edge2, q) * inverse
-    return distance >= 0 ? distance : nil
+    var distance = 0.0
+    let ray = GERay(origin: spatialVector(origin), direction: spatialVector(direction))
+    return ge_ray_triangle_distance(
+      ray, spatialVector(a), spatialVector(b), spatialVector(c), &distance)
+      != 0 ? distance : nil
   }
 }
 
@@ -77,25 +57,24 @@ public struct CameraPose: Sendable {
   public let right: SIMD3<Double>
   public let up: SIMD3<Double>
   public init(camera: Camera, targetHeight: Double = 0) {
-    let lon = camera.center.radians.x
-    let lat = camera.center.radians.y
-    let normal = SIMD3<Double>(cos(lat) * cos(lon), cos(lat) * sin(lon), sin(lat))
-    let east = SIMD3<Double>(-sin(lon), cos(lon), 0)
-    let north = simd_cross(normal, east)
-    let heading = camera.heading * .pi / 180
-    let tilt = camera.tilt * .pi / 180
-    let horizontal = north * cos(heading) + east * sin(heading)
-    target = camera.center.ecef(altitude: targetHeight)
-    let back = normal * cos(tilt) - horizontal * sin(tilt)
-    eye = target + back * camera.altitude
-    forward = -back
-    right = simd_normalize(simd_cross(forward, horizontal))
-    up = simd_normalize(simd_cross(right, forward))
+    var basis = GECameraBasis()
+    let valid =
+      ge_camera_basis(
+        camera.center.latitude, camera.center.longitude, camera.altitude,
+        camera.heading, camera.tilt, targetHeight, &basis) != 0
+    eye = valid ? swiftVector(basis.eye) : SIMD3(repeating: .nan)
+    target = valid ? swiftVector(basis.target) : SIMD3(repeating: .nan)
+    forward = valid ? swiftVector(basis.forward) : SIMD3(repeating: .nan)
+    right = valid ? swiftVector(basis.right) : SIMD3(repeating: .nan)
+    up = valid ? swiftVector(basis.up) : SIMD3(repeating: .nan)
   }
   public func ray(x: Double, y: Double, aspect: Double) -> SceneRay? {
-    guard x.isFinite, y.isFinite, aspect.isFinite, aspect > 0 else { return nil }
-    return SceneRay(
-      origin: eye, direction: forward + right * x * tan(.pi / 8) * aspect + up * y * tan(.pi / 8))
+    let basis = GECameraBasis(
+      eye: spatialVector(eye), target: spatialVector(target), forward: spatialVector(forward),
+      right: spatialVector(right), up: spatialVector(up))
+    var ray = GERay()
+    guard ge_camera_ray(basis, x, y, aspect, &ray) != 0 else { return nil }
+    return SceneRay(origin: swiftVector(ray.origin), direction: swiftVector(ray.direction))
   }
   // Reverse-Z infinite-far projection avoids globe-scale depth loss at close range.
   // Coordinates are relative to target and normalized by the WGS84 semi-major axis.

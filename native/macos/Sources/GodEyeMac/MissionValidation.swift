@@ -77,12 +77,23 @@ extension ApplicationDelegate {
           bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 32, bitsPerSample: 8,
           samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
           bytesPerRow: 0, bitsPerPixel: 0)!
+        // Write explicit RGBA bytes: setColor with a monochrome NSColor can leave
+        // this RGB bitmap transparent on newer macOS versions.
+        guard let pixels = bitmap.bitmapData else {
+          throw SarError.failed("Missing fixture bitmap")
+        }
         for y in 0..<32 {
           for x in 0..<32 {
-            bitmap.setColor(
-              NSColor(deviceWhite: (x / 8 + y / 8) % 2 == 0 ? 0.25 : 0.75, alpha: 1), atX: x, y: y)
+            let value: UInt8 = (x / 8 + y / 8) % 2 == 0 ? 64 : 192
+            let index = y * bitmap.bytesPerRow + x * 4
+            pixels[index] = value
+            pixels[index + 1] = value
+            pixels[index + 2] = value
+            pixels[index + 3] = 255
           }
         }
+        try require(
+          bitmap.colorAt(x: 0, y: 0)?.alphaComponent == 1, "generated preview fixture is opaque")
         try bitmap.representation(using: .png, properties: [:])!.write(
           to: directory.appendingPathComponent("preview.png"))
         try SatelliteDocuments.save(result, to: directory.appendingPathComponent("result.json"))
@@ -207,6 +218,10 @@ extension ApplicationDelegate {
         try require(
           csv.contains("Note authored") && csv.contains(result.scene!.id),
           "timeline CSV includes times and source identifiers")
+        model.missions.setTask(task.id, done: false)
+        try require(
+          model.missions.brief.tasks.first?.done == false,
+          "completed task reopens in overview queue")
         missionWindow?.makeKeyAndOrderFront(nil)
         for section in [
           "Overview", "Areas", "Evidence", "Timeline", "Objects", "Notes", "Tasks", "Automations",
@@ -243,6 +258,56 @@ extension ApplicationDelegate {
           capture.waitUntilExit()
           try require(capture.terminationStatus == 0, "compact mission timeline rendered")
         }
+        // Capture the same shared workspace in both appearances and at the minimum width.
+        // Generated imagery stays inside the disposable validation library.
+        @MainActor func captureWindow(_ target: NSWindow?, named name: String) async throws {
+          guard let target else { throw SarError.failed("Missing validation window") }
+          target.makeKeyAndOrderFront(nil)
+          try await Task.sleep(for: .milliseconds(800))
+          let capture = Process()
+          capture.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+          capture.arguments = [
+            "-x", "-o", "-l", String(target.windowNumber),
+            root.appendingPathComponent(name + ".png").path,
+          ]
+          try capture.run()
+          capture.waitUntilExit()
+          try require(capture.terminationStatus == 0, name + " rendered")
+        }
+        for (name, appearance) in [
+          ("light", NSAppearance.Name.aqua), ("dark", NSAppearance.Name.darkAqua),
+        ] {
+          missionWindow?.appearance = NSAppearance(named: appearance)
+          window?.appearance = NSAppearance(named: appearance)
+          model.missions.section = "Overview"
+          missionWindow?.setContentSize(NSSize(width: 1180, height: 800))
+          try await captureWindow(missionWindow, named: "design-mission-" + name)
+          missionWindow?.setContentSize(NSSize(width: 1000, height: 680))
+          try await captureWindow(missionWindow, named: "design-mission-compact-" + name)
+          model.panels = []
+          model.showSection("Satellite")
+          model.satellite.page = "Library"
+          window?.setContentSize(NSSize(width: 1360, height: 850))
+          try await captureWindow(window, named: "design-library-" + name)
+          window?.setContentSize(NSSize(width: 1080, height: 620))
+          try await captureWindow(window, named: "design-library-compact-" + name)
+        }
+        model.openPanel(.map)
+        model.focusPanel(.satellite)
+        try require(
+          model.panels.last == .satellite && Set(model.panels).count == model.panels.count,
+          "panel focus preserves one instance per tool")
+        model.closePanel(.satellite)
+        model.focusPanel(.satellite)
+        try require(
+          !model.panels.contains(.satellite), "late panel focus cannot reopen a closed panel")
+        model.revealMap?()
+        window?.setContentSize(NSSize(width: 1360, height: 850))
+        model.showAbout = true
+        try await Task.sleep(for: .milliseconds(600))
+        try require(window?.attachedSheet != nil, "native About sheet opens")
+        try await captureWindow(window?.attachedSheet, named: "native-about")
+        model.showAbout = false
         missionWindow?.orderOut(nil)
         model.showSection("Mission planner")
         try require(missionWindow?.isVisible == true, "mission window reopens with existing state")

@@ -15,9 +15,9 @@ struct SatelliteSection<Content: View>: View {
     VStack(alignment: .leading, spacing: 10) {
       Text(title).font(.headline)
       content
-    }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
-      .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 8))
-      .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary, lineWidth: 1))
+    }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+      .background(WorkspaceDesign.surface, in: RoundedRectangle(cornerRadius: 10))
+      .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(WorkspaceDesign.border))
   }
 }
 
@@ -33,12 +33,14 @@ struct SatellitePanel: View {
         Text("SAR").tag("SAR workflow")
         Text("Optical").tag("Reference imagery")
         Text("Site review").tag("Infrastructure review")
-      }.pickerStyle(.segmented).padding(14)
+      }.pickerStyle(.segmented).labelsHidden().padding(14)
       if satellite.page != "Infrastructure review" && satellite.page != "Library" {
         Picker("Satellite source", selection: $optical.source) {
           ForEach(SatelliteSource.allCases, id: \.self) { Text($0.name).tag($0) }
         }.padding(.horizontal, 16).padding(.vertical, 10).disabled(optical.busy || sar.busy)
       }
+      Text(workflowDescription).font(.caption).foregroundStyle(.secondary)
+        .padding(.horizontal, 16).padding(.bottom, 12)
       Divider()
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
@@ -89,6 +91,16 @@ struct SatellitePanel: View {
         optical.source = .sentinel2
       }
       if satellite.page != "Infrastructure review" { model.reviewOutline = [] }
+    }
+  }
+  private var workflowDescription: String {
+    switch satellite.page {
+    case "Library": "Your saved places and acquisitions. Open an item to work with it on the map."
+    case "Reference imagery":
+      "Find a dated optical acquisition, view it on the map, and retain its source information."
+    case "Infrastructure review":
+      "Compare compatible radar acquisitions over a saved site and review measured changes."
+    default: "Find, download, and calibrate Sentinel-1 radar products."
     }
   }
   private var referenceImagery: some View {
@@ -468,27 +480,97 @@ struct SatelliteLibraryView: View {
   @ObservedObject var optical: OpticalWorkspace
   @ObservedObject var sar: SarWorkspace
   @ObservedObject var missions: MissionWorkspace
+  @State private var query = ""
+  private func matches(_ text: String) -> Bool {
+    let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    return term.isEmpty || text.localizedCaseInsensitiveContains(term)
+  }
+  private var sites: [InfrastructureSite] {
+    satellite.sites.filter { matches($0.name + " " + $0.kind) }
+  }
+  private var images: [SavedOpticalImage] {
+    optical.images.filter { matches($0.title + " " + ($0.result.scene?.id ?? "")) }
+  }
+  private var jobs: [SavedSarJob] {
+    sar.jobs.filter { matches($0.title + " " + $0.result.state.rawValue) }
+  }
+  private func acquisitionDate(_ image: SavedOpticalImage) -> String {
+    guard let value = image.result.scene?.acquiredAt, let date = ProviderParsers.date(value) else {
+      return "Acquisition date unavailable"
+    }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.dateFormat = "d MMM yyyy · HH:mm 'UTC'"
+    return formatter.string(from: date)
+  }
+  private func imageDetails(_ image: SavedOpticalImage) -> String {
+    let result = image.result
+    var detail =
+      "\((result.mode ?? "RGB").uppercased()) · \(result.width ?? 0) × \(result.height ?? 0) px"
+    if let region = result.region {
+      detail += String(
+        format: " · %.4f°, %.4f°", (region.south + region.north) / 2,
+        (region.west + region.east) / 2)
+    }
+    return detail
+  }
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    LazyVStack(alignment: .leading, spacing: 12) {
       if ProcessInfo.processInfo.environment["GODEYE_VALIDATION_ROOT"] != nil {
         Text("Developer validation profile · isolated test library").font(.caption).foregroundStyle(
           .orange)
       }
-      Text("Saved sites · \(satellite.sites.count)").font(.headline)
-      if satellite.sites.isEmpty {
-        Text("Save a boundary in Site review.").font(.caption).foregroundStyle(.secondary)
+      HStack {
+        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+        TextField("Search places, sensors, dates…", text: $query).textFieldStyle(.plain)
+          .accessibilityIdentifier("satellite-library-search")
+        if !query.isEmpty {
+          Button {
+            query = ""
+          } label: {
+            Image(systemName: "xmark.circle.fill")
+          }
+          .buttonStyle(.plain).accessibilityLabel("Clear library search")
+        }
+      }.padding(10).background(WorkspaceDesign.surface, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(WorkspaceDesign.border))
+      HStack {
+        Button("Find optical imagery", systemImage: "photo") {
+          satellite.page = "Reference imagery"
+        }
+        Button("Open SAR workflow", systemImage: "antenna.radiowaves.left.and.right") {
+          satellite.page = "SAR workflow"
+        }
+      }.controlSize(.small)
+      if sites.isEmpty && images.isEmpty && jobs.isEmpty && !query.isEmpty {
+        ContentUnavailableView.search(text: query)
       }
-      ForEach(satellite.sites) { site in
+      WorkspaceSectionHeading(title: "Saved sites", count: sites.count)
+      if satellite.sites.isEmpty {
         HStack {
-          Button(site.name) {
+          Text("No saved site boundaries yet.").font(.callout).foregroundStyle(.secondary)
+          Spacer()
+          Button("Create a site", systemImage: "plus") { satellite.page = "Infrastructure review" }
+        }
+      }
+      ForEach(sites) { site in
+        HStack(spacing: 12) {
+          Image(systemName: "mappin.and.ellipse").font(.title3).foregroundStyle(.tint).frame(
+            width: 28)
+          Button {
             satellite.siteID = site.id
             satellite.page = "Infrastructure review"
             model.setSarSearchRegion(site.region)
             model.focusSatelliteBounds([
               site.region.west, site.region.south, site.region.east, site.region.north,
             ])
-          }.buttonStyle(.plain)
-          Spacer()
+          } label: {
+            VStack(alignment: .leading, spacing: 4) {
+              Text(site.name).fontWeight(.medium)
+              Text(site.kind).font(.caption).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+          }.buttonStyle(.plain).help("Open site on map")
           Button {
             satellite.siteID = site.id
             model.addMissionSite()
@@ -502,11 +584,15 @@ struct SatelliteLibraryView: View {
             Image(systemName: "trash")
           }
           .disabled(satellite.busy).accessibilityLabel("Delete saved site \(site.name)")
-        }.padding(8).background(.quaternary.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+        }.padding(12).background(WorkspaceDesign.surface, in: RoundedRectangle(cornerRadius: 8))
       }
       Divider()
-      Text("Optical images · \(optical.images.count)").font(.headline)
-      ForEach(optical.images) { image in
+      WorkspaceSectionHeading(title: "Optical imagery", count: images.count)
+      if optical.images.isEmpty {
+        Text("Saved optical acquisitions will appear here with a preview and acquisition date.")
+          .font(.callout).foregroundStyle(.secondary)
+      }
+      ForEach(images) { image in
         Button {
           optical.source = image.result.scene?.sensor ?? .sentinel2
           optical.imageID = image.id
@@ -514,13 +600,30 @@ struct SatelliteLibraryView: View {
           satellite.page = "Reference imagery"
           if let bounds = image.result.bounds { model.focusSatelliteBounds(bounds) }
         } label: {
-          Label(image.title, systemImage: "photo").frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(.plain).padding(8)
+          HStack(spacing: 12) {
+            MissionImagePreview(
+              url: image.directory.appendingPathComponent("preview.png"), maximumPixelSize: 160,
+              compact: true
+            )
+            .frame(width: 80, height: 72).background(.black.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            VStack(alignment: .leading, spacing: 5) {
+              Text(image.result.scene?.sensor.shortName ?? "Optical image").fontWeight(.semibold)
+              Text(acquisitionDate(image)).font(.caption).foregroundStyle(.secondary)
+              Text(imageDetails(image)).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "arrow.up.right").foregroundStyle(.secondary)
+          }.padding(10).background(WorkspaceDesign.surface, in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }.buttonStyle(.plain).help("View this acquisition on the map")
       }
       Divider()
-      Text("Radar acquisitions · \(sar.jobs.count)").font(.headline)
-      ForEach(sar.jobs) { job in
+      WorkspaceSectionHeading(title: "Radar processing", count: jobs.count)
+      if sar.jobs.isEmpty {
+        Text("Processed radar acquisitions and job status will appear here.").font(.callout)
+          .foregroundStyle(.secondary)
+      }
+      ForEach(jobs) { job in
         Button {
           sar.selectedJob = job.id
           sar.selectedOutput = job.result.outputs.first?.id ?? "VV"
@@ -528,11 +631,16 @@ struct SatelliteLibraryView: View {
           satellite.page = "SAR workflow"
           if let bounds = sar.overlay?.bounds { model.focusSatelliteBounds(bounds) }
         } label: {
-          VStack(alignment: .leading) {
-            Text(job.title)
-            Text(job.result.state.rawValue.capitalized).font(.caption).foregroundStyle(.secondary)
-          }
-        }.buttonStyle(.plain).padding(8)
+          HStack(spacing: 12) {
+            Image(systemName: "waveform.path").font(.title3).foregroundStyle(.tint).frame(width: 28)
+            VStack(alignment: .leading, spacing: 5) {
+              Text(job.title).fontWeight(.medium).lineLimit(3)
+              Text(job.result.state.rawValue.capitalized).font(.caption).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "arrow.up.right").foregroundStyle(.secondary)
+          }.padding(12).background(WorkspaceDesign.surface, in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }.buttonStyle(.plain)
       }
       if let error = satellite.error { Text(error).font(.caption).foregroundStyle(.orange) }
     }

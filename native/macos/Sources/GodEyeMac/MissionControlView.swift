@@ -51,14 +51,17 @@ struct MissionControlView: View {
       HStack(spacing: 14) {
         Image(systemName: "square.stack.3d.up.fill").font(.title2).foregroundStyle(.tint)
         VStack(alignment: .leading, spacing: 3) {
-          Text(missions.plan?.name ?? "Mission control").font(.title2.weight(.semibold))
+          Text("MISSION CONTROL").font(.system(size: 10, weight: .semibold)).tracking(1.5)
+            .foregroundStyle(.secondary)
+          Text(missions.plan?.name ?? "Mission workspace").font(.title2.weight(.semibold))
           Text(
             "\(missions.brief.areas.count) areas · \(missions.plan?.items.count ?? 0) evidence items · \(missions.brief.observations.count) observations"
           )
           .font(.caption).foregroundStyle(.secondary)
         }
         Spacer()
-        Button("Show map", systemImage: "map") { model.revealMap?() }
+        Button("Show map", systemImage: "map") { model.revealMap?() }.buttonStyle(
+          .borderedProminent)
         Button("Raw data", systemImage: "curlybraces") {
           model.rawScope = "Mission"
           model.openPanel(.raw)
@@ -94,17 +97,24 @@ struct MissionControlView: View {
           ScrollView {
             VStack(spacing: 6) {
               ForEach(sections, id: \.self) { name in
+                if let group = navigationGroup(name) {
+                  Text(group.uppercased()).font(.system(size: 10, weight: .semibold))
+                    .tracking(1).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, name == "Overview" ? 0 : 14).padding(.horizontal, 9)
+                }
                 Button {
                   section = name
                   formError = nil
                 } label: {
                   HStack {
                     Image(systemName: icon(name)).frame(width: 22)
-                    Text(name)
+                    Text(name).fontWeight(section == name ? .semibold : .regular)
                     Spacer()
-                    if name == "Tasks" {
-                      Text("\(missions.brief.tasks.filter { !$0.done }.count)").foregroundStyle(
-                        .secondary)
+                    if let count = navigationCount(name), count > 0 {
+                      Text(count.formatted()).font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary).padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(.quaternary, in: Capsule())
                     }
                   }.padding(9).contentShape(Rectangle())
                     .background(
@@ -127,7 +137,11 @@ struct MissionControlView: View {
             Button("Create mission") { missions.create() }.buttonStyle(.borderedProminent).padding()
           } else {
             HStack {
-              Text(section).font(.title2.weight(.semibold))
+              VStack(alignment: .leading, spacing: 5) {
+                Text(section).font(.title2.weight(.semibold))
+                Text(sectionDescription).font(.callout).foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+              }
               Spacer()
               if ["Evidence", "Objects", "Notes"].contains(section) {
                 TextField("Search \(section.lowercased())", text: $query).textFieldStyle(
@@ -159,7 +173,9 @@ struct MissionControlView: View {
         Spacer()
         Text("Local mission workspace").foregroundStyle(.secondary)
       }.font(.caption).padding(10).lineLimit(2)
-    }.frame(minWidth: 1000, minHeight: 680)
+    }.background(WorkspaceDesign.canvas)
+      .groupBoxStyle(AnalystGroupBoxStyle())
+      .frame(minWidth: 1000, minHeight: 680)
       .onAppear { missions.discardForms = { clearForms() } }
       .onChange(of: [
         areaName, areaPurpose, noteTitle, noteBody, noteReference, objectTitle, taskTitle,
@@ -186,6 +202,37 @@ struct MissionControlView: View {
         }
       }
       .onChange(of: model.sarSearchRegion) { _, region in if let region { useRegion(region) } }
+  }
+  private func navigationGroup(_ name: String) -> String? {
+    switch name {
+    case "Overview": "Plan"
+    case "Evidence": "Analysis"
+    case "Notes": "Coordination"
+    default: nil
+    }
+  }
+  private func navigationCount(_ name: String) -> Int? {
+    switch name {
+    case "Areas": missions.brief.areas.count
+    case "Evidence": missions.plan?.items.count ?? 0
+    case "Objects": missions.brief.observations.count
+    case "Notes": missions.brief.notes.count
+    case "Tasks": missions.brief.tasks.filter { !$0.done }.count
+    default: nil
+    }
+  }
+  private var sectionDescription: String {
+    switch section {
+    case "Areas": "Define the places and boundaries your mission needs to understand."
+    case "Evidence": "Connect source material, inspect provenance, and compare acquisitions."
+    case "Timeline": "Review dated evidence in order and identify gaps in coverage."
+    case "Objects": "Review observations and model suggestions against their source evidence."
+    case "Notes": "Record findings, uncertainty, and supporting references."
+    case "Tasks": "Keep track of the next actions and their due dates."
+    case "Automations": "Check for new acquisitions while GodEye is open."
+    case "Activity": "Trace changes made to this mission."
+    default: "Your working picture: places, evidence, and the next decisions."
+    }
   }
   private func clearForms() {
     areaEditingID = nil
@@ -226,55 +273,91 @@ struct MissionControlView: View {
     }
   }
   private var overview: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      GroupBox("Mission brief") {
-        VStack(alignment: .leading, spacing: 10) {
-          TextField("Mission name", text: $missions.name).textFieldStyle(.roundedBorder)
-          Text("Objective").font(.headline)
-          TextEditor(text: $missions.objective).frame(minHeight: 90).border(.quaternary)
-          Text("Working notes").font(.headline)
-          TextEditor(text: $missions.notes).frame(minHeight: 120).border(.quaternary)
-        }.padding(10)
-      }
-      HStack(spacing: 12) {
-        metric("Areas", missions.brief.areas.count)
-        metric("Evidence", missions.plan?.items.count ?? 0)
-        metric("Needs review", missions.brief.observations.filter { $0.state == .unreviewed }.count)
-        metric("Open tasks", missions.brief.tasks.filter { !$0.done }.count)
-      }
-      GroupBox("Save a map position") {
-        HStack {
-          TextField("View name", text: $missions.itemName).textFieldStyle(.roundedBorder)
-          Button("Save current view") { model.addMissionView() }
-          Text(
-            String(
-              format: "%.5f°, %.5f°", model.camera.center.latitude, model.camera.center.longitude)
-          ).font(.caption).monospacedDigit()
-        }.padding(10)
-      }
-      ForEach(missions.plan?.items.filter { $0.kind == .view } ?? []) { item in
-        HStack {
-          Label(item.title, systemImage: "mappin")
-          Spacer()
-          Button("Restore on map") { show(item) }
+    VStack(alignment: .leading, spacing: 20) {
+      LazyVGrid(
+        columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 12
+      ) {
+        MissionSummaryCard(title: "Areas", count: missions.brief.areas.count, icon: "map") {
+          section = "Areas"
+        }
+        MissionSummaryCard(
+          title: "Evidence", count: missions.plan?.items.count ?? 0, icon: "photo.on.rectangle"
+        ) {
+          section = "Evidence"
+        }
+        MissionSummaryCard(
+          title: "Needs review",
+          count: missions.brief.observations.filter { $0.state == .unreviewed }.count, icon: "scope"
+        ) {
+          section = "Objects"
+        }
+        MissionSummaryCard(
+          title: "Open tasks", count: missions.brief.tasks.filter { !$0.done }.count,
+          icon: "checklist"
+        ) {
+          section = "Tasks"
         }
       }
       if missions.brief.areas.isEmpty {
-        Label(
-          "Start with an area of interest, then add dated evidence and a review task.",
-          systemImage: "info.circle"
-        ).foregroundStyle(.secondary)
-        Button("Define an area") { section = "Areas" }.buttonStyle(.borderedProminent)
+        GroupBox("Start with a place") {
+          Text(
+            "Define an area of interest, connect dated imagery, then record your findings and the questions still open."
+          )
+          .foregroundStyle(.secondary)
+          Button("Define an area", systemImage: "plus") { section = "Areas" }
+            .buttonStyle(.borderedProminent)
+        }
+      }
+      if !missions.brief.tasks.filter({ !$0.done }).isEmpty {
+        GroupBox("Next actions") {
+          VStack(alignment: .leading, spacing: 10) {
+            ForEach(Array(missions.brief.tasks.filter { !$0.done }.prefix(3))) { task in
+              HStack {
+                Image(systemName: "circle").foregroundStyle(.secondary)
+                Text(task.title).lineLimit(2)
+                Spacer()
+                Button("Open task") { section = "Tasks" }
+              }
+            }
+          }
+        }
+      }
+      GroupBox("Mission brief") {
+        VStack(alignment: .leading, spacing: 10) {
+          TextField("Mission name", text: $missions.name).textFieldStyle(.roundedBorder)
+          Text("Objective").font(.callout.weight(.medium))
+          TextEditor(text: $missions.objective).frame(minHeight: 65, maxHeight: 100)
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(WorkspaceDesign.border))
+          DisclosureGroup("Working notes") {
+            TextEditor(text: $missions.notes).frame(minHeight: 100)
+              .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(WorkspaceDesign.border))
+              .padding(.top, 6)
+          }
+        }
+      }
+      GroupBox("Map bookmarks") {
+        VStack(alignment: .leading, spacing: 12) {
+          HStack {
+            TextField("Name this map position", text: $missions.itemName).textFieldStyle(
+              .roundedBorder)
+            Button("Save current view", systemImage: "bookmark") { model.addMissionView() }
+          }
+          Text(
+            String(
+              format: "Current map: %.5f°, %.5f°", model.camera.center.latitude,
+              model.camera.center.longitude)
+          )
+          .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+          ForEach(missions.plan?.items.filter { $0.kind == .view } ?? []) { item in
+            HStack {
+              Label(item.title, systemImage: "mappin")
+              Spacer()
+              Button("Show on map") { show(item) }
+            }
+          }
+        }
       }
     }
-  }
-  private func metric(_ name: String, _ count: Int) -> some View {
-    VStack(alignment: .leading) {
-      Text("\(count)").font(.largeTitle.monospacedDigit())
-      Text(name).font(.caption).foregroundStyle(.secondary)
-    }
-    .frame(maxWidth: .infinity, alignment: .leading).padding(16).background(
-      .quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
   }
   private var areas: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -975,11 +1058,16 @@ struct MissionObservationCard: View {
 }
 struct MissionImagePreview: View {
   let url: URL
+  var maximumPixelSize = 1024
+  var compact = false
   @State private var image: CGImage?
   var body: some View {
     Group {
       if let image {
         Image(decorative: image, scale: 1).resizable().interpolation(.none).scaledToFit()
+      } else if compact {
+        Image(systemName: "photo").foregroundStyle(.secondary)
+          .accessibilityLabel("Preview unavailable")
       } else {
         ContentUnavailableView("Preview unavailable", systemImage: "photo")
       }
@@ -994,7 +1082,7 @@ struct MissionImagePreview: View {
           source, 0,
           [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceThumbnailMaxPixelSize: 1024,
+            kCGImageSourceThumbnailMaxPixelSize: maximumPixelSize,
           ] as CFDictionary)
       }.value
       guard !Task.isCancelled else { return }

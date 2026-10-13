@@ -94,7 +94,7 @@ synchronization, automatic target classification or operational execution.
 The native suite passed 145 checks with nine opt-in provider checks skipped. Eight
 new mission tests cover persistence, fractional observation timestamps, references,
 site snapshots, invalid documents, corruption preservation and comparison bounds.
-The 56 raster processing tests and existing 3,899 web regression tests also passed
+The 56 raster processing tests also passed
 (one legacy test and two Node-version-specific allocation benchmarks were skipped).
 The arm64 release build, signature verification, formatting and module boundaries
 passed.

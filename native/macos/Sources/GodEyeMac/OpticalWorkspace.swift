@@ -52,6 +52,7 @@ struct SavedOpticalImage: Identifiable, Sendable {
   @Published var fraction: Double?
   @Published var status = "Choose a region and search for dated Sentinel-2 L2A images."
   @Published var error: String?
+  @Published private(set) var loadDirectory: URL?
   @Published var images: [SavedOpticalImage] = []
   @Published var imageID: UUID?
   @Published var showOverlay = true
@@ -146,6 +147,7 @@ struct SavedOpticalImage: Identifiable, Sendable {
     let directory = Self.storage.appendingPathComponent(id.uuidString, isDirectory: true)
     let request = Self.storage.appendingPathComponent(".request-\(id.uuidString).json")
     loadGeneration = id
+    loadDirectory = directory
     reloadGeneration = UUID()
     error = nil
     state = .queued
@@ -437,6 +439,16 @@ struct SentinelOpticalView: View {
       Text(optical.status).font(.callout)
       if let error = optical.error {
         Text(error).font(.caption).foregroundStyle(.orange).textSelection(.enabled)
+        if let directory = optical.loadDirectory,
+          FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent("diagnostics.log").path)
+        {
+          Button("Show diagnostic log in Finder") {
+            NSWorkspace.shared.activateFileViewerSelecting([
+              directory.appendingPathComponent("diagnostics.log")
+            ])
+          }
+        }
       }
       if !optical.scenes.isEmpty {
         Picker("Acquisition", selection: $optical.sceneID) {

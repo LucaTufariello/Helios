@@ -9,6 +9,7 @@ let package = Package(
   name: "GodEyeNative",
   platforms: [.macOS(.v14)],
   products: [.executable(name: "GodEyeMac", targets: ["GodEyeMac"])],
+  dependencies: [.package(path: "../shared")],
   targets: [
     .target(name: "CSGP4", exclude: ["UPSTREAM.md"], publicHeadersPath: "include"),
     .target(
@@ -19,7 +20,8 @@ let package = Package(
         .linkedFramework("SystemConfiguration"),
       ]),
     .target(
-      name: "GodEyeCore", dependencies: ["CSGP4", "CScene"],
+      name: "GodEyeCore",
+      dependencies: ["CSGP4", "CScene", .product(name: "GodEyeSpatial", package: "shared")],
       resources: [.copy("Resources")]),
     .executableTarget(
       name: "GodEyeMac", dependencies: ["GodEyeCore"], resources: [.copy("Resources")]),
