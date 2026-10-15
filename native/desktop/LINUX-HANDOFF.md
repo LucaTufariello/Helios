@@ -3,10 +3,16 @@
 Prepared October 13, 2026. This handoff covers the first C++20/Qt desktop slice.
 The full Swift app remains usable on macOS while the remaining workflows migrate.
 
+For an API-based coding model continuing the full migration, start with
+[MIGRATION-HANDOFF.md](../../MIGRATION-HANDOFF.md). It includes the remaining
+workflow inventory, implementation order and both-platform acceptance checks.
+
 ## Transfer the current source
 
-The current changes are local and uncommitted. Cloning an older remote revision
-will not include this work. A source-only snapshot is prepared at:
+The desktop baseline was committed locally as `f40d08a`; publication was left to
+the user. Verify the Linux checkout contains that commit and the newer root
+`MIGRATION-HANDOFF.md`. An older remote revision will not include this work.
+The source-only snapshot prepared before that commit is at:
 
 `output/handoff/godeye-desktop-source-2026-10-13.tar.gz`
 
@@ -15,7 +21,9 @@ current native source, tests, fixtures and documentation, with no Git history,
 compiled Mac binaries, credentials, downloaded satellite datasets or user mission
 library. It omits the retired website. Keep the Mac checkout as the Git working
 copy; use the snapshot as a separate test checkout, not an overlay on older code.
-The adjacent SHA-256 file can verify transfer integrity.
+The adjacent SHA-256 file can verify transfer integrity. This October 13 snapshot
+does not contain later handoff documentation or subsequent changes; prefer the
+updated Git checkout once the user has pushed it.
 
 ## Prepare Omarchy
 
