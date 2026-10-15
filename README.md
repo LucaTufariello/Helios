@@ -104,6 +104,7 @@ and complete manual UI coverage are separate acceptance checks.
 
 ## Guides
 
+- [API model handoff: complete the macOS/Linux migration](MIGRATION-HANDOFF.md)
 - [Product roadmap and next implementation milestones](docs/ROADMAP.md)
 - [Cross-platform architecture and Linux handoff](docs/CROSS-PLATFORM.md)
 - [Architecture and native rendering](docs/NATIVE-MACOS.md)
