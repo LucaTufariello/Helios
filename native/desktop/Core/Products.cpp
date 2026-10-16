@@ -1,5 +1,6 @@
 #include "Products.h"
 #include "Missions.h"
+#include "WorkerJob.h"
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -67,6 +68,13 @@ QVector<ProductLayer> readProducts(const QString &manifest, bool decodeImages) {
   const QFileInfo info(manifest);
   const QString directory = info.absolutePath();
   QString jobID = QFileInfo(directory).fileName();
+  if (jobID == "product") {
+    const auto parent = QFileInfo(directory).dir();
+    const auto owned = WorkerJob::readRecord(parent.filePath("run.json"));
+    if (owned["version"] == 1 && owned["id"] == parent.dirName() &&
+        !QUuid(parent.dirName()).isNull())
+      jobID = parent.dirName();
+  }
   if (QUuid(jobID).isNull())
     jobID = QUuid::createUuidV5(QUuid("AD031149-730B-4BCA-9916-3AFB651D60DC"),
                                 QCryptographicHash::hash(bytes, QCryptographicHash::Sha256))
@@ -114,6 +122,7 @@ QVector<ProductLayer> readProducts(const QString &manifest, bool decodeImages) {
       const auto scene = root["scene"].toObject();
       p.sourceID = scene["id"].toString();
       p.acquisition = scene["acquiredAt"].toString();
+      p.sensor = scene["platform"].toString();
       require(!scene["platform"].toString().isEmpty() && scene["platform"].toString().size() <= 120,
               "The optical sensor/platform identifier is missing or invalid.");
       p.label = scene["platform"].toString() + " · " + p.band + " · " + dateLabel(p.acquisition);
@@ -122,6 +131,7 @@ QVector<ProductLayer> readProducts(const QString &manifest, bool decodeImages) {
       const auto metadata = root["metadata"].toObject();
       p.sourceID = metadata["inputName"].toString();
       p.acquisition = metadata["acquisitionStart"].toString();
+      p.sensor = metadata["satellite"].toString();
       require(!metadata["satellite"].toString().isEmpty() &&
                   metadata["satellite"].toString().size() <= 120,
               "The radar satellite identifier is missing or invalid.");
@@ -159,8 +169,10 @@ QVector<ProductLayer> readProducts(const QString &manifest, bool decodeImages) {
 QJsonObject ProductLayer::missionEvidence() const {
   QJsonArray b{bounds.west, bounds.south, bounds.east, bounds.north};
   QJsonObject a{{"sourceID", sourceID},
-                {"sensor", kind == "radar" ? metadata["metadata"].toObject()["satellite"].toString()
-                                           : metadata["scene"].toObject()["platform"].toString()},
+                {"sensor", !sensor.isEmpty() ? sensor
+                           : kind == "radar"
+                               ? metadata["metadata"].toObject()["satellite"].toString()
+                               : metadata["scene"].toObject()["platform"].toString()},
                 {"bounds", b},
                 {"displayBand", band}};
   const auto time = QDateTime::fromString(acquisition, Qt::ISODateWithMs);

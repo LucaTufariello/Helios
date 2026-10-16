@@ -13,6 +13,22 @@ final class MissionOperationsTests: XCTestCase {
     addTeardownBlock { try? FileManager.default.removeItem(at: root) }
     return root.appendingPathComponent("plans.json")
   }
+  private func onnxObservation() -> MissionObservation {
+    var item = MissionObservation(
+      title: "Generated proposal", category: "Building",
+      coordinate: Coordinate(latitude: 44.01, longitude: 8.01)!,
+      method: "ONNX CPU proposal · GENERATED-QA-detector.onnx")
+    item.modelScore = 0.81
+    item.modelName = "GENERATED-QA-detector.onnx"
+    item.inputSHA256 = String(repeating: "a", count: 64)
+    item.inputTransform = "RGB; normalized upper-left XYXY"
+    item.modelSHA256 = String(repeating: "b", count: 64)
+    item.modelContractSHA256 = String(repeating: "c", count: 64)
+    item.modelBackend = "onnx-cpu"
+    item.imageBox = [0.1, 0.2, 0.6, 0.7]
+    item.imagePixelBox = [20, 40, 120, 140]
+    return item
+  }
   func testLegacyMissionRemainsReadableWithoutBrief() throws {
     let file = try file()
     let old = MissionPlan(name: "Legacy")
@@ -66,6 +82,11 @@ final class MissionOperationsTests: XCTestCase {
     observation.inputSHA256 = String(repeating: "a", count: 64)
     observation.inputTransform = "Vision scaleFill"
     observation.state = .uncertain
+    XCTAssertNil(observation.modelSHA256)
+    XCTAssertNil(observation.modelContractSHA256)
+    XCTAssertNil(observation.modelBackend)
+    XCTAssertNil(observation.imageBox)
+    XCTAssertNil(observation.imagePixelBox)
     brief.observations = [observation]
     var note = MissionNote(title: "Cross-check", body: "Compare with another dated acquisition.")
     note.areaID = area.id
@@ -79,6 +100,85 @@ final class MissionOperationsTests: XCTestCase {
     let file = try file()
     try MissionDocuments.save([mission], to: file)
     XCTAssertEqual(try MissionDocuments.load(from: file), [mission])
+  }
+  func testONNXModelProvenanceHashesAndBackendsAreStrict() {
+    var item = onnxObservation()
+    XCTAssertTrue(item.isValid)
+    item.modelBackend = "onnx-tinyyolov2-voc-cpu"
+    XCTAssertTrue(item.isValid)
+    for invalid in ["", "coreml", "onnx-gpu", "onnx-cpu "] {
+      item.modelBackend = invalid
+      XCTAssertFalse(item.isValid, invalid)
+    }
+    for field in [
+      \MissionObservation.modelSHA256, \MissionObservation.modelContractSHA256,
+    ] {
+      for invalid in [
+        "", String(repeating: "b", count: 63), String(repeating: "B", count: 64),
+        String(repeating: "g", count: 64),
+      ]
+      {
+        item = onnxObservation()
+        item[keyPath: field] = invalid
+        XCTAssertFalse(item.isValid, invalid)
+      }
+      item = onnxObservation()
+      item[keyPath: field] = nil
+      XCTAssertFalse(item.isValid)
+    }
+    item = onnxObservation()
+    item.modelBackend = nil
+    XCTAssertFalse(item.isValid)
+    item = onnxObservation()
+    item.imageBox = nil
+    XCTAssertFalse(item.isValid)
+    item = onnxObservation()
+    item.imagePixelBox = nil
+    XCTAssertFalse(item.isValid)
+  }
+  func testONNXImageBoxesAreFiniteOrderedAndBounded() {
+    var item = onnxObservation()
+    item.imageBox = [0, 0, 1, 1]
+    item.imagePixelBox = [0, 0, 2048, 2048]
+    XCTAssertTrue(item.isValid)
+    let invalidNormalized: [[Double]] = [
+      [], [0, 0, 1], [0, 0, 1, 1, 1], [-0.1, 0, 1, 1], [0, 0, 1.01, 1],
+      [0.5, 0, 0.5, 1], [0, 1, 1, 0], [.nan, 0, 1, 1], [0, 0, .infinity, 1],
+    ]
+    for box in invalidNormalized {
+      item = onnxObservation()
+      item.imageBox = box
+      XCTAssertFalse(item.isValid, "\(box)")
+    }
+    let invalidPixels: [[Double]] = [
+      [], [0, 0, 200], [0, 0, 200, 200, 200], [-1, 0, 200, 200], [0, 0, 2049, 200],
+      [20, 0, 20, 200], [0, 140, 200, 40], [0, .nan, 200, 200], [0, 0, 200, .infinity],
+    ]
+    for box in invalidPixels {
+      item = onnxObservation()
+      item.imagePixelBox = box
+      XCTAssertFalse(item.isValid, "\(box)")
+    }
+  }
+  func testInvalidONNXProvenanceCannotReplaceOrLoadMissionDocument() throws {
+    let file = try file()
+    var mission = MissionPlan(name: "Generated ONNX review")
+    mission.brief = MissionBrief()
+    mission.brief?.observations = [onnxObservation()]
+    try MissionDocuments.save([mission], to: file)
+    let before = try Data(contentsOf: file)
+    mission.brief?.observations[0].modelContractSHA256 = "invalid"
+    XCTAssertThrowsError(try MissionDocuments.save([mission], to: file))
+    XCTAssertEqual(try Data(contentsOf: file), before)
+    var document = try XCTUnwrap(
+      JSONSerialization.jsonObject(with: before) as? [[String: Any]])
+    var brief = try XCTUnwrap(document[0]["brief"] as? [String: Any])
+    var observations = try XCTUnwrap(brief["observations"] as? [[String: Any]])
+    observations[0]["modelBackend"] = "onnx-gpu"
+    brief["observations"] = observations
+    document[0]["brief"] = brief
+    try JSONSerialization.data(withJSONObject: document).write(to: file)
+    XCTAssertThrowsError(try MissionDocuments.load(from: file))
   }
   func testDanglingEvidenceAndAreaReferencesRejected() throws {
     var brief = MissionBrief()

@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QtConcurrent>
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <limits>
 #include <numbers>
@@ -17,6 +18,13 @@ namespace godeye {
 namespace {
 QString key(TileID id, bool streets, bool terrain) {
   return (terrain ? "t:" : streets ? "s:" : "b:") + id.key();
+}
+quint64 terrainKey(TileID id) {
+  return (quint64(id.zoom) << 32) | (quint64(id.x) << 16) | quint64(id.y);
+}
+bool indexedTerrain(TileID id) {
+  return id.zoom >= 0 && id.zoom <= 14 && id.x >= 0 && id.x < (1 << id.zoom) && id.y >= 0 &&
+         id.y < (1 << id.zoom);
 }
 } // namespace
 TileCache::TileCache(const QString &directory, bool networking, QObject *parent)
@@ -84,7 +92,8 @@ void TileCache::request(const QVector<TileID> &tiles, bool streets, bool terrain
       cache_[r.key]->accessed = ++clock_;
       continue;
     }
-    if (!active_.contains(r.key) && failedUntil_.value(r.key) <= now)
+    if (!active_.contains(r.key) && !decodingKeys_.contains(r.key) &&
+        failedUntil_.value(r.key) <= now)
       queue_.append(r);
   }
   const auto active = active_;
@@ -101,7 +110,8 @@ void TileCache::pump() {
   }
   while (active_.size() + decoding_ < 4 && !queue_.isEmpty()) {
     const auto r = queue_.takeFirst();
-    if (!wanted_.contains(r.key) || active_.contains(r.key) || cache_.contains(r.key))
+    if (!wanted_.contains(r.key) || active_.contains(r.key) || decodingKeys_.contains(r.key) ||
+        cache_.contains(r.key))
       continue;
     const QString base =
         r.terrain ? "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/"
@@ -140,16 +150,18 @@ void TileCache::pump() {
       reply->deleteLater();
       if (ok && wanted_.contains(r.key)) {
         ++decoding_;
+        decodingKeys_.insert(r.key);
         using Result = std::pair<std::shared_ptr<TileData>, QString>;
         auto *watcher = new QFutureWatcher<Result>(this);
         connect(watcher, &QFutureWatcher<Result>::finished, this, [this, watcher, r] {
           const auto result = watcher->result();
           watcher->deleteLater();
           --decoding_;
+          decodingKeys_.remove(r.key);
           if (result.first) {
             result.first->revision = ++clock_;
             result.first->accessed = clock_;
-            cache_[r.key] = result.first;
+            store(r.key, result.first, r.terrain);
             evict();
             if (r.terrain)
               emit terrainChanged();
@@ -176,6 +188,27 @@ void TileCache::pump() {
     });
   }
 }
+void TileCache::store(const QString &entry, std::shared_ptr<TileData> data, bool terrain) {
+  if (terrain && indexedTerrain(data->id)) {
+    const auto numeric = terrainKey(data->id);
+    if (!terrainIndex_.contains(numeric)) {
+      ++terrainCounts_[size_t(data->id.zoom)];
+      terrainLevels_ |= 1u << data->id.zoom;
+    }
+    terrainIndex_[numeric] = data.get();
+  }
+  cache_[entry] = std::move(data);
+}
+void TileCache::removeTerrain(const TileData &data) {
+  if (data.elevations.empty() || !indexedTerrain(data.id))
+    return;
+  const auto entry = terrainIndex_.find(terrainKey(data.id));
+  if (entry == terrainIndex_.end() || entry.value() != &data)
+    return;
+  terrainIndex_.erase(entry);
+  if (--terrainCounts_[size_t(data.id.zoom)] == 0)
+    terrainLevels_ &= ~(1u << data.id.zoom);
+}
 void TileCache::evict() {
   while (cache_.size() > 224) {
     auto candidate = cache_.end();
@@ -188,6 +221,7 @@ void TileCache::evict() {
     }
     if (candidate == cache_.end())
       break;
+    removeTerrain(*candidate.value());
     cache_.erase(candidate);
   }
 }
@@ -198,17 +232,29 @@ std::shared_ptr<TileData> TileCache::image(TileID id, bool streets) {
   return value;
 }
 std::optional<double> TileCache::height(Coordinate p) const {
-  for (int z = 14; z >= 0; --z) {
-    const auto id = TileID::containing(p, z);
-    const auto data = cache_.value(key(id, false, true));
-    if (!data || data->elevations.size() != 256 * 256)
+  if (terrainLevels_ == 0 || !p.valid())
+    return {};
+  const double latitude = std::clamp(p.latitude, -85.05112878, 85.05112878) *
+                          std::numbers::pi / 180;
+  const double mercatorX = (p.longitude + 180) / 360;
+  const double mercatorY = (1 - std::asinh(std::tan(latitude)) / std::numbers::pi) / 2;
+  unsigned remaining = terrainLevels_;
+  while (remaining) {
+    const int z = int(std::bit_width(remaining)) - 1;
+    remaining &= ~(1u << z);
+    const int count = 1 << z;
+    const double scaledX = mercatorX * count, scaledY = mercatorY * count;
+    const int rawX = int(std::floor(scaledX));
+    const TileID id{rawX == count ? 0 : rawX,
+                    std::clamp(int(std::floor(scaledY)), 0, count - 1), z};
+    const auto *data = terrainIndex_.value(terrainKey(id), nullptr);
+    if (!data)
       continue;
-    const double n = 1 << z,
-                 lat = std::clamp(p.latitude, -85.05112878, 85.05112878) * std::numbers::pi / 180;
-    double tx = (p.longitude + 180) / 360 * n - id.x;
+    const double n = count;
+    double tx = scaledX - id.x;
     if (tx > 1)
       tx -= n;
-    const double ty = (1 - std::asinh(std::tan(lat)) / std::numbers::pi) / 2 * n - id.y;
+    const double ty = scaledY - id.y;
     const double x = std::clamp(tx * 256 - 0.5, 0.0, 255.0),
                  y = std::clamp(ty * 256 - 0.5, 0.0, 255.0);
     const int x0 = int(x), y0 = int(y), x1 = std::min(x0 + 1, 255), y1 = std::min(y0 + 1, 255);
@@ -227,7 +273,8 @@ void TileCache::injectTerrain(TileID tile, const std::vector<float> &heights) {
   data->elevations = heights;
   data->revision = ++clock_;
   data->accessed = clock_;
-  cache_[key(tile, false, true)] = data;
+  store(key(tile, false, true), data, true);
+  evict();
   emit terrainChanged();
   emit changed();
 }

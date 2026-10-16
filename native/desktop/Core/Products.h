@@ -7,7 +7,7 @@
 
 namespace godeye {
 struct ProductLayer {
-  QString id, jobID, kind, label, band, acquisition, sourceID;
+  QString id, jobID, kind, label, band, acquisition, sourceID, sensor;
   QString manifest, preview, geotiff, scientific;
   Bounds bounds;
   QImage image;

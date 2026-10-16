@@ -90,6 +90,22 @@ class ChangeReviewTests(unittest.TestCase):
         _, result, _ = self.process()
         self.assertEqual(result['candidates'], [])
 
+    def test_portable_owned_job_retains_source_uuid(self):
+        owned = self.root/str(uuid.uuid4())
+        owned.mkdir()
+        save_json(owned/'run.json', dict(version=1, id=owned.name, operation='process'))
+        original = self.before.name.lower()
+        self.before.rename(owned/'product')
+        self.request['beforeDirectory'] = str(owned/'product')
+        _, result, _ = self.process()
+        self.assertEqual(result['evidence'][0]['jobID'], owned.name)
+        self.assertEqual(result['sourceJobIDs'][0], owned.name)
+        self.assertNotEqual(result['sourceJobIDs'][0], 'product')
+        self.assertNotEqual(result['sourceJobIDs'][0], original)
+        save_json(owned/'run.json', dict(version=1, id=str(uuid.uuid4())))
+        with self.assertRaises(review.ReviewError):
+            review.source_job_id(owned/'product')
+
     def test_decrease_and_small_patch_rejection(self):
         data = np.full((96, 96), .1)
         data[25:60, 25:60] = .025

@@ -36,6 +36,13 @@ public struct MissionObservation: Codable, Identifiable, Equatable, Sendable {
   public var modelName: String?
   public var inputSHA256: String?
   public var inputTransform: String?
+  public var modelSHA256: String?
+  public var modelContractSHA256: String?
+  public var modelBackend: String?
+  /// ONNX proposals use normalized upper-left XYXY preview coordinates.
+  public var imageBox: [Double]?
+  /// The corresponding upper-left XYXY coordinates in the retained PNG preview.
+  public var imagePixelBox: [Double]?
   public var observedAt: Date?
   public var createdAt = Date()
   public init(
@@ -55,11 +62,31 @@ public struct MissionObservation: Codable, Identifiable, Equatable, Sendable {
       && (modelScore.map { $0.isFinite && (0...1).contains($0) } ?? true)
       && (modelName.map { !$0.isEmpty && $0.count <= 200 } ?? true)
       && (inputTransform.map { $0.count <= 200 } ?? true)
-      && (inputSHA256.map {
-        $0.count == 64 && $0.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
-      } ?? true)
+      && (inputSHA256.map(Self.validSHA256) ?? true)
+      && validModelProvenance
       && (observedAt?.timeIntervalSince1970.isFinite ?? true)
       && createdAt.timeIntervalSince1970.isFinite
+  }
+  private static func validSHA256(_ value: String) -> Bool {
+    value.count == 64
+      && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
+  }
+  private static func validImageBox(_ box: [Double], maximum: Double) -> Bool {
+    box.count == 4 && box.allSatisfy { $0.isFinite && (0...maximum).contains($0) }
+      && box[0] < box[2] && box[1] < box[3]
+  }
+  private var validModelProvenance: Bool {
+    // These fields are absent from legacy manual and Core ML observations.
+    if modelSHA256 == nil && modelContractSHA256 == nil && modelBackend == nil
+      && imageBox == nil && imagePixelBox == nil
+    { return true }
+    guard let modelSHA256, let modelContractSHA256, let modelBackend, let imageBox,
+      let imagePixelBox
+    else { return false }
+    return Self.validSHA256(modelSHA256) && Self.validSHA256(modelContractSHA256)
+      && ["onnx-cpu", "onnx-tinyyolov2-voc-cpu"].contains(modelBackend)
+      && Self.validImageBox(imageBox, maximum: 1)
+      && Self.validImageBox(imagePixelBox, maximum: 2048)
   }
 }
 public struct MissionNote: Codable, Identifiable, Equatable, Sendable {

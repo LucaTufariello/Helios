@@ -67,6 +67,83 @@ private slots:
     QVERIFY_THROWS_EXCEPTION(std::runtime_error, restored.setField("name", " "));
     QCOMPARE(restored.selected()["name"].toString(), QString("Generated QA"));
   }
+  void observationModelProvenanceIsOptionalCompleteAndBounded() {
+    Missions m;
+    m.create("Generated provenance review");
+    m.addObservation("Object", "Fixture", {45, 9});
+    const auto base = m.plans();
+    auto observation =
+        m.selected()["brief"].toObject()["observations"].toArray().first().toObject();
+    const auto withObservation = [&](const QJsonObject &value) {
+      auto plans = base;
+      auto plan = plans.first().toObject();
+      auto brief = plan["brief"].toObject();
+      brief["observations"] = QJsonArray{value};
+      plan["brief"] = brief;
+      plans[0] = plan;
+      return plans;
+    };
+    validateMissions(withObservation(observation));
+    // Existing Core ML observations have source provenance without an ONNX field group.
+    observation["inputSHA256"] = QString(64, 'a');
+    observation["modelName"] = "GENERATED-QA-detector.mlmodel";
+    observation["inputTransform"] = "Vision scaleFill";
+    validateMissions(withObservation(observation));
+    for (const auto key :
+         {"modelSHA256", "modelContractSHA256", "modelBackend", "imageBox", "imagePixelBox"})
+      observation[key] = QJsonValue::Null;
+    validateMissions(withObservation(observation));
+    observation["modelSHA256"] = QString(64, 'b');
+    observation["modelContractSHA256"] = QString(64, 'c');
+    observation["modelBackend"] = "onnx-cpu";
+    observation["imageBox"] = QJsonArray{0, 0, 1, 1};
+    observation["imagePixelBox"] = QJsonArray{0, 0, 2048, 2048};
+    observation["futureModelExtension"] = QJsonObject{{"preserve", "unchanged"}};
+    validateMissions(withObservation(observation));
+    observation["modelBackend"] = "onnx-tinyyolov2-voc-cpu";
+    validateMissions(withObservation(observation));
+    for (const auto key :
+         {"modelSHA256", "modelContractSHA256", "modelBackend", "imageBox", "imagePixelBox"}) {
+      auto incomplete = observation;
+      incomplete.remove(key);
+      QVERIFY_EXCEPTION_THROWN(validateMissions(withObservation(incomplete)), std::runtime_error);
+      incomplete[key] = QJsonValue::Null;
+      QVERIFY_EXCEPTION_THROWN(validateMissions(withObservation(incomplete)), std::runtime_error);
+    }
+    const QList<QPair<QString, QJsonValue>> invalidFields{
+        {"inputSHA256", QString(64, 'A')},
+        {"inputSHA256", QString(64, 'a') + "\n"},
+        {"inputSHA256", 12},
+        {"modelSHA256", QString(63, 'b')},
+        {"modelContractSHA256", QString(64, 'G')},
+        {"modelBackend", "coreml"},
+        {"imageBox", QJsonArray{0, 0, 1}},
+        {"imageBox", QJsonArray{0, 0, 1.001, 1}},
+        {"imageBox", QJsonArray{.5, 0, .5, 1}},
+        {"imageBox", QJsonArray{0, 0, "1", 1}},
+        {"imagePixelBox", QJsonArray{0, 0, 2049, 2048}},
+        {"imagePixelBox", QJsonArray{-1, 0, 200, 200}},
+        {"imagePixelBox", QJsonArray{0, 20, 200, 20}},
+        {"imagePixelBox", QJsonArray{0, 0, QJsonValue::Null, 20}}};
+    for (const auto &field : invalidFields) {
+      auto invalid = observation;
+      invalid[field.first] = field.second;
+      QVERIFY_EXCEPTION_THROWN(validateMissions(withObservation(invalid)), std::runtime_error);
+    }
+    QTemporaryDir directory;
+    const auto filename = directory.filePath("missions.json");
+    QFile file(filename);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(QJsonDocument(withObservation(observation)).toJson());
+    file.close();
+    m.load(filename);
+    m.addTask("Retain provenance extensions");
+    m.save(filename);
+    Missions reopened;
+    reopened.load(filename);
+    QCOMPARE(reopened.selected()["brief"].toObject()["observations"].toArray().first(),
+             QJsonValue(observation));
+  }
   void corruptFileAndConflictPreserved() {
     QTemporaryDir directory;
     const auto file = directory.filePath("missions.json");
@@ -140,6 +217,29 @@ private slots:
     QCOMPARE(dateLabel(0), QString("2001-01-01 00:00:00 UTC"));
     QCOMPARE(dateLabel("2026-10-13T12:34:56.123Z"), QString("2026-10-13 12:34:56 UTC"));
     QCOMPARE(dateLabel(QJsonValue()), QString("Time unavailable"));
+    QTemporaryDir directory;
+    Missions m;
+    m.create("UTC compatibility");
+    auto plans = m.plans();
+    auto p = plans[0].toObject();
+    p["createdAt"] = "2026-10-13T12:34:56.123Z";
+    p["updatedAt"] = "2026-10-13T14:34:56.123+02:00";
+    plans[0] = p;
+    validateMissions(plans);
+    const auto path = directory.filePath("iso-plans.json");
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(QJsonDocument(plans).toJson());
+    file.close();
+    m.load(path);
+    m.save(path);
+    Missions reopened;
+    reopened.load(path);
+    QCOMPARE(reopened.selected()["createdAt"], p["createdAt"]);
+    QCOMPARE(reopened.selected()["updatedAt"], p["updatedAt"]);
+    p["createdAt"] = "2026-10-13T12:34:56";
+    plans[0] = p;
+    QVERIFY_EXCEPTION_THROWN(validateMissions(plans), std::runtime_error);
   }
   void opticalProductAndExportPreserveBytes() {
     QTemporaryDir d;
