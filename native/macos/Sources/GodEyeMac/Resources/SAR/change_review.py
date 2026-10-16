@@ -16,6 +16,7 @@ from pathlib import Path
 import signal
 import time
 import traceback
+import uuid
 
 import numpy as np
 import rasterio
@@ -38,6 +39,22 @@ def read_json(path):
     if path.stat().st_size > 1024 * 1024:
         raise ReviewError('The saved acquisition metadata exceeds the size limit.')
     return json.loads(path.read_text(encoding='utf-8'))
+
+
+def source_job_id(directory):
+    """Keep source UUIDs for both legacy jobs and the portable owned-job layout."""
+    try:
+        return str(uuid.UUID(directory.name))
+    except ValueError:
+        if directory.name == 'product':
+            try:
+                identity = str(uuid.UUID(directory.parent.name))
+                record = read_json(directory.parent/'run.json')
+                if record.get('version') == 1 and str(uuid.UUID(record.get('id', ''))) == identity:
+                    return identity
+            except (OSError, ValueError, TypeError):
+                pass
+        raise ReviewError('A source acquisition lost its saved job UUID. Import the complete original job folder.') from None
 
 
 def timestamp(value):
@@ -201,7 +218,7 @@ def analyze(request, destination, emit, save_json):
     outputs = admit_pair(*records, pol)
     evidence = []
     for directory, record, output in zip(directories, records, outputs):
-        evidence.append(dict(jobID=directory.name, product=record['inputName'], metadata=record['metadata'], options=record['options'],
+        evidence.append(dict(jobID=source_job_id(directory), product=record['inputName'], metadata=record['metadata'], options=record['options'],
                              metadataSHA256=hashlib.sha256((directory/'result.json').read_bytes()).hexdigest(), scientific=output['scientific'],
                              engine=record.get('engine', {}), processingStages=record.get('processingStages', []), output=output))
     files = [safe_file(d, o['scientific']) for d, o in zip(directories, outputs)]
@@ -302,7 +319,7 @@ def run(request_file, destination, emit, save_json):
         emit('validating', 'Checking dates, geometry, processing settings and site coverage', .02)
         request = read_json(Path(request_file))
         result.update(site=request.get('site'), options=request.get('options'),
-                      sourceJobIDs=[Path(request.get(k, '')).name for k in ('beforeDirectory', 'afterDirectory')])
+                      sourceJobIDs=[source_job_id(Path(request.get(k, ''))) for k in ('beforeDirectory', 'afterDirectory')])
         save_json(destination/'result.json', result)
         result.update(analyze(request, destination, emit, save_json))
         result.update(state='completed', completedAt=dt.datetime.now(dt.timezone.utc).isoformat(), elapsedSeconds=time.monotonic()-started)

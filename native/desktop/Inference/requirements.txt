@@ -1,0 +1,5 @@
+# Optional local assistance environment. No models are installed or downloaded.
+numpy==2.5.4
+Pillow==12.3.0
+onnx==1.19.1
+onnxruntime==1.23.2

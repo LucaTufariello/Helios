@@ -1,4 +1,5 @@
 #include "MissionWindow.h"
+#include "MissionEditor.h"
 #include <QAction>
 #include <QComboBox>
 #include <QFileDialog>
@@ -91,6 +92,16 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
   action("Open…", [this] { openLibrary(); })->setShortcut(QKeySequence::Open);
   action("Save", [this] { save(); })->setShortcut(QKeySequence::Save);
   action("Save as…", [this] { save(true); })->setShortcut(QKeySequence::SaveAs);
+  action("Delete selected mission…", [this] {
+    if (!resolveDrafts() || missions_.selectedID().isEmpty())
+      return;
+    if (QMessageBox::question(
+            this, "Delete mission",
+            "Remove this mission and its entries from the library? Source acquisitions remain "
+            "available. The next save retains a last-good library backup.",
+            QMessageBox::Cancel | QMessageBox::Yes) == QMessageBox::Yes)
+      run([this] { missions_.removeMission(missions_.selectedID()); });
+  });
   action("Show map", [this] {
     map_.window()->show();
     map_.window()->raise();
@@ -101,7 +112,9 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
   summary_ = new QLabel;
   summary_->setWordWrap(true);
   layout->addWidget(summary_);
-  auto *tabs = new QTabWidget;
+  tabs_ = new QTabWidget;
+  tabs_->setObjectName("missionTabs");
+  auto *tabs = tabs_;
   layout->addWidget(tabs, 1);
   setCentralWidget(root);
   auto page = [&](const QString &name) {
@@ -144,7 +157,7 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
     captureMission_ = missions_.selectedID();
     if (captureMission_.isEmpty())
       return;
-    map_.beginRegion();
+    map_.beginRegion(this);
     map_.window()->raise();
   });
   button("Add area", areaPage, [this] {
@@ -166,6 +179,9 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
     }
   });
   button("Remove area…", areaPage, [this] { remove(areas_, "areas"); });
+  button("Edit selected area…", areaPage, [this] {
+    run([this] { editMissionEntry(this, missions_, "areas", selectedID(areas_)); });
+  });
   auto *evidencePage = page("Evidence");
   evidence_ = new QListWidget;
   evidencePage->addWidget(evidence_, 1);
@@ -188,6 +204,9 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
   button("Attach displayed satellite imagery", evidencePage,
          [this] { emit attachDisplayedImagery(); });
   button("Remove evidence link…", evidencePage, [this] { remove(evidence_, "items"); });
+  button("Edit evidence title…", evidencePage, [this] {
+    run([this] { editMissionEntry(this, missions_, "items", selectedID(evidence_)); });
+  });
   auto *notePage = page("Notes");
   auto *noteSplit = new QSplitter;
   notePage->addWidget(noteSplit, 1);
@@ -223,6 +242,9 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
     });
   });
   button("Remove note…", notePage, [this] { remove(notes_, "notes"); });
+  button("Edit selected note…", notePage, [this] {
+    run([this] { editMissionEntry(this, missions_, "notes", selectedID(notes_)); });
+  });
   auto *taskPage = page("Tasks");
   tasks_ = new QListWidget;
   taskPage->addWidget(tasks_, 1);
@@ -238,6 +260,9 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
     });
   });
   button("Remove task…", taskPage, [this] { remove(tasks_, "tasks"); });
+  button("Edit task / due date…", taskPage, [this] {
+    run([this] { editMissionEntry(this, missions_, "tasks", selectedID(tasks_)); });
+  });
   auto *objectPage = page("Observations");
   objects_ = new QListWidget;
   objectPage->addWidget(objects_, 1);
@@ -278,6 +303,10 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
     });
   });
   button("Remove observation…", objectPage, [this] { remove(objects_, "observations"); });
+  button("Edit observation details…", objectPage, [this] {
+    if (resolveReview())
+      run([this] { editMissionEntry(this, missions_, "observations", selectedID(objects_)); });
+  });
   auto *historyPage = page("Activity");
   history_ = new QListWidget;
   historyPage->addWidget(history_, 1);
@@ -330,8 +359,8 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
       map_.setCamera(c);
     }
   });
-  connect(&map_, &MapWidget::regionSelected, this, [this](Bounds b) {
-    if (captureMission_.isEmpty() || captureMission_ != missions_.selectedID())
+  connect(&map_, &MapWidget::regionSelected, this, [this](Bounds b, QObject *owner) {
+    if (owner != this || captureMission_.isEmpty() || captureMission_ != missions_.selectedID())
       return;
     captureMission_.clear();
     pendingRegion_ = b;
@@ -350,6 +379,9 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
   });
   connect(&missions_, &Missions::changed, this, &MissionWindow::refresh);
   refresh();
+}
+void MissionWindow::addPage(QWidget *page, const QString &title) {
+  tabs_->addTab(page, title);
 }
 void MissionWindow::run(const std::function<void()> &action) {
   try {

@@ -7,6 +7,7 @@ class QLineEdit;
 class QPlainTextEdit;
 class QListWidget;
 class QLabel;
+class QTabWidget;
 namespace godeye {
 class MissionWindow : public QMainWindow {
   Q_OBJECT
@@ -16,6 +17,7 @@ public:
   bool save(bool separateCopy = false);
   void openLibrary();
   void refresh();
+  void addPage(QWidget *page, const QString &title);
 signals:
   void evidenceRequested(QJsonObject evidence);
   void attachDisplayedImagery();
@@ -23,6 +25,7 @@ signals:
 private:
   Missions &missions_;
   MapWidget &map_;
+  QTabWidget *tabs_;
   QComboBox *selector_, *noteEvidence_, *noteArea_, *taskArea_, *objectEvidence_, *reviewState_;
   QLineEdit *name_, *noteTitle_, *noteReference_, *taskTitle_, *areaName_, *objectTitle_,
       *objectCategory_;

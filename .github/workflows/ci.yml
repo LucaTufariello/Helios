@@ -14,21 +14,137 @@ concurrency:
 
 jobs:
   desktop-linux:
-    name: Qt desktop compile and core tests on Arch Linux
+    name: Qt desktop, headless tests and package on Arch Linux
     runs-on: ubuntu-24.04
     container: archlinux:base-devel
-    timeout-minutes: 25
+    timeout-minutes: 90
     steps:
       - name: Install a consistent Arch toolchain and Qt modules
-        run: pacman -Syu --noconfirm --needed git cmake qt6-base qt6-shadertools
+        run: pacman -Syu --noconfirm --needed git cmake ninja python pkgconf unzip zip qt6-base qt6-shadertools qt6-wayland libsecret vulkan-icd-loader ffmpeg
 
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
+      - name: Record compiler and matching Qt version
+        id: toolchain
+        run: |
+          qmake6 -query
+          pacman -Q gcc glibc qt6-base qt6-wayland
+          echo "identity=$(pacman -Q gcc glibc qt6-base | sha256sum | cut -c 1-20)" >> "$GITHUB_OUTPUT"
+
+      - name: Reuse pinned scene dependency downloads
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: output/vendor
+          key: linux-scene-${{ steps.toolchain.outputs.identity }}-${{ hashFiles('native/scene/CMakeLists.txt') }}
+
+      - name: Install the pinned environment manager for CPU checks
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: "0.13.1"
+          enable-cache: false
+
+      - name: Prepare Python 3.12 and generated CPU inference tests
+        env:
+          UV_PYTHON_INSTALL_DIR: ${{ runner.temp }}/godeye-python
+        run: |
+          godeye_inference="$RUNNER_TEMP/godeye-inference"
+          uv python install 3.12.14
+          uv venv --managed-python --python 3.12.14 "$godeye_inference"
+          uv pip install --python "$godeye_inference/bin/python" -r native/desktop/Inference/requirements.txt
+          echo "GODEYE_INFERENCE_PYTHON=$godeye_inference/bin/python" >> "$GITHUB_ENV"
+          "$godeye_inference/bin/python" -m unittest discover -s native/desktop/Tests -p test_inference.py -v
+
       - name: Compile desktop and run headless core tests
         run: make test-desktop
+
+      - name: Check owned CPU code with AddressSanitizer and UndefinedBehaviorSanitizer
+        run: native/desktop/sanitize-core.sh
+
+      - name: Build distributable artifact and check isolated runtime
+        run: |
+          python3 native/desktop/package-linux.py --native --output output/packages/ci
+          python3 native/desktop/packaging/check-package.py --package output/packages/ci/godeye-desktop --output output/qa/package-ci
+
+      - name: Retain package and source artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: godeye-linux-x86_64
+          path: |
+            output/packages/ci/*.tar.zst
+            output/packages/ci/SHA256SUMS
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  desktop-macos:
+    name: Qt desktop build, core tests and bundle on Apple Silicon
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Verify Apple Silicon and install matching Qt build tools
+        id: toolchain
+        run: |
+          test "$(uname -m)" = arm64
+          brew install cmake pkgconf qtbase qtshadertools
+          "$(brew --prefix qtbase)/bin/qmake" -query
+          echo "identity=$(clang --version; brew list --versions qtbase qtshadertools)" > "$RUNNER_TEMP/toolchain.txt"
+          echo "identity=$(shasum -a 256 "$RUNNER_TEMP/toolchain.txt" | cut -c 1-20)" >> "$GITHUB_OUTPUT"
+
+      - name: Reuse pinned scene dependency downloads
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: output/vendor
+          key: macos-arm64-scene-${{ steps.toolchain.outputs.identity }}-${{ hashFiles('native/scene/CMakeLists.txt') }}
+
+      - name: Install the pinned environment manager for CPU checks
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: "0.13.1"
+          enable-cache: false
+
+      - name: Prepare Python 3.12 and generated CPU inference tests
+        env:
+          UV_PYTHON_INSTALL_DIR: ${{ runner.temp }}/godeye-python
+        run: |
+          godeye_inference="$RUNNER_TEMP/godeye-inference"
+          uv python install 3.12.14
+          uv venv --managed-python --python 3.12.14 "$godeye_inference"
+          uv pip install --python "$godeye_inference/bin/python" -r native/desktop/Inference/requirements.txt
+          echo "GODEYE_INFERENCE_PYTHON=$godeye_inference/bin/python" >> "$GITHUB_ENV"
+          "$godeye_inference/bin/python" -m unittest discover -s native/desktop/Tests -p test_inference.py -v
+
+      - name: Build and run portable Qt regression tests
+        run: make test-desktop
+
+      - name: Verify packaged helper, shared workers and signature
+        run: |
+          app=output/desktop/build/bin/GodEyeDesktop.app
+          python3 native/desktop/packaging/collect-macos-notices.py --app "$app"
+          test -x "$app/Contents/MacOS/GodEyeWorkerHost"
+          test -f "$app/Contents/Resources/workers/SAR/sentinel1.py"
+          test -f "$app/Contents/Resources/workers/Optical/optical_sources.py"
+          test -f "$app/Contents/Resources/SCENE-NOTICES.txt"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app"
+          file "$app/Contents/MacOS/GodEyeDesktop"
+          ditto -c -k --keepParent "$app" output/GodEyeDesktop-macos-arm64.zip
+
+      - name: Retain ad-hoc signed Qt bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: godeye-macos-arm64
+          path: output/GodEyeDesktop-macos-arm64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
 
   shared-linux:
     name: Shared C++ core on Linux

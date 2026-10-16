@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "backend": "onnx-tinyyolov2-voc-cpu",
+  "model": "tinyyolov2-8.onnx",
+  "modelSHA256": "583fb7fdc948435ceac9fa82efc7708701efe8382a859a3dd46526b155f5f2ae",
+  "input": "image",
+  "grid": "grid",
+  "preprocessing": "rgb-stretch-bilinear-0to255",
+  "boxFormat": "xyxy-normalized-upper-left",
+  "labels": ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
+}

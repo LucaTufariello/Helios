@@ -5,6 +5,7 @@
 #include <QMap>
 #include <QNetworkAccessManager>
 #include <QSet>
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -47,7 +48,13 @@ private:
   QNetworkAccessManager network_;
   QMap<QString, std::shared_ptr<TileData>> cache_;
   QHash<QString, QNetworkReply *> active_;
+  QSet<QString> decodingKeys_;
   QHash<QString, qint64> failedUntil_;
+  // cache_ owns every TileData. This lookup is updated before cache replacement
+  // or eviction, so terrain sampling never constructs URL-style QString keys.
+  QHash<quint64, const TileData *> terrainIndex_;
+  std::array<unsigned, 15> terrainCounts_{};
+  unsigned terrainLevels_ = 0;
   QVector<Request> queue_;
   QSet<QString> wanted_;
   bool networking_;
@@ -56,5 +63,7 @@ private:
   int decoding_ = 0;
   void pump();
   void evict();
+  void store(const QString &key, std::shared_ptr<TileData> data, bool terrain);
+  void removeTerrain(const TileData &data);
 };
 } // namespace godeye

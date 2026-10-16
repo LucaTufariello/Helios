@@ -1,6 +1,7 @@
 #pragma once
 #include "Geography.h"
 #include <QJsonArray>
+#include <QMap>
 #include <QObject>
 #include <functional>
 
@@ -33,6 +34,14 @@ public:
   void save(const QString &filename);
   void select(const QString &id);
   QString create(const QString &name);
+  void removeMission(const QString &id);
+  void editEntry(const QString &collection, const QString &id, const QJsonObject &fields);
+  void setComparison(const QString &baseline, const QString &later, double blend);
+  void captureAcquisitions(const QMap<QString, QJsonObject> &snapshots);
+  QString addMonitor(const QJsonObject &fields);
+  void commitMonitor(const QString &missionID, const QString &monitorID,
+                     const QJsonObject &checkpoint, const QString &event = {});
+  void addObservationProposal(const QString &missionID, const QJsonObject &observation);
   void setField(const QString &field, const QString &value);
   void setBrief(const QString &name, const QString &objective, const QString &notes);
   void addNote(const QString &title, const QString &body, const QString &reference = {},

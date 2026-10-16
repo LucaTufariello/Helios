@@ -468,14 +468,24 @@ class SnapProcessor:
     def __init__(self, executable):
         self.executable = Path(executable)
         self.child = None
+        # The portable desktop owns a new worker session and can stop the whole
+        # job even if Python is stuck. Preserve the existing standalone/Swift
+        # behavior when that explicit process-boundary contract is absent.
+        self.shared_session = os.environ.get('GODEYE_WORKER_OWN_SESSION') == '1'
 
     def stop_child(self):
         if self.child and self.child.poll() is None:
-            os.killpg(self.child.pid, signal.SIGTERM)
+            if self.shared_session:
+                self.child.terminate()
+            else:
+                os.killpg(self.child.pid, signal.SIGTERM)
             try:
                 self.child.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                os.killpg(self.child.pid, signal.SIGKILL)
+                if self.shared_session:
+                    self.child.kill()
+                else:
+                    os.killpg(self.child.pid, signal.SIGKILL)
                 self.child.wait(timeout=5)
 
     def cancel(self, *_):
@@ -510,7 +520,7 @@ class SnapProcessor:
             diagnostic.write('GodEye SNAP engine version: ' + self.version + '\n')
             diagnostic.flush()
             self.child = subprocess.Popen([str(self.executable), str(graph), '-c', '512M', '-q', '4', '-e'],
-                stdout=diagnostic, stderr=subprocess.STDOUT, cwd=work, start_new_session=True)
+                stdout=diagnostic, stderr=subprocess.STDOUT, cwd=work, start_new_session=not self.shared_session)
             while self.child.poll() is None:
                 if time.monotonic()-start > 6*3600:
                     self.stop_child()

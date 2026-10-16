@@ -1,16 +1,17 @@
 # Native macOS and Linux transition
 
-Updated October 13, 2026. The product direction is now a native application on both
+Updated October 16, 2026. The product direction is a native application on both
 Apple Silicon macOS and Linux, with the existing feature roadmap retained.
 
 ## Architecture decision
 
 - **C++20:** shared geographic, mission, evidence, job and provider logic.
 - **Qt 6 Widgets:** desktop windows, inspectors, satellite library and Mission Control.
-  No WebEngine, Electron, HTML interface or browser renderer is required.
+  No WebEngine, Electron, HTML interface, QML or browser renderer is required.
 - **GPU rendering:** Metal on macOS and Vulkan on Linux, behind a rendering
-  boundary. The first map/terrain/raster slice now uses Qt RHI and runs on Metal.
-  Its private rendering APIs require a pinned/tested Qt minor version.
+  boundary. Qt RHI renders globe, terrain, raster overlays and shared scene meshes.
+  Its private APIs require matching build/deployment Qt libraries. Historical Mac
+  Metal and current Linux Vulkan checks are recorded separately.
 - **Scientific processing:** retain Python raster workers and SNAP GPT behind
   application-level process orchestration. Verify tools/dependencies on each OS.
 - **Inference:** a replaceable provider interface with a CPU baseline and optional
@@ -20,7 +21,7 @@ Apple Silicon macOS and Linux, with the existing feature roadmap retained.
 Rendering and inference are separate capabilities. A GPU that renders the map
 successfully has not thereby passed model inference or scientific validation.
 
-## Implemented first step
+## Implemented migration workflows
 
 `native/shared` is a standard C++20 library, built from identical sources by CMake
 and SwiftPM. The current macOS app uses it for:
@@ -32,18 +33,39 @@ and SwiftPM. The current macOS app uses it for:
 The C ABI contains plain numeric structs and explicit success/failure results,
 with no Apple, Qt or GPU dependency. CMake tests run independently of the macOS
 scene engine. Existing Swift scene/geography tests exercise the adapter. The
-current renderer, file formats and mission storage remain in the macOS client.
+Swift renderer and storage remain functional while Qt implements compatible
+document/product readers and preserves extension data and scientific originals.
 
-The next slice is now implemented in `native/desktop`: Qt windows, GPU globe and
-terrain, public imagery loading, bounded optical/SAR preview import/overlays,
-portable mission editing and original-file exports. Actual Metal frames, real
-basemap/terrain requests and saved products have been checked on the Mac. The
-scientific grid and bounded preview sizes remain separate.
+`native/desktop` now contains the expanded Qt client: native map/terrain/raster
+rendering, bounded scientific libraries and original exports; all 19 source
+layers; optical catalogue/retrieval and local PRISMA import; Sentinel-1 search,
+session-only account access, downloads and shared Python/SNAP orchestration;
+infrastructure sites/change review; Mission Control timelines/monitors; map tools,
+workspace links and daily visualization; and optional CPU inference with explicit
+model/source provenance and analyst review. The scientific grid and bounded
+preview sizes remain separate.
 
-Photorealistic 3D Tiles, remaining provider/processing controls, acquisition
-automation, inference, credentials and full desktop parity still need migration.
-The build targets Linux, but Linux compilation and real Omarchy/GTX 1070
-validation remain outstanding before treating that platform as supported. See the
+The shared scene engine now also renders local and same-origin HTTPS triangle
+photogrammetry in Qt, including real public AGI headquarters content on Linux.
+Native credentials use optional Linux Secret Service or macOS Keychain, with no
+plaintext fallback; Copernicus account sessions stay in memory. Owned process
+sessions support cancellation/recovery. Offline mode rejects remote acquisition,
+source/media and scene requests while retaining local inspection/processing.
+
+The client compiles on Omarchy and passes generated workflow, public-provider and
+actual Vulkan checks on the GTX 1070. Three generated scene/two-overlay travel
+cycles passed bounded-resource, idle and hide/show checks; actual compositor
+minimize/restore remains unverified. Linux archive/native-package machinery,
+outside-checkout startup and native FFmpeg playback have been exercised. A native
+status-callback reentrancy crash was corrected and the updated client passed 104
+workflow checks plus 76 resource checks; three compositor-minimize checks remain
+explicitly skipped. The final R3 Linux package passes outside-checkout runtime,
+installer, 104 generated native, 19 live GPU, 25 actual optical and native FFmpeg
+media checks; source/runtime hashes and superseded failures are retained.
+Fresh Mac/Swift/Keychain/Metal checks, real SNAP/calibrated SAR pairs,
+keyed providers, physical input/displays/accessibility and large-site stress
+remain external acceptance gates. See the
+[migration status and evidence](MIGRATION-STATUS.md) and
 [desktop build and handoff guide](../native/desktop/README.md).
 
 ## Build the shared core
@@ -57,7 +79,7 @@ ctest --test-dir output/shared/build --output-on-failure
 ```
 
 `make test-shared` runs the same steps. The root CMake project currently builds
-the shared library and tests. Use `make test-desktop` for the Qt preview; it needs
+the shared library and tests. Use `make test-desktop` for the Qt client; it needs
 the Qt modules documented in the desktop guide. Building the existing full app
 still uses `make build` on macOS.
 
@@ -104,21 +126,29 @@ Sources checked October 13, 2026:
 6. **Release:** real platform packages, accessibility/input checks, offline/recovery
    tests and measured CPU/GPU/memory behavior on both machines.
 
-Do not remove the working macOS client or claim Linux desktop parity based on a
-successful shared-library build. The same behavioral tests and real reference
-products should follow each migrated workflow.
+The implementation stages above are represented in the Qt source and current
+Linux workflow tests. Their acceptance remains bounded by the evidence for each
+platform/provider/scientific path. Keep the working Swift macOS reference until
+fresh Mac and remaining real-data/hardware gates pass.
 
 ## Linux handoff
 
-The Mac map/mission/product slice is now at the Linux hardware handoff gate.
-The PC is needed to verify real Wayland/window/input and NVIDIA/Vulkan behavior
-before extending the renderer and completing feature migration. CUDA inference
-remains a separate later check. Linux CI can catch compiler and unit-test issues;
-it cannot substitute for that hardware session.
+The October 15–16 sessions established compiled workflows, core/raster/sanitizer
+checks and actual Wayland/Vulkan frames on the GTX 1070. Retained evidence includes
+an identified public Sentinel-2 acquisition, public scene/terrain/daily data,
+keyless sources, place lookup/routing and generated processing/mission/model
+review. Reports, failures and inspected images are indexed in
+[migration status](MIGRATION-STATUS.md). CPU ONNX execution is the offered
+inference baseline; optional CUDA/AMD acceleration remains separate from map
+rendering. Configured Linux/arm64 Mac CI cannot replace hardware sessions and has
+not yet been claimed to run remotely.
 
 When ready, transfer the updated repository revision, install the documented
 dependencies and run the shared checks first. Local uncommitted work must be
 included in that transfer; cloning an older remote revision will not include it.
 Mission libraries and satellite products live outside Git in Application Support
 on macOS, so copying the repository alone does not transfer those datasets. Use
-explicit portable exports or a controlled copy when the Linux importer is ready.
+explicit portable exports or a controlled copy with the current importer. Existing
+Mac experiments are optional; a copied repository alone contains no personal
+mission library or scientific imagery. See the [Linux handoff](../native/desktop/LINUX-HANDOFF.md)
+and [package guide](../native/desktop/PACKAGING.md).

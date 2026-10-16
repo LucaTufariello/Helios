@@ -1,4 +1,5 @@
 #include "SatelliteWindow.h"
+#include "Core/LibraryStorage.h"
 #include <QCheckBox>
 #include <QDir>
 #include <QFileDialog>
@@ -31,7 +32,8 @@ ReadResult load(const QString &path, bool images) {
 }
 } // namespace
 SatelliteWindow::SatelliteWindow(const QString &profile, QWidget *parent)
-    : QDialog(parent, Qt::Tool), settings_(profile + "/desktop.ini", QSettings::IniFormat) {
+    : QDialog(parent, Qt::Tool), profile_(profile),
+      settings_(profile + "/desktop.ini", QSettings::IniFormat) {
   setWindowTitle("GodEye — Satellite library");
   resize(820, 720);
   setMinimumSize(640, 540);
@@ -46,6 +48,9 @@ SatelliteWindow::SatelliteWindow(const QString &profile, QWidget *parent)
   auto *folder = new QPushButton("Add library folder…");
   actions->addWidget(import);
   actions->addWidget(folder);
+  auto *processing = new QPushButton("Find / process imagery…");
+  actions->addWidget(processing);
+  connect(processing, &QPushButton::clicked, this, &SatelliteWindow::processingRequested);
   auto *split = new QSplitter;
   split->setChildrenCollapsible(false);
   layout->addWidget(split, 1);
@@ -133,17 +138,59 @@ SatelliteWindow::SatelliteWindow(const QString &profile, QWidget *parent)
             "Remove this imported library reference? The original satellite files will be kept.",
             QMessageBox::Yes | QMessageBox::Cancel) != QMessageBox::Yes)
       return;
+    auto path = list_->currentItem()->data(Qt::UserRole + 1).toString();
     const auto id = list_->currentItem()->data(Qt::UserRole).toString();
-    for (qsizetype i = library_.size(); i-- > 0;)
-      if (library_[i].id == id)
-        library_.removeAt(i);
-    delete list_->takeItem(list_->currentRow());
-    for (qsizetype i = displayed_.size(); i-- > 0;)
-      if (displayed_[i].id == id)
-        displayed_.removeAt(i);
-    emit layersChanged(displayed_, false);
-    remember();
-    selected();
+    for (const auto &p : library_)
+      if (p.id == id)
+        path = p.manifest;
+    forgetManifest(path);
+  });
+  add("Retry saved product path", [this] {
+    if (list_->currentItem()) {
+      auto path = list_->currentItem()->data(Qt::UserRole + 1).toString();
+      if (!path.isEmpty())
+        importManifest(path);
+    }
+  });
+  add("Move owned job to Trash…", [this] {
+    if (busy_ || !list_->currentItem())
+      return;
+    ProductLayer selectedProduct;
+    for (const auto &p : library_)
+      if (p.id == list_->currentItem()->data(Qt::UserRole).toString())
+        selectedProduct = p;
+    if (selectedProduct.manifest.isEmpty())
+      return;
+    if (QMessageBox::question(this, "Move owned job to Trash",
+                              "Move this profile's processing job, outputs and diagnostics to the "
+                              "operating system Trash? Mission links retain their acquisition "
+                              "snapshots. Imported source folders are managed separately.",
+                              QMessageBox::Cancel | QMessageBox::Yes) != QMessageBox::Yes)
+      return;
+    busy_ = true;
+    status_->setText("Checking job ownership and moving the saved job to Trash…");
+    auto *watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcherBase::finished, this, [this, watcher, selectedProduct] {
+      const auto error = watcher->result();
+      watcher->deleteLater();
+      busy_ = false;
+      if (error.isEmpty()) {
+        forgetManifest(selectedProduct.manifest);
+        status_->setText(
+            "Owned job moved to Trash. Mission acquisition snapshots remain available.");
+      } else
+        status_->setText(error);
+      pumpImports();
+    });
+    const auto root = profile_ + "/jobs";
+    watcher->setFuture(QtConcurrent::run([root, selectedProduct] {
+      try {
+        trashOwnedProduct(root, selectedProduct);
+        return QString{};
+      } catch (const std::exception &e) {
+        return QString::fromUtf8(e.what());
+      }
+    }));
   });
   detail->addStretch();
   split->setStretchFactor(0, 0);
@@ -201,8 +248,20 @@ SatelliteWindow::SatelliteWindow(const QString &profile, QWidget *parent)
       pendingImports_.append(path);
   pumpImports();
 }
-void SatelliteWindow::importManifest(const QString &filename) {
+void SatelliteWindow::importManifest(const QString &filename, bool activate) {
   const auto path = QFileInfo(filename).absoluteFilePath();
+  QSet<QString> known = unresolved_;
+  for (const auto &p : library_)
+    known.insert(p.manifest);
+  for (const auto &p : pendingImports_)
+    known.insert(p);
+  if (path.size() > 4096 || (!known.contains(path) && known.size() >= 500)) {
+    status_->setText("The library is limited to 500 product references. Remove a reference before "
+                     "importing another.");
+    return;
+  }
+  if (activate)
+    activateImports_.insert(path);
   if (!pendingImports_.contains(path))
     pendingImports_.append(path);
   pumpImports();
@@ -214,20 +273,39 @@ void SatelliteWindow::pumpImports() {
   const auto path = pendingImports_.takeFirst();
   status_->setText("Reading product metadata…");
   auto *watcher = new QFutureWatcher<ReadResult>(this);
-  connect(watcher, &QFutureWatcher<ReadResult>::finished, this, [this, watcher] {
+  connect(watcher, &QFutureWatcher<ReadResult>::finished, this, [this, watcher, path] {
     const auto result = watcher->result();
     watcher->deleteLater();
     busy_ = false;
-    if (!result.second.isEmpty())
+    if (!result.second.isEmpty()) {
       status_->setText("Import failed: " + result.second);
-    else {
+      if (!unresolved_.contains(path)) {
+        unresolved_.insert(path);
+        auto *item = new QListWidgetItem(
+            "Unavailable saved product · " + QFileInfo(path).absolutePath().left(300), list_);
+        item->setData(Qt::UserRole + 1, path);
+        item->setToolTip(path);
+      }
+      remember();
+    } else {
+      unresolved_.remove(path);
+      for (int i = list_->count(); i-- > 0;)
+        if (list_->item(i)->data(Qt::UserRole).toString().isEmpty() &&
+            list_->item(i)->data(Qt::UserRole + 1) == path)
+          delete list_->takeItem(i);
       int added = 0;
       for (auto p : result.first) {
         bool exists = false, conflict = false;
-        for (const auto &old : library_)
+        for (auto &old : library_)
           if (old.id == p.id) {
             exists = true;
             conflict = old.manifestHash != p.manifestHash;
+            if (!conflict && old.manifest != p.manifest) {
+              auto relocated = p;
+              relocated.image = {};
+              relocated.metadata = {};
+              old = std::move(relocated);
+            }
             break;
           }
         if (conflict) {
@@ -236,8 +314,12 @@ void SatelliteWindow::pumpImports() {
               "old library reference before importing the replacement.");
           continue;
         }
-        if (exists)
+        if (exists) {
+          for (int row = 0; row < list_->count(); ++row)
+            if (list_->item(row)->data(Qt::UserRole) == p.id)
+              list_->item(row)->setData(Qt::UserRole + 1, p.manifest);
           continue;
+        }
         if (library_.size() >= 500) {
           status_->setText("The desktop library is limited to 500 output entries.");
           break;
@@ -247,6 +329,7 @@ void SatelliteWindow::pumpImports() {
         library_.append(p);
         auto *item = new QListWidgetItem(p.label, list_);
         item->setData(Qt::UserRole, p.id);
+        item->setData(Qt::UserRole + 1, p.manifest);
         item->setToolTip(p.sourceID);
         ++added;
       }
@@ -256,6 +339,13 @@ void SatelliteWindow::pumpImports() {
       remember();
     }
     selected();
+    if (activateImports_.remove(path) && result.second.isEmpty() && !result.first.isEmpty())
+      for (const auto &product : library_)
+        if (product.manifest == result.first.first().manifest &&
+            product.manifestHash == result.first.first().manifestHash) {
+          showProduct(product.id);
+          break;
+        }
     pumpImports();
   });
   watcher->setFuture(QtConcurrent::run([path] { return load(path, false); }));
@@ -268,7 +358,31 @@ void SatelliteWindow::remember() {
   for (const auto &path : pendingImports_)
     if (!paths.contains(path))
       paths.append(path);
+  for (const auto &path : unresolved_)
+    if (!paths.contains(path))
+      paths.append(path);
   settings_.setValue("manifests", paths);
+  emit libraryChanged();
+}
+void SatelliteWindow::forgetManifest(const QString &path) {
+  QSet<QString> removed;
+  for (const auto &p : library_)
+    if (p.manifest == path)
+      removed.insert(p.id);
+  for (qsizetype i = library_.size(); i-- > 0;)
+    if (library_[i].manifest == path)
+      library_.removeAt(i);
+  for (qsizetype i = displayed_.size(); i-- > 0;)
+    if (displayed_[i].manifest == path || removed.contains(displayed_[i].id))
+      displayed_.removeAt(i);
+  for (int i = list_->count(); i-- > 0;)
+    if (list_->item(i)->data(Qt::UserRole + 1) == path)
+      delete list_->takeItem(i);
+  unresolved_.remove(path);
+  pendingImports_.removeAll(path);
+  emit layersChanged(displayed_, false);
+  remember();
+  selected();
 }
 void SatelliteWindow::selected() {
   png_->setEnabled(false);
@@ -281,6 +395,14 @@ void SatelliteWindow::selected() {
     return;
   }
   const auto id = list_->currentItem()->data(Qt::UserRole).toString();
+  if (id.isEmpty()) {
+    summary_->setText(
+        "Unavailable saved product\n" + list_->currentItem()->data(Qt::UserRole + 1).toString() +
+        "\nRetry its saved path or import the complete product from its new location.");
+    thumbnail_->clear();
+    metadata_->clear();
+    return;
+  }
   for (const auto &p : library_)
     if (p.id == id) {
       summary_->setText(

@@ -12,6 +12,7 @@
 #include <QTextBoundaryFinder>
 #include <QTimeZone>
 #include <QUuid>
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -34,6 +35,38 @@ QString identity(const QJsonValue &value) {
 bool missing(const QJsonValue &v) {
   return v.isNull() || v.isUndefined();
 }
+bool validSHA256(const QJsonValue &v) {
+  static const QRegularExpression sha("^[a-f0-9]{64}$");
+  return v.isString() && v.toString().size() == 64 && sha.match(v.toString()).hasMatch();
+}
+bool validImageBox(const QJsonValue &v, double maximum) {
+  if (!v.isArray())
+    return false;
+  const auto box = v.toArray();
+  return box.size() == 4 &&
+         std::all_of(box.begin(), box.end(),
+                     [maximum](const QJsonValue &value) {
+                       return value.isDouble() && std::isfinite(value.toDouble()) &&
+                              value.toDouble() >= 0 && value.toDouble() <= maximum;
+                     }) &&
+         box[0].toDouble() < box[2].toDouble() && box[1].toDouble() < box[3].toDouble();
+}
+void validateModelProvenance(const QJsonObject &o) {
+  if (!missing(o["inputSHA256"]))
+    check(validSHA256(o["inputSHA256"]), "An observation source hash is invalid.");
+  bool present = false;
+  for (const auto key :
+       {"modelSHA256", "modelContractSHA256", "modelBackend", "imageBox", "imagePixelBox"})
+    present = present || !missing(o[key]);
+  // Legacy manual and Core ML observations do not contain ONNX provenance.
+  if (!present)
+    return;
+  check(validSHA256(o["modelSHA256"]) && validSHA256(o["modelContractSHA256"]) &&
+            QStringList{"onnx-cpu", "onnx-tinyyolov2-voc-cpu"}.contains(
+                o["modelBackend"].toString()) &&
+            validImageBox(o["imageBox"], 1) && validImageBox(o["imagePixelBox"], 2048),
+        "An observation's ONNX provenance is incomplete or invalid.");
+}
 void text(const QJsonObject &o, const char *key, int limit, bool nonempty = false) {
   const auto v = o[key];
   check(v.isString(), "A mission text field has an invalid type.");
@@ -49,7 +82,11 @@ void date(const QJsonObject &o, const char *key, bool optional = false) {
   const auto v = o[key];
   if (optional && missing(v))
     return;
-  check(v.isDouble() && std::isfinite(v.toDouble()), "A mission timestamp is invalid.");
+  const bool utc =
+      v.isString() && v.toString().size() <= 50 &&
+      QRegularExpression("(Z|[+-][0-9]{2}:[0-9]{2})$").match(v.toString()).hasMatch() &&
+      QDateTime::fromString(v.toString(), Qt::ISODateWithMs).isValid();
+  check((v.isDouble() && std::isfinite(v.toDouble())) || utc, "A mission timestamp is invalid.");
 }
 QSet<QString> arrayIDs(const QJsonObject &o, const char *key, int limit) {
   check(o[key].isArray(), "A mission collection has an invalid type.");
@@ -296,15 +333,7 @@ void validateMissions(const QJsonArray &plans) {
         text(o, "modelName", 200, true);
       if (!missing(o["inputTransform"]))
         text(o, "inputTransform", 200);
-      if (!missing(o["inputSHA256"])) {
-        const auto sha = o["inputSHA256"].toString();
-        check(sha.size() == 64 && std::all_of(sha.begin(), sha.end(),
-                                              [](QChar c) {
-                                                return (c >= '0' && c <= '9') ||
-                                                       (c >= 'a' && c <= 'f');
-                                              }),
-              "An observation hash is invalid.");
-      }
+      validateModelProvenance(o);
     }
     for (const auto v : b["monitors"].toArray()) {
       const auto m = v.toObject();
@@ -375,6 +404,11 @@ void Missions::save(const QString &filename) {
     if (path == filename_)
       check(hash(previous) == originalHash_,
             "This library changed on disk. Save a separate copy or reopen it before replacing it.");
+    QSaveFile backup(path + ".backup");
+    backup.setDirectWriteFallback(false);
+    check(!QFileInfo(path + ".backup").isSymLink() && backup.open(QIODevice::WriteOnly) &&
+              backup.write(previous) == previous.size() && backup.commit(),
+          "The last-good mission backup could not be saved. The mission library was preserved.");
   } else if (path == filename_ && !originalHash_.isEmpty()) {
     check(false, "The original library was removed. Save a separate copy.");
   }
@@ -408,6 +442,223 @@ QString Missions::create(const QString &name) {
   dirty_ = true;
   emit changed();
   return selectedID_;
+}
+void Missions::removeMission(const QString &id) {
+  auto next = plans_;
+  bool found = false;
+  for (qsizetype i = next.size(); i-- > 0;)
+    if (next[i].toObject()["id"] == id) {
+      next.removeAt(i);
+      found = true;
+    }
+  check(found, "The mission no longer exists.");
+  validateMissions(next);
+  plans_ = next;
+  if (selectedID_ == id)
+    selectedID_ = next.isEmpty() ? QString{} : next.first().toObject()["id"].toString();
+  dirty_ = true;
+  emit changed();
+}
+void Missions::addObservationProposal(const QString &missionID, const QJsonObject &observation) {
+  check(missionID == selectedID_ && !filename_.isEmpty(),
+        "Select and save the source mission before adding a model proposal.");
+  check(observation["state"] == "Unreviewed" &&
+            QJsonDocument(observation).toJson(QJsonDocument::Compact).size() <= 32768,
+        "A local model proposal is invalid or exceeds its size limit.");
+  validateModelProvenance(observation);
+  check(validSHA256(observation["inputSHA256"]) && !missing(observation["modelBackend"]),
+        "Model or source provenance is missing from this proposal.");
+  auto plan = selected();
+  QJsonObject evidence;
+  for (const auto value : plan["items"].toArray())
+    if (value.toObject()["id"] == observation["evidenceID"])
+      evidence = value.toObject();
+  const auto source = Bounds::read(evidence["acquisition"].toObject()["bounds"]),
+             box = Bounds::read(observation["bounds"]);
+  check(evidence["kind"] == "optical" && source && box && box->west >= source->west - 1e-8 &&
+            box->east <= source->east + 1e-8 && box->south >= source->south - 1e-8 &&
+            box->north <= source->north + 1e-8,
+        "The proposal's optical evidence link is missing or its bounds exceed the retained source "
+        "image.");
+  auto b = brief(plan);
+  auto objects = b["observations"].toArray();
+  objects.append(observation);
+  b["observations"] = objects;
+  activity(b, "Added unreviewed model proposal: " + observation["title"].toString());
+  plan["brief"] = b;
+  plan["updatedAt"] = foundationNow();
+  auto next = plans_;
+  for (qsizetype i = 0; i < next.size(); ++i)
+    if (next[i].toObject()["id"] == missionID)
+      next[i] = plan;
+  validateMissions(next);
+  const auto previous = plans_;
+  const bool dirty = dirty_;
+  plans_ = next;
+  try {
+    save(filename_);
+  } catch (...) {
+    plans_ = previous;
+    dirty_ = dirty;
+    throw;
+  }
+}
+void Missions::editEntry(const QString &collection, const QString &id, const QJsonObject &fields) {
+  const QMap<QString, QStringList> allowed{
+      {"areas", {"name", "purpose", "region"}},
+      {"notes", {"title", "body", "reference", "evidenceID", "areaID"}},
+      {"tasks", {"title", "done", "due", "areaID"}},
+      {"observations",
+       {"title", "category", "coordinate", "bounds", "evidenceID", "areaID", "note", "state",
+        "observedAt"}},
+      {"monitors", {"kind", "areaID", "enabled", "intervalHours", "lookbackDays", "maximumCloud"}},
+      {"items", {"title"}}};
+  check(allowed.contains(collection), "This collection cannot be edited.");
+  for (auto field = fields.begin(); field != fields.end(); ++field)
+    check(allowed[collection].contains(field.key()), "This field cannot be edited.");
+  update([&](QJsonObject &p) {
+    auto b = brief(p);
+    auto array = collection == "items" ? p["items"].toArray() : b[collection].toArray();
+    bool found = false;
+    auto reset = [](QJsonObject &m) {
+      m.remove("lastAttempt");
+      m.remove("lastSuccess");
+      m.remove("failure");
+      m["seenIDs"] = QJsonArray{};
+      m["summary"] = "Query changed; the next check establishes a new baseline.";
+    };
+    for (qsizetype i = 0; i < array.size(); ++i) {
+      auto o = array[i].toObject();
+      if (o["id"] != id)
+        continue;
+      found = true;
+      const auto previous = o;
+      for (auto field = fields.begin(); field != fields.end(); ++field) {
+        if (field.value().isNull())
+          o.remove(field.key());
+        else
+          o[field.key()] = field.value();
+      }
+      if (collection == "areas" && previous["region"] != o["region"]) {
+        auto monitors = b["monitors"].toArray();
+        for (qsizetype j = 0; j < monitors.size(); ++j) {
+          auto m = monitors[j].toObject();
+          if (m["areaID"] == id) {
+            reset(m);
+            monitors[j] = m;
+          }
+        }
+        b["monitors"] = monitors;
+      }
+      if (collection == "monitors")
+        for (const auto &key : {"kind", "areaID", "lookbackDays", "maximumCloud"})
+          if (previous[key] != o[key]) {
+            reset(o);
+            break;
+          }
+      array[i] = o;
+    }
+    check(found, "The selected entry no longer exists.");
+    if (collection == "items")
+      p["items"] = array;
+    else
+      b[collection] = array;
+    activity(b, "Updated " + collection + " entry");
+    p["brief"] = b;
+  });
+}
+void Missions::setComparison(const QString &baseline, const QString &later, double blend) {
+  update([&](QJsonObject &p) {
+    p["comparison"] = QJsonObject{{"baseID", baseline}, {"topID", later}, {"blend", blend}};
+  });
+}
+void Missions::captureAcquisitions(const QMap<QString, QJsonObject> &snapshots) {
+  update([&](QJsonObject &p) {
+    auto items = p["items"].toArray();
+    int count = 0;
+    for (qsizetype i = 0; i < items.size(); ++i) {
+      auto item = items[i].toObject();
+      const auto id = item["id"].toString();
+      if (!item["acquisition"].isObject() && snapshots.contains(id)) {
+        item["acquisition"] = snapshots[id];
+        items[i] = item;
+        ++count;
+      }
+    }
+    p["items"] = items;
+    auto b = brief(p);
+    activity(b, QString("Retained acquisition metadata for %1 evidence links").arg(count));
+    p["brief"] = b;
+  });
+}
+QString Missions::addMonitor(const QJsonObject &fields) {
+  const auto id = newID();
+  update([&](QJsonObject &p) {
+    auto b = brief(p);
+    auto values = b["monitors"].toArray();
+    QJsonObject m{{"id", id},
+                  {"kind", "Evidence availability"},
+                  {"enabled", false},
+                  {"intervalHours", 24},
+                  {"lookbackDays", 14},
+                  {"maximumCloud", 30},
+                  {"seenIDs", QJsonArray{}},
+                  {"summary", "Not run"}};
+    for (const auto &key :
+         {"kind", "areaID", "enabled", "intervalHours", "lookbackDays", "maximumCloud"})
+      if (fields.contains(key))
+        m[key] = fields[key];
+    values.append(m);
+    b["monitors"] = values;
+    activity(b, "Created monitor: " + m["kind"].toString());
+    p["brief"] = b;
+  });
+  return id;
+}
+void Missions::commitMonitor(const QString &missionID, const QString &monitorID,
+                             const QJsonObject &checkpoint, const QString &event) {
+  check(!filename_.isEmpty(), "Save the mission library before running monitors.");
+  auto next = plans_;
+  bool found = false;
+  for (qsizetype i = 0; i < next.size(); ++i) {
+    auto p = next[i].toObject();
+    if (p["id"] != missionID)
+      continue;
+    auto b = brief(p);
+    auto monitors = b["monitors"].toArray();
+    for (qsizetype j = 0; j < monitors.size(); ++j) {
+      auto m = monitors[j].toObject();
+      if (m["id"] != monitorID)
+        continue;
+      found = true;
+      for (const auto &key : {"lastAttempt", "lastSuccess", "seenIDs", "summary", "failure"})
+        if (checkpoint.contains(key)) {
+          if (checkpoint[key].isNull())
+            m.remove(key);
+          else
+            m[key] = checkpoint[key];
+        }
+      monitors[j] = m;
+    }
+    b["monitors"] = monitors;
+    if (!event.isEmpty())
+      activity(b, event);
+    p["brief"] = b;
+    p["updatedAt"] = foundationNow();
+    next[i] = p;
+  }
+  check(found, "The mission monitor no longer exists.");
+  validateMissions(next);
+  const auto previous = plans_;
+  const bool dirty = dirty_;
+  plans_ = next;
+  try {
+    save(filename_);
+  } catch (...) {
+    plans_ = previous;
+    dirty_ = dirty;
+    throw;
+  }
 }
 QJsonObject Missions::brief(QJsonObject p) {
   if (p["brief"].isObject())
@@ -542,7 +793,8 @@ void Missions::addEvidence(QJsonObject item) {
   });
 }
 void Missions::removeEntry(const QString &collection, const QString &id) {
-  check(QStringList{"items", "areas", "notes", "tasks", "observations"}.contains(collection),
+  check(QStringList{"items", "areas", "notes", "tasks", "observations", "monitors"}.contains(
+            collection),
         "This collection cannot be edited.");
   update([&](QJsonObject &p) {
     auto b = brief(p);

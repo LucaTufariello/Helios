@@ -1,35 +1,36 @@
 # Linux hardware handoff
 
-Prepared October 13, 2026. This handoff covers the first C++20/Qt desktop slice.
-The full Swift app remains usable on macOS while the remaining workflows migrate.
+Updated 16 October 2026. The C++20/Qt client now implements the migration's map,
+source, processing, mission and local CPU-assistance workflows. It builds and runs
+on Omarchy/Wayland with actual GTX 1070 Vulkan rendering. The functional Swift
+macOS client remains the reference until the remaining acceptance gates pass.
 
-For an API-based coding model continuing the full migration, start with
-[MIGRATION-HANDOFF.md](../../MIGRATION-HANDOFF.md). It includes the remaining
-workflow inventory, implementation order and both-platform acceptance checks.
+Start with [MIGRATION-HANDOFF.md](../../MIGRATION-HANDOFF.md) and the current
+[migration status](../../docs/MIGRATION-STATUS.md). The latter distinguishes
+implemented workflows, generated fixtures, identified public data and unverified
+platform/scientific checks.
 
 ## Transfer the current source
 
-The desktop baseline was committed locally as `f40d08a`; publication was left to
-the user. Verify the Linux checkout contains that commit and the newer root
-`MIGRATION-HANDOFF.md`. An older remote revision will not include this work.
-The source-only snapshot prepared before that commit is at:
+Use the current working tree or its matching source archive from the latest
+Linux package. A fresh GitHub clone includes only revisions published there;
+transfer the local commit or matching source snapshot until it has been pushed.
+Package source snapshots record file hashes, the base Git revision and
+working-tree status.
+Retain their adjacent SHA-256 file when transferring them.
 
-`output/handoff/godeye-desktop-source-2026-10-13.tar.gz`
-
-Copy it to the PC and extract it into a new folder. The snapshot includes the
-current native source, tests, fixtures and documentation, with no Git history,
-compiled Mac binaries, credentials, downloaded satellite datasets or user mission
-library. It omits the retired website. Keep the Mac checkout as the Git working
-copy; use the snapshot as a separate test checkout, not an overlay on older code.
-The adjacent SHA-256 file can verify transfer integrity. This October 13 snapshot
-does not contain later handoff documentation or subsequent changes; prefer the
-updated Git checkout once the user has pushed it.
+The old `output/handoff/godeye-desktop-source-2026-10-13.tar.gz` contains only the
+initial desktop slice. It is historical and does not contain the expanded
+workflows. Preserve the Git checkout and avoid overlaying old snapshots onto it.
+Build outputs, credentials, downloaded data and user profiles are separate from
+source. Copied Mac experiments are optional; fresh/disposable fixtures and public
+acquisitions can exercise the new client.
 
 ## Prepare Omarchy
 
-Use Omarchy's normal system update process first so Arch packages are consistent.
-Install the development dependencies below. Leave the currently working NVIDIA
-driver in place; the project scripts do not install or change GPU drivers or CUDA.
+Use Omarchy's normal system update process so Arch packages are consistent, then
+install development dependencies. Keep the currently working graphics driver;
+project scripts do not install or change drivers or CUDA.
 
 ```sh
 sudo pacman -S --needed base-devel cmake qt6-base qt6-shadertools qt6-wayland vulkan-tools
@@ -38,52 +39,84 @@ make test-desktop
 ./output/desktop/build/bin/GodEyeDesktop
 ```
 
-Run these inside the graphical Hyprland session. The map selects Vulkan on Linux.
-Qt private RHI headers/libraries must come from the same installed Qt build. The
-diagnostic script only reads OS/session/compiler/Qt/NVIDIA/Vulkan information.
+Run GPU checks inside the graphical Hyprland session. Qt private RHI headers and
+libraries must match the installed Qt build. The diagnostic script only reads
+OS/session/compiler/Qt/NVIDIA/Vulkan information. This PC used Qt 6.11.2 and a
+local ignored `output/tools/` CMake environment because system CMake was absent.
 
-## Hardware acceptance
+Scientific processing requires an explicitly configured Python with the shared
+SAR requirements; real GRD processing additionally requires SNAP GPT. CPU local
+assistance has a separate pinned Python 3.12/3.13 environment and model contract.
+Neither is required for map startup. See [local assistance](../../docs/LOCAL-INFERENCE.md).
+Native camera clips require FFmpeg; the Linux package includes its native runtime.
+Optional provider keys require a working Linux Secret Service/libsecret store.
 
-1. Confirm the status bar reports **Vulkan** and the actual NVIDIA GPU; a running
-   window alone does not prove hardware rendering.
-2. Navigate the real basemap and terrain, rotate/tilt, resize the window, and check
-   wheel/trackpad/keyboard behavior in Wayland. Check that repeated navigation does
-   not keep increasing memory and that an idle map does not redraw continuously.
-3. Open Mission Control. Add an area, view, note and task; focus an area on the
-   shared map. Save/reopen a disposable mission library.
-4. Run the isolated GPU checks from the graphical session:
+## Hardware and workflow acceptance
+
+1. Confirm the status bar reports **Vulkan** and the actual GPU. A visible window
+   alone does not establish hardware rendering.
+2. Navigate terrain/3D Tiles, rotate/tilt, resize and exercise wheel/trackpad/keyboard
+   behavior. Check physical gestures, multiple displays/DPI and accessibility.
+   The generated three-cycle travel/resource check has passed on this PC, with
+   zero settled idle frames. Actual compositor minimize/restore was not acknowledged;
+   hide/show passed instead. Large photogrammetry sites remain a separate stress gate.
+3. Exercise Map/Satellite/Marine/Sky/Ground and Sources & observations: layer
+   controls, record/map selection, retained snapshots, stale/error states, orbits
+   and native camera playback. Keyed AIS/FIRMS/TomTom acceptance needs real keys.
+   See [source behavior and limits](DOMAIN-SOURCES.md).
+4. Draw annotations, search/route, change daily visualization/display settings,
+   export/import a workspace and open a `godeye://` link. Public providers may be
+   unavailable; preserve explicit failures. See [map tools](../../docs/MAP-TOOLS.md)
+   and [daily visualization](../../docs/DAILY-IMAGERY.md).
+5. In a disposable mission library, edit areas, notes/citations, tasks/due dates,
+   observations/reviews and views. Retain imagery/source evidence, compare the
+   timeline, run/pause an in-app monitor, then save/reopen. Monitors run while the
+   app is open and do not automatically download imagery. The Monitors page's
+   session-level automatic-check control also governs checkpoint updates to the
+   mission library; disable it for inspection without intended monitor writes.
+6. Run isolated GPU checks and inspect the reports and screenshots:
 
    ```sh
    ./output/desktop/build/bin/GodEyeDesktop --validate --qa-output output/qa/linux-generated
    ./output/desktop/build/bin/GodEyeDesktop --validate-live --qa-output output/qa/linux-live
    ```
 
-   Inspect `validation.json` and screenshots. Generated imagery is labeled QA;
-   the live run requests actual public map and elevation tiles. Retain a failure
-   report rather than treating a fallback or missing frame as a pass.
-5. Copy one completed optical and one SAR job folder if wanted. Preserve their
-   `result.json` and referenced preview/GeoTIFF filenames. Import these folders
-   in Satellite, check VV/VH/Composite, blend two previews and export original
-   files. Use `--validate --product /absolute/path/to/result.json` with a separate
-   QA output folder for a read-only product display check.
+   Add `--raster-python /absolute/path/to/python3` to exercise generated PRISMA
+   and measured-change workers. Set `GODEYE_INFERENCE_PYTHON` to a prepared CPU
+   inference environment for generated model/proposal review. Generated results
+   are QA fixtures; the live command requests public map/elevation data.
+7. Retrieve an identified optical acquisition and, where credentials/tools are
+   available, a real Sentinel-1 GRD. Inspect provenance, bounds, VV/VH/composite,
+   nodata, A/B blending and original exports. Real SNAP/DEM/calibration and a real
+   compatible SAR review pair remain scientific acceptance gates. Actual CBERS
+   and PRISMA source coverage also needs independent checks.
+8. Build a package and repeat outside-checkout launch/worker/GPU/HTTPS/media checks
+   using a clean profile. Check install/refusal/removal and profile preservation.
+   See [packaging instructions](PACKAGING.md); a local artifact is not a public
+   release audit.
 
-Mission documents can be opened as a separate copy in the preview. Source raster
-paths and imports must be re-established on Linux; a mission evidence link does
-not include the image bytes. Do not share the same live mission file between the
-Swift and Qt clients: their file locks do not form a joint editing protocol.
+Mission documents can be opened as a separate copy. Source raster paths must be
+re-established on Linux; evidence links do not transfer image bytes. Swift and
+Qt file locks do not form a joint editing protocol, so use separate working
+copies while both clients are open. Imported references can be forgotten without
+source deletion; only validated owned jobs support the separate OS Trash action.
+Use `--mission-library /absolute/path/to/missions.json` to open a library with
+automatic monitor checks paused; resume them explicitly in the Monitors page.
 
-## What follows acceptance
+## Remaining platform gates
 
-Photorealistic 3D Tiles, catalogue/download/processing controls, remaining public
-feeds, monitoring, inference and full workflow parity still need migration.
-The existing Python/SNAP scientific workers remain the processing implementation;
-the Qt preview currently imports their completed results.
+The enabled workflow set is implemented in Qt: shared scene rendering, all 19
+feeds, processing/download controls, infrastructure review, timeline/monitors,
+map documents and local CPU inference. Their retained Linux evidence is listed in
+migration status. No claim of complete cross-platform or scientific parity follows
+from these selected checks.
 
-CUDA is optional and independent of map rendering. The GTX 1070 is Pascal; future
-GPU inference needs a tested compatible dependency set, rather than assuming the
-newest CUDA/PyTorch package supports it. AMD users should retain Vulkan rendering
-and a CPU inference baseline. No inference backend is claimed tested by this handoff.
+Run fresh Apple Silicon Qt build/bundle/Keychain/Metal and Swift compatibility
+regressions after the shared-source extraction. CI jobs are configured, but hosted
+execution has not been claimed. The historical Mac slice is not acceptance of the
+expanded client.
 
-The Mac tests establish working Metal frames, portable document/product behavior
-and regression compatibility. Linux compilation, Wayland input, Vulkan on the GTX
-1070 and Linux packaging have not yet been verified on the target PC.
+CPU is the offered Qt inference backend. The GTX 1070 is Pascal; optional NVIDIA
+acceleration needs a tested compatible runtime, independently of Vulkan map
+rendering. AMD rendering similarly retains the CPU baseline. No CUDA/ROCm backend,
+driver change or aerial detector accuracy is claimed.

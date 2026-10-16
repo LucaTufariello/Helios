@@ -9,6 +9,7 @@ layout(std140, binding = 0) uniform Scene {
     vec4 originOpacity;
     vec4 tint;
     vec4 cutoutInfo;
+    vec4 displayInfo;
     vec4 cutouts[96];
 };
 void main() {

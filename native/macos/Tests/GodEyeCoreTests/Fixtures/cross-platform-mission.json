@@ -70,6 +70,46 @@
                     "note": "",
                     "state": "Unreviewed",
                     "title": "GENERATED QA observation"
+                },
+                {
+                    "id": "DA06FBA8-51C7-4D35-A30A-6AEF7DF53B24",
+                    "title": "GENERATED QA ONNX proposal",
+                    "category": "Building",
+                    "coordinate": {
+                        "latitude": 45.461,
+                        "longitude": 9.187
+                    },
+                    "bounds": [
+                        9.182,
+                        45.456,
+                        9.192,
+                        45.466
+                    ],
+                    "evidenceID": "6D22F4AF-EDAC-40DC-8EAE-EDB546E6566B",
+                    "note": "Generated fixture; model score is not calibrated probability.",
+                    "state": "Unreviewed",
+                    "method": "ONNX CPU proposal · GENERATED-QA-detector.onnx",
+                    "modelScore": 0.81,
+                    "modelName": "GENERATED-QA-detector.onnx",
+                    "inputSHA256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "inputTransform": "RGB; normalized upper-left XYXY",
+                    "modelSHA256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "modelContractSHA256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    "modelBackend": "onnx-cpu",
+                    "imageBox": [
+                        0.1,
+                        0.2,
+                        0.6,
+                        0.7
+                    ],
+                    "imagePixelBox": [
+                        20.0,
+                        40.0,
+                        120.0,
+                        140.0
+                    ],
+                    "observedAt": 813585600,
+                    "createdAt": 813608756.284
                 }
             ],
             "tasks": [

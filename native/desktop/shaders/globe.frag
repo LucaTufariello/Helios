@@ -7,6 +7,7 @@ layout(std140, binding = 0) uniform Scene {
     vec4 originOpacity;
     vec4 tint;
     vec4 cutoutInfo;
+    vec4 displayInfo;
     vec4 cutouts[96];
 };
 layout(binding = 1) uniform sampler2D image;
@@ -19,6 +20,19 @@ void main() {
     if (cutoutInfo.y > 0.5 && (any(lessThan(textureUV,vec2(0))) || any(greaterThan(textureUV,vec2(1)))))
         discard;
     vec4 pixel = texture(image, textureUV);
+    if (cutoutInfo.z > 0.5) {
+        pixel *= tint;
+        if (cutoutInfo.w >= 0.0 && pixel.a < cutoutInfo.w) discard;
+        if (cutoutInfo.w < 0.0 && cutoutInfo.z < 1.5) pixel.a = 1.0;
+        pixel.rgb = mix(12.92 * pixel.rgb, 1.055 * pow(max(pixel.rgb,vec3(0)),vec3(1.0/2.4)) - 0.055,
+                        greaterThan(pixel.rgb,vec3(0.0031308)));
+        fragColor = pixel;
+        return;
+    }
     if (pixel.a < 0.005) discard;
+    float luminance=dot(pixel.rgb,vec3(0.2126,0.7152,0.0722));
+    if(displayInfo.x>2.5) pixel.rgb=clamp(vec3(1.5-abs(4.0*luminance-3.0),1.5-abs(4.0*luminance-2.0),1.5-abs(4.0*luminance-1.0)),0.0,1.0);
+    else if(displayInfo.x>1.5) pixel.rgb=vec3(0.08,1.0,0.18)*luminance;
+    else if(displayInfo.x>0.5) pixel.rgb=vec3(luminance);
     fragColor = vec4(pixel.rgb * tint.rgb, pixel.a * originOpacity.w * tint.a);
 }

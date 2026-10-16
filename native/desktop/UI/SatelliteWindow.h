@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/Products.h"
 #include <QDialog>
+#include <QSet>
 #include <QSettings>
 class QListWidget;
 class QLabel;
@@ -11,7 +12,7 @@ class SatelliteWindow : public QDialog {
   Q_OBJECT
 public:
   SatelliteWindow(const QString &profile, QWidget *parent = nullptr);
-  void importManifest(const QString &filename);
+  void importManifest(const QString &filename, bool activate = false);
   void showProduct(const QString &id, bool compare = false);
   QVector<ProductLayer> displayed() const {
     return displayed_;
@@ -27,11 +28,16 @@ signals:
   void linkRequested(godeye::ProductLayer product);
   void blendChanged(double value);
   void pixelGridChanged(bool grid);
+  void processingRequested();
+  void libraryChanged();
 
 private:
+  QString profile_;
   QSettings settings_;
   QVector<ProductLayer> library_, displayed_;
   QStringList pendingImports_;
+  QSet<QString> activateImports_;
+  QSet<QString> unresolved_;
   QListWidget *list_;
   QLabel *summary_, *thumbnail_, *status_;
   QPlainTextEdit *metadata_;
@@ -42,5 +48,6 @@ private:
   void pumpImports();
   void exportSelected(const QString &kind);
   void remember();
+  void forgetManifest(const QString &path);
 };
 } // namespace godeye
