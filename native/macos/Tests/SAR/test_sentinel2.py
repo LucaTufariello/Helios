@@ -1,5 +1,6 @@
 """Generated RGB fixtures test geocoding/display semantics, not sensor accuracy."""
 import copy
+import builtins
 import importlib.util
 import json
 from pathlib import Path
@@ -111,6 +112,23 @@ class SentinelOpticalTests(unittest.TestCase):
         self.assertLessEqual(len((target/'diagnostics.log').read_text()),16000)
         self.assertEqual(json.loads((target/'events.jsonl').read_text().splitlines()[0])['state'],'validating')
         self.assertTrue(self.source.exists())
+
+    def test_missing_rasterio_identifies_environment_and_setup_instead_of_network(self):
+        request=self.root/'request.json';request.write_text(json.dumps(self.request))
+        target=self.root/'missing-rasterio'
+        original_import=builtins.__import__
+        def missing(name,*args,**kwargs):
+            if name=='rasterio':raise ModuleNotFoundError("No module named 'rasterio'",name='rasterio')
+            return original_import(name,*args,**kwargs)
+        with patch('builtins.__import__',side_effect=missing):
+            with self.assertRaises(ModuleNotFoundError):optical.run(request,target)
+        result=json.loads((target/'result.json').read_text())
+        self.assertEqual(result['state'],'failed')
+        self.assertIn('missing Rasterio',result['error'])
+        self.assertIn('Engine and jobs',result['error'])
+        self.assertNotIn('connection',result['error'])
+        self.assertIn('ModuleNotFoundError',(target/'diagnostics.log').read_text())
+        self.assertFalse((target/'preview.png').exists())
 
     def test_remote_read_reopens_after_interruption_without_stale_cache(self):
         from rasterio.errors import RasterioIOError

@@ -1,6 +1,7 @@
 #include "Core/Monitors.h"
 #include "UI/MainWindow.h"
 #include "UI/MapToolsWindow.h"
+#include "UI/WorkspaceStyle.h"
 #include "Validation.h"
 #include <QApplication>
 #include <QCommandLineParser>
@@ -32,11 +33,12 @@ private:
 } // namespace
 int main(int argc, char **argv) {
   QApplication app(argc, argv);
+  godeye::design::apply(app);
   QCoreApplication::setOrganizationName("GodEye");
   QCoreApplication::setApplicationName("GodEyeDesktop");
   QCoreApplication::setApplicationVersion("0.1");
   QCommandLineParser parser;
-  parser.setApplicationDescription("Native GodEye cross-platform desktop preview");
+  parser.setApplicationDescription("GodEye native geospatial intelligence workspace");
   parser.addHelpOption();
   parser.addVersionOption();
   parser.addOption({"profile", "Separate desktop working-library directory.", "directory"});

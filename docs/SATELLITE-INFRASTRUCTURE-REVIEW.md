@@ -88,7 +88,7 @@ Still required before claiming infrastructure detection accuracy:
 - Independent geographic residuals/co-registration verification and absolute radiometric reference checks; see [SAR quality checks](SAR-QUALITY-AND-MONITORING.md).
 - Sensitivity/false-change evaluation across thresholds, terrain, moisture, season, vegetation and processing/orbit variants. No calibrated probability or automatic confirmed-event label is available.
 - Radiometric terrain flattening and explicit layover/shadow/incidence quality masks for broader mountainous/mixed-geometry analysis. Current output remains Sigma0, not terrain-flattened Gamma0.
-- Sub-pixel registration, multi-temporal baselines, a statistical detector, optical change comparison and a full-resolution interactive raster/value inspector are future stages, not capabilities implied by this workspace.
+- The shared Qt [monitoring workbench](SITE-MONITORING.md) adds translation-only subpixel correction and independent stable-control verification. Real-data accuracy is still unevaluated. Multi-temporal/statistical baselines, optical change measurements and a full-resolution interactive raster/value inspector remain future stages.
 
 The first feature is intended to support infrastructure investigations with measured signals and portable human-reviewed evidence. It is not a claim of Palantir Maven feature parity.
 

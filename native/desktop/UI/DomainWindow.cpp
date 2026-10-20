@@ -2,6 +2,7 @@
 #include "CameraViewer.h"
 #include "Core/Credentials.h"
 #include "Core/Timeline.h"
+#include "WorkspaceStyle.h"
 #include <QBuffer>
 #include <QCheckBox>
 #include <QComboBox>
@@ -9,6 +10,7 @@
 #include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QFormLayout>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QImageReader>
@@ -20,6 +22,7 @@
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QScrollArea>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSpinBox>
@@ -30,7 +33,7 @@
 #include <QtConcurrent>
 #include <algorithm>
 namespace godeye {
-DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool networking)
+DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool networking, bool workspace)
     : QDialog(parent), profile_(profile), network_(this, networking) {
   setWindowTitle("Sources & observations");
   setObjectName("domainWindow");
@@ -38,10 +41,10 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   setWindowFlag(Qt::Window, true);
   auto *layout = new QVBoxLayout(this);
   auto *toolbar = new QHBoxLayout;
-  refresh_ = new QPushButton("Refresh enabled");
+  refresh_ = new QPushButton("Refresh");
   refresh_->setObjectName("domainRefresh");
-  cancel_ = new QPushButton("Cancel requests");
-  auto *providers = new QPushButton("Provider settings…");
+  cancel_ = new QPushButton("Cancel");
+  auto *providers = new QPushButton("Providers…");
   toolbar->addWidget(refresh_);
   toolbar->addWidget(cancel_);
   toolbar->addStretch();
@@ -55,6 +58,7 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   sourceQuery_ = new QLineEdit;
   sourceQuery_->setPlaceholderText("Find a source");
   sourceQuery_->setObjectName("domainSourceQuery");
+  sourceQuery_->setClearButtonEnabled(true);
   sourceLayout->addWidget(sourceQuery_);
   feeds_ = new QListWidget;
   feeds_->setObjectName("domainFeeds");
@@ -97,6 +101,21 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
         if (p.id == transit_->currentData())
           emit focusRequested(p.center, std::max(80000.0, p.radius * 2000));
   });
+  auto *sourceHelp = design::label("Enable a source to show its observations on the map. Source "
+                                   "times and availability appear in Records.",
+                                   "secondary");
+  sourceHelp->setWordWrap(true);
+  sourceLayout->addWidget(sourceHelp);
+  auto updateProviderFields = [this, form, providerRegion] {
+    const auto id =
+        feeds_->currentItem() ? feeds_->currentItem()->data(Qt::UserRole).toString() : QString{};
+    form->setRowVisible(group_, id == "satellites");
+    form->setRowVisible(transit_, id == "transit");
+    form->setRowVisible(camera_, id == "cameras");
+    form->setRowVisible(sentinel_, id == "sentinel");
+    providerRegion->setVisible(id == "cameras" || id == "transit");
+  };
+  connect(feeds_, &QListWidget::currentItemChanged, this, updateProviderFields);
   split->addWidget(sources);
   auto *content = new QWidget;
   auto *contentLayout = new QVBoxLayout(content);
@@ -113,6 +132,8 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   contentLayout->addWidget(vertical, 1);
   records_ = new QListWidget;
   records_->setObjectName("domainRecords");
+  records_->setAccessibleName("Source observations; activate a record to inspect it");
+  connect(records_, &QListWidget::itemActivated, this, [this] { showWorkspacePage(2); });
   vertical->addWidget(records_);
   auto *inspectionPanel = new QWidget;
   auto *inspectLayout = new QVBoxLayout(inspectionPanel);
@@ -121,15 +142,18 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   recordTitle_->setWordWrap(true);
   recordTitle_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   inspectLayout->addWidget(recordTitle_);
-  auto *actions = new QHBoxLayout;
+  auto *actions = new QGridLayout;
   inspectLayout->addLayout(actions);
   focus_ = new QPushButton("Show on map");
   orbit_ = new QPushButton("Estimated orbit");
   evidence_ = new QPushButton("Add evidence…");
   auto *exportRecord = new QPushButton("Export record…");
-  for (auto *button : {focus_, orbit_, evidence_, exportRecord})
-    actions->addWidget(button);
-  auto *tracking = new QHBoxLayout;
+  int actionIndex = 0;
+  for (auto *button : {focus_, orbit_, evidence_, exportRecord}) {
+    actions->addWidget(button, actionIndex / 2, actionIndex % 2);
+    ++actionIndex;
+  }
+  auto *tracking = new QGridLayout;
   inspectLayout->addLayout(tracking);
   follow_ = new QPushButton("Follow selection");
   trails_ = new QCheckBox("Retained trail");
@@ -140,10 +164,10 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   playbackSeconds_->setSpecialValueText("Live positions");
   playbackSeconds_->setToolTip("Retained observed fixes from this app session, up to one hour; no "
                                "interpolation. Satellites remain current propagated estimates.");
-  tracking->addWidget(follow_);
-  tracking->addWidget(trails_);
-  tracking->addWidget(selectedOnly_);
-  tracking->addWidget(playbackSeconds_);
+  tracking->addWidget(follow_, 0, 0);
+  tracking->addWidget(trails_, 0, 1);
+  tracking->addWidget(selectedOnly_, 1, 0);
+  tracking->addWidget(playbackSeconds_, 1, 1);
   connect(sourceQuery_, &QLineEdit::textChanged, this, [this] { setSection(section_); });
   connect(trails_, &QCheckBox::toggled, this, [this] { inspect(); });
   connect(selectedOnly_, &QCheckBox::toggled, this, [this] { update(); });
@@ -200,6 +224,27 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   vertical->setSizes({220, 350});
   split->addWidget(content);
   split->setSizes({300, 750});
+  if (workspace) {
+    layout->removeWidget(split);
+    workspaceTabs_ = new QTabWidget(this);
+    workspaceTabs_->setObjectName("sourceWorkspaceTabs");
+    workspaceTabs_->addTab(sources, "Sources");
+    auto *recordPage = new QWidget;
+    auto *recordLayout = new QVBoxLayout(recordPage);
+    recordLayout->addWidget(status_);
+    recordLayout->addWidget(credit_);
+    recordLayout->addWidget(records_, 1);
+    workspaceTabs_->addTab(recordPage, "Records");
+    auto *scroll = new QScrollArea;
+    scroll->setWidgetResizable(true);
+    scroll->setWidget(inspectionPanel);
+    workspaceTabs_->addTab(scroll, "Inspector");
+    layout->addWidget(workspaceTabs_, 1);
+    feeds_->setMinimumHeight(160);
+    recordTitle_->setProperty("role", "kicker");
+    credit_->setProperty("role", "secondary");
+    delete split;
+  }
   QSettings settings(profile_ + "/sources.ini", QSettings::IniFormat);
   QStringList restoreEnabled;
   for (const auto &feed : domainFeeds())
@@ -357,6 +402,11 @@ void DomainWindow::setConfiguration(DomainConfiguration configuration) {
   sentinel_->setCurrentIndex(sentinel_->findText(configuration.sentinelKind));
   network_.setConfiguration(configuration);
   saveConfiguration();
+}
+void DomainWindow::showWorkspacePage(int page, bool raw) {
+  if (workspaceTabs_)
+    workspaceTabs_->setCurrentIndex(std::clamp(page, 0, 2));
+  inspection_->setCurrentIndex(raw ? 1 : 0);
 }
 void DomainWindow::setSection(const QString &section) {
   section_ = section;

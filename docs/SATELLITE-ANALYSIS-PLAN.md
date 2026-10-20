@@ -4,6 +4,10 @@ Updated October 12, 2026. This detailed scientific backlog supports milestones 1
 of the [GodEye product roadmap](ROADMAP.md). It is planned validation work, not a
 scheduled automation or a claim that the checks are implemented.
 
+The Qt [monitoring workbench](SITE-MONITORING.md) now implements translation-only
+correction, independent control checks and a review inbox. The real-data evaluation
+and absolute/reference validation below remain acceptance work.
+
 ## Next scientific milestone: validate infrastructure change review
 
 1. **Real evaluation cases:** choose a documented, substantial industrial/logistics construction or expansion on relatively flat terrain. Retain dated reference evidence and nearby stable control areas. Collect multiple comparable before/after Sentinel-1 acquisitions; keep changed, unchanged and uncertain labels separate.

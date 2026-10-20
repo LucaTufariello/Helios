@@ -1,0 +1,342 @@
+[
+  {
+    "brief": {
+      "activity": [
+        {
+          "id": "8717D8F2-80A0-4BE1-AD3C-0825D23CB258",
+          "message": "Linked evidence: GENERATED QA · RGB · 2026-10-13 12:00:00 UTC",
+          "time": 813608757.438
+        },
+        {
+          "id": "62842E8A-C3FE-44EC-8C5F-18C41ADF8BE9",
+          "message": "Linked evidence: GENERATED QA view",
+          "time": 813608756.2850001
+        },
+        {
+          "id": "C53555BF-0DFF-4A44-B0A0-5D1864DAEE6E",
+          "message": "Added analyst observation: GENERATED QA observation",
+          "time": 813608756.2839999
+        },
+        {
+          "id": "9F8D2498-791D-439C-BC2D-C9AB12FE2BC2",
+          "message": "Added task: Review generated fixture",
+          "time": 813608756.2839999
+        },
+        {
+          "id": "4A9B3D64-D9BA-41C9-B94F-910A980D70A7",
+          "message": "Added review note: GENERATED QA note",
+          "time": 813608756.283
+        },
+        {
+          "id": "75461989-FC83-49D4-90CD-91BCFBEFBC3E",
+          "message": "Added mission area: GENERATED QA area",
+          "time": 813608756.2820001
+        }
+      ],
+      "areas": [
+        {
+          "id": "AE1F3E16-D128-4B84-811F-50AA3C496730",
+          "name": "GENERATED QA area",
+          "purpose": "Desktop integration test",
+          "region": {
+            "east": 9.22,
+            "north": 45.49,
+            "south": 45.43,
+            "west": 9.16
+          },
+          "dossier": {
+            "version": 1,
+            "linkedEvidenceIDs": [
+              "6D22F4AF-EDAC-40DC-8EAE-EDB546E6566B",
+              "10000000-0000-4000-8000-000000000002",
+              "10000000-0000-4000-8000-000000000003"
+            ],
+            "baselineEvidenceIDs": [
+              "6D22F4AF-EDAC-40DC-8EAE-EDB546E6566B",
+              "10000000-0000-4000-8000-000000000003"
+            ],
+            "sourceSiteEvidenceID": "10000000-0000-4000-8000-000000000002",
+            "monitoring": {
+              "version": 1,
+              "enabled": false,
+              "baselineEvidenceID": "10000000-0000-4000-8000-000000000003",
+              "discoveryMonitorID": "10000000-0000-4000-8000-000000000004",
+              "polarization": "VV",
+              "intervalHours": 24,
+              "maximumShiftPixels": 2,
+              "maximumResidualPixels": 0.5,
+              "minimumCorrelation": 0.6,
+              "thresholdDb": 3,
+              "averagingWindow": 5,
+              "minimumPixels": 25,
+              "controls": [
+                {
+                  "id": "00000000-0000-0000-0000-000000000064",
+                  "name": "GENERATED control 0-0",
+                  "role": "Fit",
+                  "region": {
+                    "west": 9.0,
+                    "south": 45.0,
+                    "east": 9.01,
+                    "north": 45.01
+                  }
+                },
+                {
+                  "id": "00000000-0000-0000-0000-000000000065",
+                  "name": "GENERATED control 0-1",
+                  "role": "Fit",
+                  "region": {
+                    "west": 9.02,
+                    "south": 45.0,
+                    "east": 9.03,
+                    "north": 45.01
+                  }
+                },
+                {
+                  "id": "00000000-0000-0000-0000-000000000066",
+                  "name": "GENERATED control 0-2",
+                  "role": "Fit",
+                  "region": {
+                    "west": 9.04,
+                    "south": 45.0,
+                    "east": 9.049999999999999,
+                    "north": 45.01
+                  }
+                },
+                {
+                  "id": "00000000-0000-0000-0000-000000000067",
+                  "name": "GENERATED control 1-0",
+                  "role": "Verify",
+                  "region": {
+                    "west": 9.0,
+                    "south": 45.03,
+                    "east": 9.01,
+                    "north": 45.04
+                  }
+                },
+                {
+                  "id": "00000000-0000-0000-0000-000000000068",
+                  "name": "GENERATED control 1-1",
+                  "role": "Verify",
+                  "region": {
+                    "west": 9.02,
+                    "south": 45.03,
+                    "east": 9.03,
+                    "north": 45.04
+                  }
+                },
+                {
+                  "id": "00000000-0000-0000-0000-000000000069",
+                  "name": "GENERATED control 1-2",
+                  "role": "Verify",
+                  "region": {
+                    "west": 9.04,
+                    "south": 45.03,
+                    "east": 9.049999999999999,
+                    "north": 45.04
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "monitors": [
+        {
+          "id": "10000000-0000-4000-8000-000000000004",
+          "kind": "New Sentinel-1 acquisitions",
+          "areaID": "AE1F3E16-D128-4B84-811F-50AA3C496730",
+          "enabled": false,
+          "intervalHours": 24,
+          "lookbackDays": 14,
+          "maximumCloud": 30,
+          "seenIDs": [],
+          "summary": "Not run"
+        }
+      ],
+      "notes": [
+        {
+          "body": "Review fixture only.",
+          "createdAt": 813608756.283,
+          "id": "BF2FF533-12F1-4A01-820B-F64D100960C3",
+          "reference": "Generated local fixture",
+          "title": "GENERATED QA note",
+          "areaID": "AE1F3E16-D128-4B84-811F-50AA3C496730"
+        }
+      ],
+      "observations": [
+        {
+          "category": "Test fixture",
+          "coordinate": {
+            "latitude": 45.46,
+            "longitude": 9.19
+          },
+          "createdAt": 813608756.2839999,
+          "id": "3D356DC4-E450-46D2-9104-64ECAF4D2160",
+          "method": "Analyst identification",
+          "note": "",
+          "state": "Unreviewed",
+          "title": "GENERATED QA observation",
+          "areaID": "AE1F3E16-D128-4B84-811F-50AA3C496730"
+        },
+        {
+          "id": "DA06FBA8-51C7-4D35-A30A-6AEF7DF53B24",
+          "title": "GENERATED QA ONNX proposal",
+          "category": "Building",
+          "coordinate": {
+            "latitude": 45.461,
+            "longitude": 9.187
+          },
+          "bounds": [
+            9.182,
+            45.456,
+            9.192,
+            45.466
+          ],
+          "evidenceID": "6D22F4AF-EDAC-40DC-8EAE-EDB546E6566B",
+          "note": "Generated fixture; model score is not calibrated probability.",
+          "state": "Unreviewed",
+          "method": "ONNX CPU proposal · GENERATED-QA-detector.onnx",
+          "modelScore": 0.81,
+          "modelName": "GENERATED-QA-detector.onnx",
+          "inputSHA256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "inputTransform": "RGB; normalized upper-left XYXY",
+          "modelSHA256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "modelContractSHA256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "modelBackend": "onnx-cpu",
+          "imageBox": [
+            0.1,
+            0.2,
+            0.6,
+            0.7
+          ],
+          "imagePixelBox": [
+            20.0,
+            40.0,
+            120.0,
+            140.0
+          ],
+          "observedAt": 813585600,
+          "createdAt": 813608756.284,
+          "areaID": "AE1F3E16-D128-4B84-811F-50AA3C496730"
+        }
+      ],
+      "tasks": [
+        {
+          "done": false,
+          "id": "63F3B13D-00B2-4F7E-A87C-CBF23E4B8B8F",
+          "title": "Review generated fixture",
+          "areaID": "AE1F3E16-D128-4B84-811F-50AA3C496730",
+          "observationID": "3D356DC4-E450-46D2-9104-64ECAF4D2160",
+          "monitoringEventID": "10000000-0000-4000-8000-000000000005"
+        }
+      ],
+      "version": 1,
+      "monitoringInbox": [
+        {
+          "version": 1,
+          "id": "10000000-0000-4000-8000-000000000005",
+          "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "areaID": "AE1F3E16-D128-4B84-811F-50AA3C496730",
+          "baselineEvidenceID": "10000000-0000-4000-8000-000000000003",
+          "areaName": "GENERATED QA area",
+          "title": "GENERATED QA quality blocked",
+          "sourceID": "GENERATED",
+          "kind": "Analysis",
+          "status": "Blocked",
+          "reviewState": "Investigating",
+          "rationale": "Generated fixture; no real acquisition checked.",
+          "reason": "Independent verification unavailable",
+          "createdAt": 813608756,
+          "updatedAt": 813608756,
+          "jobID": "10000000-0000-4000-8000-000000000007",
+          "previousJobIDs": [],
+          "candidateCount": 0
+        }
+      ]
+    },
+    "createdAt": 813608756.2809999,
+    "id": "4D5ADE2F-641A-43AB-BA22-36C0486E06C0",
+    "items": [
+      {
+        "camera": {
+          "altitude": 1500000,
+          "center": {
+            "latitude": 45.4641,
+            "longitude": 9.1919
+          },
+          "heading": 0,
+          "tilt": 0
+        },
+        "id": "4857F33F-F03A-4653-9F16-BFFC2B0E8753",
+        "kind": "view",
+        "referenceID": "9DB8F83A-11C0-4136-9253-74C8DA98D0D6",
+        "savedAt": 813608756.2850001,
+        "title": "GENERATED QA view"
+      },
+      {
+        "acquisition": {
+          "acquiredAt": 813585600,
+          "bounds": [
+            9.18,
+            45.45,
+            9.2,
+            45.47
+          ],
+          "displayBand": "RGB",
+          "resolutionMetres": 10,
+          "sensor": "GENERATED QA",
+          "sourceID": "GENERATED_QA_NOT_A_REAL_SATELLITE_ACQUISITION"
+        },
+        "id": "6D22F4AF-EDAC-40DC-8EAE-EDB546E6566B",
+        "kind": "optical",
+        "referenceID": "673A8063-8F5F-496C-9049-CF488A6F44C8",
+        "savedAt": 813608757.438,
+        "title": "GENERATED QA · RGB · 2026-10-13 12:00:00 UTC"
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "kind": "site",
+        "referenceID": "10000000-0000-4000-8000-000000000001",
+        "title": "GENERATED QA site snapshot",
+        "savedAt": 813608757.438,
+        "site": {
+          "id": "10000000-0000-4000-8000-000000000001",
+          "name": "GENERATED QA site",
+          "kind": "Infrastructure",
+          "createdAt": 813608756,
+          "region": {
+            "east": 9.22,
+            "north": 45.49,
+            "south": 45.43,
+            "west": 9.16
+          }
+        }
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "kind": "radar",
+        "referenceID": "10000000-0000-4000-8000-000000000006",
+        "title": "GENERATED QA radar reference",
+        "savedAt": 813608756,
+        "acquisition": {
+          "sourceID": "GENERATED",
+          "sensor": "Sentinel-1A",
+          "displayBand": "VV",
+          "acquiredAt": 813585600,
+          "bounds": [
+            9.16,
+            45.43,
+            9.22,
+            45.49
+          ]
+        }
+      }
+    ],
+    "name": "GENERATED QA — desktop infrastructure review",
+    "notes": "Generated test data; no real operational finding.",
+    "objective": "Verify shared map, mission documents and bounded satellite previews.",
+    "updatedAt": 813608757.438
+  }
+]

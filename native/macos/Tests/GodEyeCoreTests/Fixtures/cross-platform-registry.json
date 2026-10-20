@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "aliases": [
+        "Terminal QA"
+      ],
+      "archived": false,
+      "boundary": {
+        "east": 9.1,
+        "north": 45.1,
+        "south": 45,
+        "west": 9
+      },
+      "category": "Civilian airport",
+      "citations": [],
+      "id": "D7A92E6C-EAA1-475D-9A53-89BD4F95056E",
+      "identifiers": {},
+      "name": "Generated civilian terminal",
+      "revision": 1
+    },
+    {
+      "aliases": [
+        "Terminal QA"
+      ],
+      "archived": false,
+      "boundary": {
+        "east": 9.1,
+        "north": 45.1,
+        "south": 45,
+        "west": 9
+      },
+      "category": "Civilian road",
+      "citations": [],
+      "id": "370B9FF9-9005-4177-95EA-FB665D81FEEE",
+      "identifiers": {},
+      "name": "Generated civilian access road",
+      "revision": 1
+    }
+  ],
+  "relationships": [
+    {
+      "id": "31ADA547-7C82-4598-B2EC-566951969C98",
+      "fromAssetID": "D7A92E6C-EAA1-475D-9A53-89BD4F95056E",
+      "toAssetID": "370B9FF9-9005-4177-95EA-FB665D81FEEE",
+      "kind": "Connected to",
+      "reviewState": "Supported",
+      "rationale": "Synthetic evaluation connection diagram; no operational claim.",
+      "validFrom": "2026-10-01",
+      "validThrough": "",
+      "citations": [
+        {
+          "capturedAt": 814187358.8970001,
+          "derivationReferences": [],
+          "fingerprint": "",
+          "id": "3232661C-61AF-42A8-BBC1-69BA13CDFDF7",
+          "label": "Conflicting evaluation source",
+          "origin": {
+            "kind": "Evaluation fixture",
+            "label": "Conflicting evaluation source",
+            "sourceID": "evaluation-document:1"
+          },
+          "provider": "Evaluation fixture",
+          "qualityLimitations": "Candidate or observation; requires analyst review. A candidate score is not a probability or proof of physical change.",
+          "reference": "https://example.invalid/evaluation-only",
+          "sourceDate": null,
+          "sourceID": "evaluation-document:1"
+        }
+      ],
+      "revision": 1,
+      "archived": false
+    }
+  ]
+}

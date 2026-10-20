@@ -37,6 +37,7 @@ public:
 signals:
   void changed();
   void failed(QString message);
+  void discovered(QString missionID, QString monitorID, QStringList identifiers);
   void results(QString missionID, QString monitorID, QStringList identifiers);
 
 private:

@@ -1,0 +1,275 @@
+[
+  {
+    "brief": {
+      "activity": [
+        {
+          "id": "3774C3FB-828D-4653-A10E-FB86E891F6D4",
+          "message": "Updated tasks entry",
+          "time": 814187358.8970001
+        },
+        {
+          "id": "792C9BCB-5983-4605-95BB-5ED7EBC7D402",
+          "message": "Linked evidence: Generated evaluation source - missing raster",
+          "time": 814187358.8970001
+        }
+      ],
+      "areas": [],
+      "investigation": {
+        "associations": [
+          {
+            "approvedAt": 814187358.8970001,
+            "assetSnapshotID": "823FAA86-56E7-4452-92AC-04119067D58B",
+            "citationID": "235AF2E3-C410-4D9C-BF9A-58E1D6CD1A15",
+            "id": "6BABC785-0E19-4D47-96CB-4F421957E6F2",
+            "reason": "Geographic overlap with the adopted asset boundary"
+          }
+        ],
+        "citations": [
+          {
+            "capturedAt": 814187358.8970001,
+            "derivationReferences": [
+              "46848818-D635-4CB4-A84B-298B77DB1DA7"
+            ],
+            "evidence": {
+              "acquisition": {
+                "acquiredAt": 814187358.8970001,
+                "bounds": {
+                  "east": 9.1,
+                  "north": 45.1,
+                  "south": 45,
+                  "west": 9
+                },
+                "sensor": "Generated public-source fixture",
+                "sourceID": "CIVIL-QA-20261020"
+              },
+              "id": "3F368F9A-1978-4781-90D7-92C4A383DE37",
+              "kind": "optical",
+              "referenceID": "46848818-D635-4CB4-A84B-298B77DB1DA7",
+              "savedAt": 814187358.8970001,
+              "title": "Generated evaluation source - missing raster"
+            },
+            "fingerprint": "",
+            "id": "235AF2E3-C410-4D9C-BF9A-58E1D6CD1A15",
+            "label": "Generated evaluation source - missing raster",
+            "provider": "Generated public-source fixture",
+            "qualityLimitations": "Source snapshot; acquisition and capture times differ. Display imagery is not a calibrated measurement. Verify source-specific resolution, registration and coverage.",
+            "reference": "",
+            "sourceDate": 814187358.8970001,
+            "sourceID": "CIVIL-QA-20261020"
+          },
+          {
+            "capturedAt": 814187358.8970001,
+            "derivationReferences": [],
+            "fingerprint": "",
+            "id": "3232661C-61AF-42A8-BBC1-69BA13CDFDF7",
+            "label": "Conflicting evaluation source",
+            "origin": {
+              "kind": "Evaluation fixture",
+              "label": "Conflicting evaluation source",
+              "sourceID": "evaluation-document:1"
+            },
+            "provider": "Evaluation fixture",
+            "qualityLimitations": "Candidate or observation; requires analyst review. A candidate score is not a probability or proof of physical change.",
+            "reference": "https://example.invalid/evaluation-only",
+            "sourceDate": null,
+            "sourceID": "evaluation-document:1"
+          }
+        ],
+        "closureRationale": "",
+        "completionCriteria": "",
+        "conclusion": "",
+        "findings": [
+          {
+            "alternatives": "An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. ",
+            "areaIDs": [],
+            "areaSnapshots": [],
+            "assetSnapshotIDs": [
+              "823FAA86-56E7-4452-92AC-04119067D58B"
+            ],
+            "citations": [
+              {
+                "citationID": "235AF2E3-C410-4D9C-BF9A-58E1D6CD1A15",
+                "role": "Supporting"
+              },
+              {
+                "citationID": "3232661C-61AF-42A8-BBC1-69BA13CDFDF7",
+                "role": "Contradicting"
+              }
+            ],
+            "claim": "The generated civilian terminal boundary has conflicting source descriptions.",
+            "createdAt": 814187358.8970001,
+            "id": "B3F1FDE7-70CA-462D-A3D4-FC69D95C74B2",
+            "origin": {},
+            "rationale": "Analyst evaluation only; the cited fixture records the boundary and does not demonstrate an operational change. Review reaffirmed with the conflicting evidence retained.",
+            "revision": 2,
+            "revisions": [
+              {
+                "alternatives": "An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. An alternate interpretation remains possible. The fixture does not establish real construction or activity. ",
+                "areaIDs": [],
+                "areaSnapshots": [],
+                "assetSnapshotIDs": [
+                  "823FAA86-56E7-4452-92AC-04119067D58B"
+                ],
+                "citations": [
+                  {
+                    "citationID": "235AF2E3-C410-4D9C-BF9A-58E1D6CD1A15",
+                    "role": "Supporting"
+                  },
+                  {
+                    "citationID": "3232661C-61AF-42A8-BBC1-69BA13CDFDF7",
+                    "role": "Contradicting"
+                  }
+                ],
+                "claim": "The generated civilian terminal boundary has conflicting source descriptions.",
+                "createdAt": 814187358.8970001,
+                "id": "B3F1FDE7-70CA-462D-A3D4-FC69D95C74B2",
+                "origin": {},
+                "rationale": "Analyst evaluation only; the cited fixture records the boundary and does not demonstrate an operational change.",
+                "recordedAt": 814187358.898,
+                "revision": 1,
+                "state": "Supported",
+                "timeContext": ""
+              }
+            ],
+            "state": "Supported",
+            "timeContext": ""
+          }
+        ],
+        "snapshots": [
+          {
+            "asset": {
+              "aliases": [
+                "Terminal QA"
+              ],
+              "archived": false,
+              "boundary": {
+                "east": 9.1,
+                "north": 45.1,
+                "south": 45,
+                "west": 9
+              },
+              "category": "Civilian airport",
+              "citations": [],
+              "id": "D7A92E6C-EAA1-475D-9A53-89BD4F95056E",
+              "identifiers": {},
+              "name": "Generated civilian terminal",
+              "revision": 1
+            },
+            "capturedAt": 814187358.8970001,
+            "id": "823FAA86-56E7-4452-92AC-04119067D58B"
+          },
+          {
+            "id": "0341980B-6C09-42BB-ABFF-6406150D821B",
+            "capturedAt": 814187358.8970001,
+            "asset": {
+              "aliases": [
+                "Terminal QA"
+              ],
+              "archived": false,
+              "boundary": {
+                "east": 9.1,
+                "north": 45.1,
+                "south": 45,
+                "west": 9
+              },
+              "category": "Civilian road",
+              "citations": [],
+              "id": "370B9FF9-9005-4177-95EA-FB665D81FEEE",
+              "identifiers": {},
+              "name": "Generated civilian access road",
+              "revision": 1
+            }
+          },
+          {
+            "id": "5075EDD9-4D8E-4EFC-A72E-C66E814E4934",
+            "capturedAt": 814187358.8970001,
+            "relationship": {
+              "id": "31ADA547-7C82-4598-B2EC-566951969C98",
+              "fromAssetID": "D7A92E6C-EAA1-475D-9A53-89BD4F95056E",
+              "toAssetID": "370B9FF9-9005-4177-95EA-FB665D81FEEE",
+              "kind": "Connected to",
+              "reviewState": "Supported",
+              "rationale": "Synthetic evaluation connection diagram; no operational claim.",
+              "validFrom": "2026-10-01",
+              "validThrough": "",
+              "citations": [
+                {
+                  "capturedAt": 814187358.8970001,
+                  "derivationReferences": [],
+                  "fingerprint": "",
+                  "id": "3232661C-61AF-42A8-BBC1-69BA13CDFDF7",
+                  "label": "Conflicting evaluation source",
+                  "origin": {
+                    "kind": "Evaluation fixture",
+                    "label": "Conflicting evaluation source",
+                    "sourceID": "evaluation-document:1"
+                  },
+                  "provider": "Evaluation fixture",
+                  "qualityLimitations": "Candidate or observation; requires analyst review. A candidate score is not a probability or proof of physical change.",
+                  "reference": "https://example.invalid/evaluation-only",
+                  "sourceDate": null,
+                  "sourceID": "evaluation-document:1"
+                }
+              ],
+              "revision": 1,
+              "archived": false
+            }
+          }
+        ],
+        "status": "Open",
+        "unresolvedQuestions": "",
+        "version": 1
+      },
+      "monitors": [],
+      "notes": [],
+      "observations": [],
+      "tasks": [
+        {
+          "dependencyIDs": [],
+          "done": false,
+          "findingID": "B3F1FDE7-70CA-462D-A3D4-FC69D95C74B2",
+          "id": "3CB2F572-1928-43B5-9D29-F905FA66C73D",
+          "owner": "",
+          "title": "Verify the conflicting source"
+        },
+        {
+          "dependencyIDs": [
+            "3CB2F572-1928-43B5-9D29-F905FA66C73D"
+          ],
+          "done": false,
+          "findingID": "B3F1FDE7-70CA-462D-A3D4-FC69D95C74B2",
+          "id": "ABBABD02-F85F-4C14-9FBA-F07997B5C94B",
+          "owner": "Evaluation analyst",
+          "title": "Prepare updated interpretation"
+        }
+      ],
+      "version": 1
+    },
+    "createdAt": 814187358.8970001,
+    "id": "0D0907D1-FC5C-491A-87D4-31678B2498CA",
+    "items": [
+      {
+        "acquisition": {
+          "acquiredAt": 814187358.8970001,
+          "bounds": {
+            "east": 9.1,
+            "north": 45.1,
+            "south": 45,
+            "west": 9
+          },
+          "sensor": "Generated public-source fixture",
+          "sourceID": "CIVIL-QA-20261020"
+        },
+        "id": "3F368F9A-1978-4781-90D7-92C4A383DE37",
+        "kind": "optical",
+        "referenceID": "46848818-D635-4CB4-A84B-298B77DB1DA7",
+        "savedAt": 814187358.8970001,
+        "title": "Generated evaluation source - missing raster"
+      }
+    ],
+    "name": "GENERATED EVALUATION - civilian airport investigation",
+    "notes": "",
+    "objective": "Evaluate the connected investigation workflow using synthetic civilian terminal evidence. This is not an operational assessment.",
+    "updatedAt": 814187358.898
+  }
+]

@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "id": "gagarin-civilian-construction-development",
+  "name": "Gagarin International Airport — historical civilian construction",
+  "split": "development",
+  "searchBounds": {
+    "west": 46.13,
+    "south": 51.68,
+    "east": 46.22,
+    "north": 51.75
+  },
+  "discoveryWindows": [
+    {
+      "role": "candidate-before",
+      "start": "2016-06-01",
+      "endExclusive": "2016-09-01"
+    },
+    {
+      "role": "candidate-after",
+      "start": "2020-06-01",
+      "endExclusive": "2020-09-01"
+    }
+  ],
+  "references": [
+    {
+      "url": "https://favt.gov.ru/novosti-novosti/?id=7990",
+      "purpose": "Official documentation of a newly built civilian airport entering service in August 2019; not a pixel-level change label."
+    },
+    {
+      "url": "https://special.favt.gov.ru/novosti-novosti/?id=5320",
+      "purpose": "Dated April 2019 construction progress; not a claim that the 2016 site was unchanged."
+    }
+  ],
+  "selectionPolicy": "Same Sentinel-1A IW GRD, pass direction, relative orbit, VV and processing options, covering site plus controls. Confirm actual construction stage in independent dated optical imagery. Summer windows reduce but do not remove seasonal effects.",
+  "heldOutPolicy": "Select additional acquisitions and independently documented unchanged areas before threshold tuning. Record held-out acquisition IDs in a separate protocol; never relabel development results as held-out.",
+  "labels": [],
+  "evaluationStatus": "pending real scientific rasters and independent labels",
+  "limitations": [
+    "Search bounds are a coarse discovery envelope, not a surveyed airport boundary.",
+    "No current flight, aircraft or operational-status inference is part of this construction evaluation.",
+    "Do not treat catalogue metadata or generated fixtures as real-data detection validation."
+  ],
+  "selectedCandidates": [
+    {
+      "id": "81a9e5a4-4639-5502-b31b-e654772fd876",
+      "name": "S1A_IW_GRDH_1SDV_20160713T030514_20160713T030539_012124_012C72_3BCF.SAFE",
+      "contentDate": {
+        "Start": "2016-07-13T03:05:14.095344Z",
+        "End": "2016-07-13T03:05:39.094678Z"
+      },
+      "bytes": 1770748663,
+      "online": true,
+      "attributes": {
+        "timeliness": "Fast-24h",
+        "orbitNumber": 12124,
+        "sliceNumber": 12,
+        "productClass": "S",
+        "orbitDirection": "DESCENDING",
+        "operationalMode": "IW",
+        "processingLevel": "LEVEL1",
+        "swathIdentifier": "IW",
+        "platformShortName": "SENTINEL-1",
+        "instrumentShortName": "SAR",
+        "relativeOrbitNumber": 152,
+        "polarisationChannels": "VV&VH",
+        "platformSerialIdentifier": "A",
+        "productType": "IW_GRDH_1S",
+        "beginningDateTime": "2016-07-13T03:05:14.095344Z",
+        "endingDateTime": "2016-07-13T03:05:39.094678Z"
+      }
+    },
+    {
+      "id": "4bc59115-1931-5f4e-aa74-c8f827012f75",
+      "name": "S1A_IW_GRDH_1SDV_20200716T030554_20200716T030619_033474_03E0F7_3221.SAFE",
+      "contentDate": {
+        "Start": "2020-07-16T03:05:54.086000Z",
+        "End": "2020-07-16T03:06:19.084000Z"
+      },
+      "bytes": 1746875937,
+      "online": true,
+      "attributes": {
+        "timeliness": "Fast-24h",
+        "orbitNumber": 33474,
+        "sliceNumber": 4,
+        "productClass": "S",
+        "orbitDirection": "DESCENDING",
+        "operationalMode": "IW",
+        "processingLevel": "LEVEL1",
+        "swathIdentifier": "IW",
+        "platformShortName": "SENTINEL-1",
+        "instrumentShortName": "SAR",
+        "relativeOrbitNumber": 152,
+        "polarisationChannels": "VV&VH",
+        "platformSerialIdentifier": "A",
+        "productType": "IW_GRDH_1S",
+        "beginningDateTime": "2020-07-16T03:05:54.086000Z",
+        "endingDateTime": "2020-07-16T03:06:19.084000Z"
+      }
+    }
+  ],
+  "catalogueCheckedAt": "2026-10-18",
+  "candidateStatus": "Candidate geometry/season match only; covering controls, optical labels and scientific processing remain pending."
+}

@@ -1,5 +1,9 @@
 # Native mission control
 
+For the shared Qt client on Linux/macOS, see [connected site dossiers](SITE-DOSSIERS.md)
+and the [desktop guide](../native/desktop/README.md). The interface descriptions
+below refer to the Swift macOS reference.
+
 Mission Control (Command-6) opens a separate, resizable macOS window. It shares
 GodEye's existing map, imagery libraries and selected mission. Move it to another
 display if useful; **Show map** returns to the geographic context.
@@ -220,3 +224,7 @@ were captured; the timeline layouts were inspected. Swift/repository formatting,
 release build and local signature verification passed. Reports and screenshots are
 in `output/qa/mission-timeline-2026-10-11`. These use labeled generated fixtures;
 they do not validate detector accuracy or physical/radiometric change.
+
+## Connected investigations
+
+Use Mission Control’s Investigation, Asset registry, Connections and Findings pages to retain shared infrastructure identities, review dated evidence, track dependent follow-up and export an A4 PDF with a JSON evidence manifest. See [Connected investigations](CONNECTED-INVESTIGATIONS.md) for the complete workflow and historical-record rules.

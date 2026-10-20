@@ -1,4 +1,6 @@
 #include "Missions.h"
+#include "Infrastructure.h"
+#include "Monitoring.h"
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
@@ -105,6 +107,51 @@ void linked(const QJsonObject &o, const char *key, const QSet<QString> &ids) {
   if (!missing(o[key]))
     check(ids.contains(identity(o[key])), "A mission link refers to a missing record.");
 }
+QSet<QString> references(const QJsonValue &value, const QSet<QString> &allowed) {
+  check(value.isArray() && value.toArray().size() <= 500,
+        "Dossier links are invalid or exceed 500 items.");
+  QSet<QString> result;
+  for (const auto v : value.toArray()) {
+    const auto id = identity(v);
+    check(allowed.contains(id) && !result.contains(id), "A dossier link is missing or duplicated.");
+    result.insert(id);
+  }
+  return result;
+}
+bool sameID(const QJsonValue &a, const QString &b) {
+  return a.isString() && a.toString().compare(b, Qt::CaseInsensitive) == 0;
+}
+QJsonArray withoutReference(QJsonArray array, const QString &id) {
+  for (qsizetype i = array.size(); i-- > 0;)
+    if (sameID(array[i], id))
+      array.removeAt(i);
+  return array;
+}
+QJsonObject dossierMetadata(QJsonObject area) {
+  if (area["dossier"].isObject())
+    return area["dossier"].toObject();
+  return {
+      {"version", 1}, {"linkedEvidenceIDs", QJsonArray{}}, {"baselineEvidenceIDs", QJsonArray{}}};
+}
+void changeDossier(QJsonObject &plan, const QString &areaID,
+                   const std::function<void(QJsonObject &)> &mutate) {
+  auto brief = plan["brief"].toObject();
+  auto areas = brief["areas"].toArray();
+  bool found = false;
+  for (qsizetype i = 0; i < areas.size(); ++i) {
+    auto area = areas[i].toObject();
+    if (!sameID(area["id"], areaID))
+      continue;
+    auto data = dossierMetadata(area);
+    mutate(data);
+    area["dossier"] = data;
+    areas[i] = area;
+    found = true;
+  }
+  check(found, "The dossier area no longer exists.");
+  brief["areas"] = areas;
+  plan["brief"] = brief;
+}
 void coordinate(const QJsonValue &v) {
   check(v.isObject() && Coordinate::read(v.toObject()).has_value(),
         "A mission coordinate is invalid.");
@@ -186,6 +233,10 @@ void validateItem(QJsonObject o) {
           "An image link contains conflicting geometry.");
   } else
     check(false, "An evidence type is unsupported.");
+  if (!missing(o["manifest"]))
+    text(o, "manifest", 4096);
+  if (!missing(o["manifestHash"]))
+    check(validSHA256(o["manifestHash"]), "An evidence manifest fingerprint is invalid.");
   if (!missing(o["acquisition"])) {
     check((kind == "optical" || kind == "radar") && o["acquisition"].isObject(),
           "An acquisition is attached to invalid evidence.");
@@ -241,6 +292,28 @@ QString dateLabel(const QJsonValue &value) {
     date = QDateTime::fromString(value.toString(), Qt::ISODateWithMs).toUTC();
   return date.isValid() ? date.toString("yyyy-MM-dd HH:mm:ss 'UTC'") : "Time unavailable";
 }
+namespace {
+void pauseDetachedChecks(QJsonObject &plan) {
+  auto b = plan["brief"].toObject();
+  if (b.isEmpty())
+    return;
+  auto monitors = b["monitors"].toArray();
+  for (const auto v : b["areas"].toArray()) {
+    const auto profile = v.toObject()["dossier"].toObject()["monitoring"].toObject();
+    if (profile.isEmpty() || profile["enabled"].toBool())
+      continue;
+    for (qsizetype i = 0; i < monitors.size(); ++i) {
+      auto m = monitors[i].toObject();
+      if (m["id"] == profile["discoveryMonitorID"]) {
+        m["enabled"] = false;
+        monitors[i] = m;
+      }
+    }
+  }
+  b["monitors"] = monitors;
+  plan["brief"] = b;
+}
+} // namespace
 void validateMissions(const QJsonArray &plans) {
   check(plans.size() <= 200, "The mission library exceeds 200 plans.");
   QSet<QString> ids;
@@ -282,16 +355,55 @@ void validateMissions(const QJsonArray &plans) {
     const auto b = p["brief"].toObject();
     check(b["version"].toInt(-1) == 1, "This mission brief version is unsupported.");
     const auto areas = arrayIDs(b, "areas", 100);
-    arrayIDs(b, "observations", 500);
+    const auto observations = arrayIDs(b, "observations", 500);
     arrayIDs(b, "notes", 200);
     arrayIDs(b, "tasks", 200);
-    arrayIDs(b, "monitors", 50);
+    validateTaskDependencies(b);
+    validateInvestigation(p);
+    const auto monitorIDs = arrayIDs(b, "monitors", 50);
+    if (b.contains("monitoringInbox")) {
+      check(b["monitoringInbox"].isArray(), "The monitoring inbox is invalid.");
+      validateMonitoringInbox(b["monitoringInbox"].toArray(), areas, evidence);
+    }
     arrayIDs(b, "activity", 200);
     for (const auto v : b["areas"].toArray()) {
       const auto a = v.toObject();
       text(a, "name", 160, true);
       text(a, "purpose", 2000);
       bounds(a["region"], true);
+      if (!missing(a["dossier"])) {
+        check(a["dossier"].isObject(), "Dossier metadata is invalid.");
+        const auto d = a["dossier"].toObject();
+        check(d["version"] == 1, "This dossier version is unsupported.");
+        const auto links = references(d["linkedEvidenceIDs"], evidence);
+        const auto baselines = references(d["baselineEvidenceIDs"], links);
+        QSet<QString> rasterIDs, siteIDs;
+        for (const auto item : p["items"].toArray()) {
+          const auto e = item.toObject();
+          const auto id = identity(e["id"]);
+          if (e["kind"] == "optical" || e["kind"] == "radar")
+            rasterIDs.insert(id);
+          if (e["kind"] == "site")
+            siteIDs.insert(id);
+        }
+        check((baselines - rasterIDs).isEmpty(),
+              "Only linked raster evidence can be a dossier baseline.");
+        linked(d, "sourceSiteEvidenceID", links & siteIDs);
+        if (!missing(d["monitoring"])) {
+          check(d["monitoring"].isObject(), "Monitoring configuration is invalid.");
+          validateMonitoring(d["monitoring"].toObject(), baselines, p["items"].toArray(),
+                             monitorIDs);
+          const auto watch = d["monitoring"].toObject();
+          if (watch["discoveryMonitorID"].isString())
+            for (const auto v : b["monitors"].toArray()) {
+              const auto m = v.toObject();
+              if (m["id"].toString().compare(watch["discoveryMonitorID"].toString(),
+                                             Qt::CaseInsensitive) == 0)
+                check(m["areaID"] == a["id"] && m["kind"] == "New Sentinel-1 acquisitions",
+                      "Discovery check must belong to this area and radar source.");
+            }
+        }
+      }
     }
     for (const auto v : b["notes"].toArray()) {
       const auto n = v.toObject();
@@ -308,6 +420,11 @@ void validateMissions(const QJsonArray &plans) {
       check(t["done"].isBool(), "A task state is invalid.");
       date(t, "due", true);
       linked(t, "areaID", areas);
+      linked(t, "observationID", observations);
+      QSet<QString> inboxIDs;
+      for (const auto v : b["monitoringInbox"].toArray())
+        inboxIDs.insert(v.toObject()["id"].toString().toUpper());
+      linked(t, "monitoringEventID", inboxIDs);
     }
     for (const auto v : b["observations"].toArray()) {
       const auto o = v.toObject();
@@ -507,7 +624,8 @@ void Missions::editEntry(const QString &collection, const QString &id, const QJs
   const QMap<QString, QStringList> allowed{
       {"areas", {"name", "purpose", "region"}},
       {"notes", {"title", "body", "reference", "evidenceID", "areaID"}},
-      {"tasks", {"title", "done", "due", "areaID"}},
+      {"tasks",
+       {"title", "done", "due", "areaID", "observationID", "findingID", "owner", "dependencyIDs"}},
       {"observations",
        {"title", "category", "coordinate", "bounds", "evidenceID", "areaID", "note", "state",
         "observedAt"}},
@@ -685,6 +803,7 @@ void Missions::update(const std::function<void(QJsonObject &)> &mutation) {
     if (p["id"].toString() != selectedID_)
       continue;
     mutation(p);
+    pauseDetachedChecks(p);
     p["updatedAt"] = foundationNow();
     plans[i] = p;
     validateMissions(plans);
@@ -729,18 +848,23 @@ void Missions::addNote(const QString &title, const QString &body, const QString 
     p["brief"] = b;
   });
 }
-void Missions::addTask(const QString &title, const QString &areaID) {
+QString Missions::addTask(const QString &title, const QString &areaID,
+                          const QString &observationID) {
+  const auto id = newID();
   update([&](QJsonObject &p) {
     auto b = brief(p);
     auto a = b["tasks"].toArray();
-    QJsonObject t{{"id", newID()}, {"title", title.trimmed()}, {"done", false}};
+    QJsonObject t{{"id", id}, {"title", title.trimmed()}, {"done", false}};
     if (!areaID.isEmpty())
       t["areaID"] = areaID;
+    if (!observationID.isEmpty())
+      t["observationID"] = observationID;
     a.append(t);
     b["tasks"] = a;
     activity(b, "Added task: " + title);
     p["brief"] = b;
   });
+  return id;
 }
 void Missions::setTaskDone(const QString &id, bool done) {
   update([&](QJsonObject &p) {
@@ -761,17 +885,171 @@ void Missions::setTaskDone(const QString &id, bool done) {
     p["brief"] = b;
   });
 }
-void Missions::addArea(const QString &name, const QString &purpose, Bounds bounds) {
+QString Missions::addArea(const QString &name, const QString &purpose, Bounds bounds) {
+  const auto id = newID();
   update([&](QJsonObject &p) {
     auto b = brief(p);
     auto a = b["areas"].toArray();
-    a.append(QJsonObject{{"id", newID()},
-                         {"name", name.trimmed()},
-                         {"purpose", purpose},
-                         {"region", bounds.json()}});
+    a.append(QJsonObject{
+        {"id", id}, {"name", name.trimmed()}, {"purpose", purpose}, {"region", bounds.json()}});
     b["areas"] = a;
     activity(b, "Added mission area: " + name);
     p["brief"] = b;
+  });
+  return id;
+}
+QString Missions::importDossierSite(const QString &missionID, const QJsonObject &site) {
+  check(!missionID.isEmpty() && selectedID_ == missionID, "The selected mission changed.");
+  QJsonObject source{{"id", newID()},
+                     {"kind", "site"},
+                     {"referenceID", site["id"]},
+                     {"title", site["name"]},
+                     {"savedAt", foundationNow()},
+                     {"site", site}};
+  validateItem(source);
+  const auto current = selected();
+  for (const auto value : current["items"].toArray()) {
+    const auto item = value.toObject();
+    if (item["kind"] == "site" && sameID(item["referenceID"], site["id"].toString())) {
+      source = item;
+      break;
+    }
+  }
+  for (const auto value : current["brief"].toObject()["areas"].toArray()) {
+    const auto area = value.toObject();
+    if (sameID(area["dossier"].toObject()["sourceSiteEvidenceID"], source["id"].toString()))
+      return area["id"].toString();
+  }
+  const auto id = newID();
+  update([&](QJsonObject &plan) {
+    auto items = plan["items"].toArray();
+    bool present = false;
+    for (const auto value : items)
+      present = present || sameID(value.toObject()["id"], source["id"].toString());
+    if (!present) {
+      items.append(source);
+      plan["items"] = items;
+    }
+    const auto snapshot = source["site"].toObject();
+    auto b = brief(plan);
+    auto areas = b["areas"].toArray();
+    areas.append(
+        QJsonObject{{"id", id},
+                    {"name", snapshot["name"]},
+                    {"purpose", ""},
+                    {"region", snapshot["region"]},
+                    {"dossier", QJsonObject{{"version", 1},
+                                            {"linkedEvidenceIDs", QJsonArray{source["id"]}},
+                                            {"baselineEvidenceIDs", QJsonArray{}},
+                                            {"sourceSiteEvidenceID", source["id"]}}}});
+    b["areas"] = areas;
+    activity(b, "Created site dossier: " + snapshot["name"].toString());
+    plan["brief"] = b;
+  });
+  return id;
+}
+QString Missions::linkDossierEvidence(const QString &missionID, const QString &areaID,
+                                      QJsonObject item) {
+  check(!missionID.isEmpty() && selectedID_ == missionID, "The selected mission changed.");
+  QString id;
+  for (const auto value : selected()["items"].toArray()) {
+    const auto e = value.toObject();
+    if (sameID(e["id"], item["id"].toString()) ||
+        ((item["kind"] == "optical" || item["kind"] == "radar") && e["kind"] == item["kind"] &&
+         sameID(e["referenceID"], item["referenceID"].toString()) &&
+         e["acquisition"].toObject()["displayBand"] ==
+             item["acquisition"].toObject()["displayBand"])) {
+      id = e["id"].toString();
+      break;
+    }
+  }
+  if (id.isEmpty()) {
+    item["id"] = newID();
+    id = item["id"].toString();
+    validateItem(item);
+  }
+  update([&](QJsonObject &plan) {
+    auto items = plan["items"].toArray();
+    bool present = false;
+    for (const auto value : items)
+      present = present || sameID(value.toObject()["id"], id);
+    if (!present) {
+      items.append(item);
+      plan["items"] = items;
+    }
+    changeDossier(plan, areaID, [&](QJsonObject &d) {
+      auto links = d["linkedEvidenceIDs"].toArray();
+      if (std::none_of(links.begin(), links.end(),
+                       [&](const QJsonValue &v) { return sameID(v, id); }))
+        links.append(id);
+      d["linkedEvidenceIDs"] = links;
+    });
+    auto b = brief(plan);
+    activity(b, "Linked dossier evidence");
+    plan["brief"] = b;
+  });
+  return id;
+}
+void Missions::setDossierEvidence(const QString &missionID, const QString &areaID,
+                                  const QString &evidenceID, bool on) {
+  check(!missionID.isEmpty() && selectedID_ == missionID, "The selected mission changed.");
+  QJsonObject item;
+  for (const auto value : selected()["items"].toArray())
+    if (sameID(value.toObject()["id"], evidenceID))
+      item = value.toObject();
+  check(!item.isEmpty(), "The evidence no longer exists.");
+  if (on) {
+    linkDossierEvidence(missionID, areaID, item);
+    return;
+  }
+  update([&](QJsonObject &plan) {
+    changeDossier(plan, areaID, [&](QJsonObject &d) {
+      d["linkedEvidenceIDs"] = withoutReference(d["linkedEvidenceIDs"].toArray(), evidenceID);
+      d["baselineEvidenceIDs"] = withoutReference(d["baselineEvidenceIDs"].toArray(), evidenceID);
+      auto watch = d["monitoring"].toObject();
+      if (sameID(watch["baselineEvidenceID"], evidenceID)) {
+        watch.remove("baselineEvidenceID");
+        watch["enabled"] = false;
+        d["monitoring"] = watch;
+      }
+      if (sameID(d["sourceSiteEvidenceID"], evidenceID))
+        d.remove("sourceSiteEvidenceID");
+    });
+    auto b = brief(plan);
+    activity(b, "Unlinked dossier evidence; mission evidence retained");
+    plan["brief"] = b;
+  });
+}
+void Missions::setDossierBaseline(const QString &missionID, const QString &areaID,
+                                  const QString &evidenceID, bool pinned) {
+  check(!missionID.isEmpty() && selectedID_ == missionID, "The selected mission changed.");
+  bool raster = false;
+  for (const auto value : selected()["items"].toArray()) {
+    const auto item = value.toObject();
+    if (sameID(item["id"], evidenceID))
+      raster = item["kind"] == "optical" || item["kind"] == "radar";
+  }
+  check(raster, "Choose linked optical or radar evidence as a baseline.");
+  update([&](QJsonObject &plan) {
+    changeDossier(plan, areaID, [&](QJsonObject &d) {
+      const auto links = d["linkedEvidenceIDs"].toArray();
+      check(std::any_of(links.begin(), links.end(),
+                        [&](const QJsonValue &v) { return sameID(v, evidenceID); }),
+            "Link the evidence to this dossier before pinning a baseline.");
+      auto pins = withoutReference(d["baselineEvidenceIDs"].toArray(), evidenceID);
+      if (pinned)
+        pins.append(evidenceID);
+      d["baselineEvidenceIDs"] = pins;
+      auto watch = d["monitoring"].toObject();
+      if (!pinned && sameID(watch["baselineEvidenceID"], evidenceID)) {
+        watch.remove("baselineEvidenceID");
+        watch["enabled"] = false;
+        d["monitoring"] = watch;
+      }
+    });
+    auto b = brief(plan);
+    activity(b, pinned ? "Pinned dossier baseline" : "Unpinned dossier baseline");
+    plan["brief"] = b;
   });
 }
 void Missions::addView(const QString &title, const Camera &camera) {
@@ -816,7 +1094,7 @@ void Missions::removeEntry(const QString &collection, const QString &id) {
         auto children = b[child].toArray();
         for (qsizetype i = children.size(); i-- > 0;) {
           auto c = children[i].toObject();
-          if (c[key].toString() != id)
+          if (!sameID(c[key], id))
             continue;
           if (child == "monitors" && key == "areaID")
             children.removeAt(i);
@@ -827,6 +1105,69 @@ void Missions::removeEntry(const QString &collection, const QString &id) {
         }
         b[child] = children;
       }
+    }
+    if (collection == "items") {
+      auto areas = b["areas"].toArray();
+      for (qsizetype i = 0; i < areas.size(); ++i) {
+        auto area = areas[i].toObject();
+        if (!area["dossier"].isObject())
+          continue;
+        auto d = area["dossier"].toObject();
+        d["linkedEvidenceIDs"] = withoutReference(d["linkedEvidenceIDs"].toArray(), id);
+        d["baselineEvidenceIDs"] = withoutReference(d["baselineEvidenceIDs"].toArray(), id);
+        auto watch = d["monitoring"].toObject();
+        if (sameID(watch["baselineEvidenceID"], id)) {
+          watch.remove("baselineEvidenceID");
+          watch["enabled"] = false;
+          d["monitoring"] = watch;
+        }
+        if (sameID(d["sourceSiteEvidenceID"], id))
+          d.remove("sourceSiteEvidenceID");
+        area["dossier"] = d;
+        areas[i] = area;
+      }
+      b["areas"] = areas;
+    }
+    if (collection == "items" || collection == "areas") {
+      auto inbox = b["monitoringInbox"].toArray();
+      for (qsizetype i = 0; i < inbox.size(); ++i) {
+        auto e = inbox[i].toObject();
+        const auto key = collection == "items" ? "baselineEvidenceID" : "areaID";
+        if (sameID(e[key], id)) {
+          e.remove(key);
+          e["status"] = "Stale";
+          e["reason"] = "Referenced mission data removed; source job retained";
+          e["updatedAt"] = foundationNow();
+          inbox[i] = e;
+        }
+      }
+      if (b.contains("monitoringInbox"))
+        b["monitoringInbox"] = inbox;
+    }
+    if (collection == "monitors") {
+      auto areas = b["areas"].toArray();
+      for (qsizetype i = 0; i < areas.size(); ++i) {
+        auto a = areas[i].toObject(), d = a["dossier"].toObject(), w = d["monitoring"].toObject();
+        if (sameID(w["discoveryMonitorID"], id)) {
+          w.remove("discoveryMonitorID");
+          w["enabled"] = false;
+          d["monitoring"] = w;
+          a["dossier"] = d;
+          areas[i] = a;
+        }
+      }
+      b["areas"] = areas;
+    }
+    if (collection == "observations") {
+      auto tasks = b["tasks"].toArray();
+      for (qsizetype i = 0; i < tasks.size(); ++i) {
+        auto t = tasks[i].toObject();
+        if (sameID(t["observationID"], id)) {
+          t.remove("observationID");
+          tasks[i] = t;
+        }
+      }
+      b["tasks"] = tasks;
     }
     activity(b, "Removed " + collection + " entry");
     p["brief"] = b;
@@ -852,12 +1193,14 @@ void Missions::setObservationReview(const QString &id, const QString &state, con
     p["brief"] = b;
   });
 }
-void Missions::addObservation(const QString &title, const QString &category, Coordinate coordinate,
-                              const QString &evidenceID) {
+QString Missions::addObservation(const QString &title, const QString &category,
+                                 Coordinate coordinate, const QString &evidenceID,
+                                 const QString &areaID) {
+  const auto id = newID();
   update([&](QJsonObject &p) {
     auto b = brief(p);
     auto a = b["observations"].toArray();
-    QJsonObject o{{"id", newID()},
+    QJsonObject o{{"id", id},
                   {"title", title.trimmed()},
                   {"category", category.trimmed()},
                   {"coordinate", coordinate.json()},
@@ -867,10 +1210,527 @@ void Missions::addObservation(const QString &title, const QString &category, Coo
                   {"createdAt", foundationNow()}};
     if (!evidenceID.isEmpty())
       o["evidenceID"] = evidenceID;
+    if (!areaID.isEmpty())
+      o["areaID"] = areaID;
     a.append(o);
     b["observations"] = a;
     activity(b, "Added analyst observation: " + title);
     p["brief"] = b;
   });
+  return id;
+}
+} // namespace godeye
+
+namespace godeye {
+void Missions::updateMission(const QString &missionID,
+                             const std::function<void(QJsonObject &)> &mutation, bool persist) {
+  auto next = plans_;
+  bool found = false;
+  for (qsizetype i = 0; i < next.size(); ++i) {
+    auto p = next[i].toObject();
+    if (p["id"] != missionID)
+      continue;
+    mutation(p);
+    pauseDetachedChecks(p);
+    p["updatedAt"] = foundationNow();
+    next[i] = p;
+    found = true;
+  }
+  check(found, "The mission no longer exists.");
+  validateMissions(next);
+  const auto previous = plans_;
+  const bool dirty = dirty_;
+  plans_ = next;
+  dirty_ = true;
+  try {
+    if (persist && !filename_.isEmpty())
+      save(filename_);
+    else
+      emit changed();
+  } catch (...) {
+    plans_ = previous;
+    dirty_ = dirty;
+    throw;
+  }
+}
+void Missions::configureMonitoring(const QString &missionID, const QString &areaID,
+                                   QJsonObject profile) {
+  check(missionID == selectedID_, "The selected mission changed.");
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        auto b = brief(p), a = monitoringArea(p, areaID);
+        check(!a.isEmpty(), "The area no longer exists.");
+        auto d = dossierMetadata(a);
+        auto monitors = b["monitors"].toArray();
+        QString monitorID = profile["discoveryMonitorID"].toString();
+        if (monitorID.isEmpty())
+          monitorID = d["monitoring"].toObject()["discoveryMonitorID"].toString();
+        bool found = false;
+        for (qsizetype i = 0; i < monitors.size(); ++i) {
+          auto m = monitors[i].toObject();
+          if (m["id"] != monitorID)
+            continue;
+          check(m["kind"] == "New Sentinel-1 acquisitions" && m["areaID"] == areaID,
+                "Discovery check belongs to another area or source.");
+          m["enabled"] = profile["enabled"];
+          m["intervalHours"] = profile["intervalHours"];
+          monitors[i] = m;
+          found = true;
+        }
+        if (!found) {
+          monitorID = newID();
+          monitors.append(QJsonObject{{"id", monitorID},
+                                      {"kind", "New Sentinel-1 acquisitions"},
+                                      {"areaID", areaID},
+                                      {"enabled", profile["enabled"]},
+                                      {"intervalHours", profile["intervalHours"]},
+                                      {"lookbackDays", 14},
+                                      {"maximumCloud", 30},
+                                      {"seenIDs", QJsonArray{}},
+                                      {"summary", "Not run"}});
+        }
+        profile["discoveryMonitorID"] = monitorID;
+        d["monitoring"] = profile;
+        a["dossier"] = d;
+        auto areas = b["areas"].toArray();
+        for (qsizetype i = 0; i < areas.size(); ++i)
+          if (areas[i].toObject()["id"] == areaID)
+            areas[i] = a;
+        b["areas"] = areas;
+        b["monitors"] = monitors;
+        activity(b, "Updated site monitoring configuration");
+        p["brief"] = b;
+      },
+      true);
+}
+QString Missions::upsertMonitoringEvent(const QString &missionID, QJsonObject event) {
+  QString id;
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        auto b = brief(p);
+        auto inbox = b["monitoringInbox"].toArray();
+        bool found = false;
+        for (qsizetype i = 0; i < inbox.size(); ++i) {
+          auto existing = inbox[i].toObject();
+          if (existing["key"] != event["key"])
+            continue;
+          id = existing["id"].toString();
+          for (auto field = event.begin(); field != event.end(); ++field)
+            if (field.key() != "id" && field.key() != "createdAt" && field.key() != "reviewState" &&
+                field.key() != "rationale")
+              existing[field.key()] = field.value();
+          existing["updatedAt"] = foundationNow();
+          inbox[i] = existing;
+          found = true;
+        }
+        if (!found) {
+          if (!event["id"].isString())
+            event["id"] = newID();
+          id = event["id"].toString();
+          inbox.prepend(event);
+        }
+        b["monitoringInbox"] = inbox;
+        p["brief"] = b;
+      },
+      true);
+  return id;
+}
+void Missions::reviewMonitoringEvent(const QString &eventID, const QString &state,
+                                     const QString &rationale) {
+  update([&](QJsonObject &p) {
+    auto b = brief(p);
+    auto inbox = b["monitoringInbox"].toArray();
+    bool found = false;
+    for (qsizetype i = 0; i < inbox.size(); ++i) {
+      auto e = inbox[i].toObject();
+      if (e["id"] != eventID)
+        continue;
+      e["reviewState"] = state;
+      e["rationale"] = rationale;
+      e["updatedAt"] = foundationNow();
+      if (state == "Snoozed")
+        e["snoozedUntil"] = foundationNow() + 86400;
+      else
+        e.remove("snoozedUntil");
+      inbox[i] = e;
+      found = true;
+    }
+    check(found, "The inbox entry no longer exists.");
+    b["monitoringInbox"] = inbox;
+    activity(b, "Reviewed monitoring inbox entry");
+    p["brief"] = b;
+  });
+}
+QString Missions::addMonitoringTask(const QString &eventID, const QString &title) {
+  QString taskID = newID();
+  update([&](QJsonObject &p) {
+    auto b = brief(p);
+    QJsonObject source;
+    for (const auto v : b["monitoringInbox"].toArray())
+      if (v.toObject()["id"] == eventID)
+        source = v.toObject();
+    check(!source.isEmpty(), "The monitoring entry no longer exists.");
+    QJsonObject task{{"id", taskID},
+                     {"title", title.trimmed()},
+                     {"done", false},
+                     {"monitoringEventID", eventID}};
+    if (source["areaID"].isString())
+      task["areaID"] = source["areaID"];
+    auto tasks = b["tasks"].toArray();
+    tasks.append(task);
+    b["tasks"] = tasks;
+    activity(b, "Created monitoring follow-up task");
+    p["brief"] = b;
+  });
+  return taskID;
+}
+void Missions::removeMonitoringEvent(const QString &eventID) {
+  update([&](QJsonObject &p) {
+    auto b = brief(p);
+    auto inbox = b["monitoringInbox"].toArray();
+    bool found = false;
+    for (qsizetype i = inbox.size(); i-- > 0;)
+      if (inbox[i].toObject()["id"] == eventID) {
+        check(QStringList{"Closed", "Dismissed"}.contains(
+                  inbox[i].toObject()["reviewState"].toString()),
+              "Close or dismiss the inbox entry before removing it.");
+        check(inbox[i].toObject()["status"] != "Running" &&
+                  inbox[i].toObject()["status"] != "Queued",
+              "Cancel the analysis before removing it.");
+        inbox.removeAt(i);
+        found = true;
+      }
+    check(found, "The inbox entry no longer exists.");
+    b["monitoringInbox"] = inbox;
+    auto tasks = b["tasks"].toArray();
+    for (qsizetype i = 0; i < tasks.size(); ++i) {
+      auto t = tasks[i].toObject();
+      if (sameID(t["monitoringEventID"], eventID)) {
+        t.remove("monitoringEventID");
+        tasks[i] = t;
+      }
+    }
+    b["tasks"] = tasks;
+    activity(b, "Removed resolved inbox entry; source job retained");
+    p["brief"] = b;
+  });
+}
+} // namespace godeye
+
+namespace godeye {
+namespace {
+void changeInvestigation(QJsonObject &p, const std::function<void(QJsonObject &)> &mutate) {
+  auto b = p["brief"].toObject(), i = investigation(p);
+  if (b.isEmpty())
+    b = QJsonObject{{"version", 1},
+                    {"areas", QJsonArray{}},
+                    {"observations", QJsonArray{}},
+                    {"notes", QJsonArray{}},
+                    {"tasks", QJsonArray{}},
+                    {"monitors", QJsonArray{}},
+                    {"activity", QJsonArray{}}};
+  mutate(i);
+  b["investigation"] = i;
+  p["brief"] = b;
+}
+QJsonObject lookup(const QJsonArray &rows, const QString &id) {
+  for (auto v : rows)
+    if (v.toObject()["id"] == id)
+      return v.toObject();
+  return {};
+}
+bool sameOptionalValue(const QJsonValue &a, const QJsonValue &b) {
+  return a == b || ((a.isNull() || a.isUndefined()) && (b.isNull() || b.isUndefined()));
+}
+} // namespace
+void Missions::setInvestigationOverview(const QString &missionID, const QJsonObject &expected,
+                                        const QJsonObject &fields) {
+  check(selectedID_ == missionID,
+        "The selected mission changed. Your draft is preserved in this editor.");
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        check(investigation(p) == expected,
+              "The investigation changed. Reopen the overview before saving.");
+        changeInvestigation(p, [&](QJsonObject &i) {
+          for (auto it = fields.begin(); it != fields.end(); ++it) {
+            check(QStringList{"status", "completionCriteria", "conclusion", "unresolvedQuestions",
+                              "closureRationale"}
+                      .contains(it.key()),
+                  "Unsupported investigation field.");
+            i[it.key()] = it.value();
+          }
+        });
+      },
+      false);
+}
+QString Missions::adoptAsset(const QString &missionID, const Asset &asset, const QString &areaID) {
+  check(selectedID_ == missionID, "The selected mission changed.");
+  QString result;
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        if (!areaID.isEmpty())
+          check(!lookup(p["brief"].toObject()["areas"].toArray(), areaID).isEmpty(),
+                "The selected area no longer exists.");
+        changeInvestigation(p, [&](QJsonObject &i) {
+          auto rows = i["snapshots"].toArray();
+          QJsonObject latest;
+          for (auto v : rows)
+            if (v.toObject()["asset"].toObject()["id"] == asset.id)
+              latest = v.toObject();
+          if (latest["asset"] == asset.json() && latest["areaID"].toString() == areaID) {
+            result = latest["id"].toString();
+            return;
+          }
+          InvestigationSnapshot s;
+          s.id = newID();
+          s.capturedAt = foundationNow();
+          s.asset = asset;
+          s.areaID = areaID;
+          rows.append(s.json());
+          i["snapshots"] = rows;
+          result = s.id;
+        });
+      },
+      false);
+  return result;
+}
+QString Missions::adoptRelationship(const QString &missionID,
+                                    const AssetRelationship &relationship) {
+  check(selectedID_ == missionID, "The selected mission changed.");
+  QString result;
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        changeInvestigation(p, [&](QJsonObject &i) {
+          auto rows = i["snapshots"].toArray();
+          QJsonObject latest;
+          for (auto v : rows)
+            if (v.toObject()["relationship"].toObject()["id"] == relationship.id)
+              latest = v.toObject();
+          if (latest["relationship"] == relationship.json()) {
+            result = latest["id"].toString();
+            return;
+          }
+          InvestigationSnapshot s;
+          s.id = newID();
+          s.capturedAt = foundationNow();
+          s.relationship = relationship;
+          rows.append(s.json());
+          i["snapshots"] = rows;
+          result = s.id;
+        });
+      },
+      false);
+  return result;
+}
+QString Missions::retainCitation(const QString &missionID, QJsonObject cite) {
+  check(selectedID_ == missionID, "The selected mission changed.");
+  if (!cite.contains("id"))
+    cite["id"] = newID();
+  QString result = cite["id"].toString();
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        changeInvestigation(p, [&](QJsonObject &i) {
+          auto rows = i["citations"].toArray();
+          const auto old = lookup(rows, result);
+          check(old.isEmpty() || old == cite, "Citation snapshots are immutable.");
+          if (old.isEmpty())
+            rows.append(cite);
+          i["citations"] = rows;
+        });
+      },
+      false);
+  return result;
+}
+void Missions::approveAssociation(const QString &missionID,
+                                  const AssociationSuggestion &suggestion) {
+  check(selectedID_ == missionID, "The selected mission changed.");
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        bool current = false;
+        for (const auto &s : suggestAssociations(p))
+          if (s.assetSnapshotID == suggestion.assetSnapshotID &&
+              s.evidence == suggestion.evidence && s.reason == suggestion.reason)
+            current = true;
+        check(current, "This suggestion changed or was already approved. Refresh suggestions.");
+        changeInvestigation(p, [&](QJsonObject &i) {
+          const auto c = citationForEvidence(suggestion.evidence);
+          auto cites = i["citations"].toArray();
+          cites.append(c);
+          i["citations"] = cites;
+          auto rows = i["associations"].toArray();
+          rows.append(QJsonObject{{"id", newID()},
+                                  {"assetSnapshotID", suggestion.assetSnapshotID},
+                                  {"citationID", c["id"]},
+                                  {"reason", suggestion.reason},
+                                  {"approvedAt", foundationNow()}});
+          i["associations"] = rows;
+        });
+      },
+      false);
+}
+QString Missions::saveFinding(const QString &missionID, Finding f, int expectedRevision,
+                              const QJsonArray &newCitations) {
+  check(selectedID_ == missionID,
+        "The selected mission changed. The finding draft has not been saved.");
+  if (f.id.isEmpty())
+    f.id = newID();
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        changeInvestigation(p, [&](QJsonObject &i) {
+          auto citations = i["citations"].toArray();
+          for (auto v : newCitations) {
+            const auto c = v.toObject(), oldCitation = lookup(citations, c["id"].toString());
+            check(oldCitation.isEmpty() || oldCitation == c, "Citation snapshots are immutable.");
+            if (oldCitation.isEmpty())
+              citations.append(c);
+          }
+          i["citations"] = citations;
+          auto rows = i["findings"].toArray();
+          const auto old = lookup(rows, f.id);
+          check((old.isEmpty() && expectedRevision == 0) ||
+                    (!old.isEmpty() && old["revision"].toInt() == expectedRevision),
+                "This finding changed. Keep your draft and reopen the current finding.");
+          f.areaSnapshots = {};
+          for (const auto &areaID : f.areaIDs) {
+            auto retained = lookup(old["areaSnapshots"].toArray(), areaID);
+            if (retained.isEmpty())
+              retained = lookup(p["brief"].toObject()["areas"].toArray(), areaID);
+            if (!retained.isEmpty())
+              f.areaSnapshots.append(retained);
+          }
+          f.revision = expectedRevision + 1;
+          if (old.isEmpty()) {
+            f.createdAt = foundationNow();
+            f.revisions = {};
+          } else {
+            f.createdAt = old["createdAt"].toDouble();
+            f.origin = old["origin"].toObject();
+            f.revisions = old["revisions"].toArray();
+            if (old["state"] != "Unreviewed") {
+              auto decision = old;
+              decision.remove("revisions");
+              decision["recordedAt"] = foundationNow();
+              f.revisions.append(decision);
+            }
+            const auto next = f.json();
+            bool changed = false;
+            for (auto key : {"claim", "citations", "assetSnapshotIDs", "areaIDs", "timeContext",
+                             "alternatives"})
+              changed = changed || old[key] != next[key];
+            if (changed && old["state"] != "Unreviewed") {
+              f.state = "Unreviewed";
+              if (f.rationale == old["rationale"].toString())
+                f.rationale.clear();
+            }
+          }
+          bool found = false;
+          for (qsizetype n = 0; n < rows.size(); ++n)
+            if (rows[n].toObject()["id"] == f.id) {
+              rows[n] = f.json();
+              found = true;
+            }
+          if (!found)
+            rows.append(f.json());
+          i["findings"] = rows;
+        });
+      },
+      false);
+  return f.id;
+}
+QString Missions::draftFinding(const QString &missionID, const QJsonObject &origin) {
+  check(selectedID_ == missionID, "The selected mission changed.");
+  Finding f;
+  f.id = newID();
+  f.createdAt = foundationNow();
+  f.claim = "Review: " + origin["label"].toString();
+  f.origin = origin;
+  if (origin["areaID"].isString())
+    f.areaIDs << origin["areaID"].toString();
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        const auto kind = origin["kind"].toString();
+        check(QStringList{"Observation", "Monitoring entry", "SAR candidate"}.contains(kind),
+              "Unsupported finding origin.");
+        if (kind == "SAR candidate") {
+          const auto retainedReport = ChangeReview::read(origin["manifest"].toString());
+          const auto bytes = JsonFile::read(origin["manifest"].toString(), 1024 * 1024);
+          const auto report = QJsonDocument::fromJson(bytes).object();
+          validateChangeReview(report);
+          check(report == retainedReport.result && origin["reportID"] == retainedReport.id,
+                "The original SAR report identity changed. Reopen the measured review.");
+          const auto candidate = origin["record"].toObject();
+          check(lookup(report["candidates"].toArray(), candidate["id"].toString()) == candidate &&
+                    sameOptionalValue(report["quality"], origin["quality"]) &&
+                    report["evidence"] == origin["evidence"] && report["site"] == origin["site"] &&
+                    origin["sourceID"] == retainedReport.id + ":" + candidate["id"].toString(),
+                "The SAR report changed. Reopen it before drafting a finding.");
+          f.origin["fingerprint"] = QString::fromLatin1(
+              QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex());
+        }
+        if (kind != "SAR candidate") {
+          const auto key = kind == "Observation" ? "observations" : "monitoringInbox";
+          const auto row =
+              lookup(p["brief"].toObject()[key].toArray(), origin["sourceID"].toString());
+          check(!row.isEmpty() && row == origin["record"].toObject(),
+                "The source record changed. Reopen it before creating a finding.");
+        }
+        changeInvestigation(p, [&](QJsonObject &i) {
+          for (const auto &areaID : f.areaIDs) {
+            const auto area = lookup(p["brief"].toObject()["areas"].toArray(), areaID);
+            if (!area.isEmpty())
+              f.areaSnapshots.append(area);
+          }
+          const auto c = citationForOrigin(f.origin);
+          auto cites = i["citations"].toArray();
+          cites.append(c);
+          i["citations"] = cites;
+          f.citations.append(QJsonObject{{"citationID", c["id"]}, {"role", "Context"}});
+          const auto sourceEvidence = origin["record"].toObject()["evidenceID"].toString();
+          for (auto v : p["items"].toArray())
+            if (v.toObject()["id"] == sourceEvidence) {
+              const auto e = citationForEvidence(v.toObject());
+              cites.append(e);
+              f.citations.append(QJsonObject{{"citationID", e["id"]}, {"role", "Context"}});
+            }
+          i["citations"] = cites;
+          auto rows = i["findings"].toArray();
+          rows.append(f.json());
+          i["findings"] = rows;
+        });
+      },
+      false);
+  return f.id;
+}
+QString Missions::addFindingTask(const QString &missionID, const QString &findingID,
+                                 const QString &title) {
+  check(selectedID_ == missionID, "The selected mission changed.");
+  const auto id = newID();
+  updateMission(
+      missionID,
+      [&](QJsonObject &p) {
+        check(!lookup(investigation(p)["findings"].toArray(), findingID).isEmpty(),
+              "The finding no longer exists.");
+        auto b = brief(p);
+        auto rows = b["tasks"].toArray();
+        rows.append(QJsonObject{{"id", id},
+                                {"title", title},
+                                {"findingID", findingID},
+                                {"owner", ""},
+                                {"dependencyIDs", QJsonArray{}},
+                                {"done", false}});
+        b["tasks"] = rows;
+        p["brief"] = b;
+      },
+      false);
+  return id;
 }
 } // namespace godeye

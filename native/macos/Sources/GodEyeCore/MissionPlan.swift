@@ -48,14 +48,23 @@ public struct MissionItem: Codable, Identifiable, Equatable, Sendable {
   public var record: MissionRecord?
   public var annotation: LocalAnnotation?
   public var acquisition: MissionAcquisition?
+  public var manifest: String?
+  public var manifestHash: String?
   public init(kind: MissionItemKind, referenceID: String, title: String) {
     self.kind = kind
     self.referenceID = referenceID
     self.title = title
   }
   public var isValid: Bool {
+    let validManifestFingerprint =
+      manifestHash.map { value in
+        value.count == 64
+          && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
+      } ?? true
     guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, title.count <= 1024,
       !referenceID.isEmpty, referenceID.count <= 512, savedAt.timeIntervalSince1970.isFinite,
+      (manifest?.count ?? 0) <= 4096,
+      validManifestFingerprint,
       acquisition?.isValid ?? true, acquisition == nil || kind == .radar || kind == .optical
     else { return false }
     switch kind {
@@ -104,7 +113,13 @@ public struct MissionPlan: Codable, Identifiable, Equatable, Sendable {
   public init(name: String) { self.name = name.trimmingCharacters(in: .whitespacesAndNewlines) }
   public var isValid: Bool {
     !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && name.count <= 120
-      && (brief?.isValid(evidence: Set(items.map(\.id))) ?? true)
+      && (brief?.isValid(
+        evidence: Set(items.map(\.id)),
+        rasterEvidence: Set(items.filter { $0.kind == .optical || $0.kind == .radar }.map(\.id)),
+        siteEvidence: Set(items.filter { $0.kind == .site }.map(\.id)),
+        radarBands: items.filter { $0.kind == .radar }.reduce(into: [UUID: String]()) {
+          $0[$1.id] = $1.acquisition?.displayBand ?? ""
+        }) ?? true)
       && (comparison?.isValid ?? true) && objective.count <= 4000 && notes.count <= 32_000
       && items.count <= 500
       && items.allSatisfy(\.isValid) && Set(items.map(\.id)).count == items.count

@@ -216,12 +216,21 @@ def analyze(request, destination, emit, save_json):
     directories = [Path(request[k]) for k in ('beforeDirectory', 'afterDirectory')]
     records = [read_json(d/'result.json') for d in directories]
     outputs = admit_pair(*records, pol)
+    if request.get('sourceHashes') is not None:
+        actual = [hashlib.sha256((d/'result.json').read_bytes()).hexdigest() for d in directories]
+        if actual != request['sourceHashes']:
+            raise ReviewError('A source manifest changed after the monitoring run was queued. Reimport and schedule again.')
     evidence = []
+    quality = None
     for directory, record, output in zip(directories, records, outputs):
         evidence.append(dict(jobID=source_job_id(directory), product=record['inputName'], metadata=record['metadata'], options=record['options'],
                              metadataSHA256=hashlib.sha256((directory/'result.json').read_bytes()).hexdigest(), scientific=output['scientific'],
                              engine=record.get('engine', {}), processingStages=record.get('processingStages', []), output=output))
     files = [safe_file(d, o['scientific']) for d, o in zip(directories, outputs)]
+    if request.get('sourceFileIdentities') is not None:
+        actual = [dict(bytes=f.stat().st_size, modifiedMilliseconds=f.stat().st_mtime_ns//1_000_000) for f in files]
+        if actual != request['sourceFileIdentities']:
+            raise ReviewError('A scientific source file changed after the monitoring run was queued. Reimport and schedule again.')
     emit('processing', 'Aligning calibrated acquisitions to the baseline grid', .15)
     with contextlib.ExitStack() as stack:
         datasets = [stack.enter_context(rasterio.open(f)) for f in files]
@@ -232,20 +241,31 @@ def analyze(request, destination, emit, save_json):
         if abs(a.transform.a-source_b.transform.a)/a.transform.a > .001 or abs(a.transform.e-source_b.transform.e)/abs(a.transform.e) > .001:
             raise ReviewError('The processed pixel grids have different spacing. Reprocess with matching output spacing.')
         window = crop_window(a, bounds)
-        # Admit nonpositive/NaN pixels BEFORE interpolation, including zeros
-        # preserved in scientific exports. They must not dilute valid returns.
-        source_window = crop_window(source_b, list(rasterio.windows.bounds(window, a.transform)))
-        c = max(0, int(source_window.col_off)-2)
-        r = max(0, int(source_window.row_off)-2)
-        end_c = min(source_b.width, int(source_window.col_off+source_window.width)+2)
-        end_r = min(source_b.height, int(source_window.row_off+source_window.height)+2)
-        source_window = Window(c, r, end_c-c, end_r-r)
         before = read_power(a, window)
-        after = np.full(before.shape, np.nan, dtype=np.float32)
-        reproject(read_power(source_b, source_window), after,
-                  src_transform=source_b.window_transform(source_window), src_crs=source_b.crs, src_nodata=np.nan,
-                  dst_transform=a.window_transform(window), dst_crs=a.crs, dst_nodata=np.nan,
-                  resampling=Resampling.bilinear, warp_mem_limit=64, num_threads=1)
+        if request.get('registration') is not None:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('godeye_registration', Path(__file__).with_name('registration.py'))
+            registration = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(registration)
+            emit('processing', 'Estimating translation and checking independent stable controls', .18)
+            translation, quality = registration.register(a, source_b, request['registration'])
+            after = registration.aligned_power(source_b, before.shape, a.window_transform(window), translation)
+            with rasterio.open(destination/'corrected-linear-power.tif', 'w', driver='GTiff',
+                               width=int(window.width), height=int(window.height), count=1, dtype='float32',
+                               crs=a.crs, transform=a.window_transform(window), nodata=NODATA, compress='deflate') as corrected:
+                corrected.write(np.where(np.isfinite(after), after, NODATA).astype('float32'), 1)
+                corrected.update_tags(quantity='Sigma0', units='linear power', derivation='Translation-verified sampling from original later raster',
+                                      registration=json.dumps(quality, allow_nan=False))
+        else:
+            source_window = crop_window(source_b, list(rasterio.windows.bounds(window, a.transform)))
+            c, r = max(0, int(source_window.col_off)-2), max(0, int(source_window.row_off)-2)
+            ec, er = min(source_b.width, int(source_window.col_off+source_window.width)+2), min(source_b.height, int(source_window.row_off+source_window.height)+2)
+            source_window = Window(c, r, ec-c, er-r)
+            after = np.full(before.shape, np.nan, dtype=np.float32)
+            reproject(read_power(source_b, source_window), after,
+                      src_transform=source_b.window_transform(source_window), src_crs=source_b.crs, src_nodata=np.nan,
+                      dst_transform=a.window_transform(window), dst_crs=a.crs, dst_nodata=np.nan,
+                      resampling=Resampling.bilinear, warp_mem_limit=64, num_threads=1)
         for item, power, file in zip(evidence, (before, after), files):
             item['alignedSitePowerSHA256'] = hashlib.sha256(power.tobytes(order='C')).hexdigest()
             item['scientificBytes'] = file.stat().st_size
@@ -258,6 +278,8 @@ def analyze(request, destination, emit, save_json):
         valid = np.isfinite(delta)
         coverage = float(valid.mean())
         if coverage < .5:
+            if quality is not None:
+                raise registration.QualityBlocked('Common valid coverage is below 50% after correction and averaging.', {**quality, 'commonValidFraction': coverage})
             raise ReviewError('Less than 50% of this site has common valid radar coverage after averaging. Choose a better-covered site or another acquisition pair.')
         transform = a.window_transform(window)
         profile = dict(driver='GTiff', width=int(window.width), height=int(window.height), crs=a.crs, transform=transform,
@@ -295,10 +317,10 @@ def analyze(request, destination, emit, save_json):
             target.write(np.moveaxis(rgba, -1, 0))
             target.colorinterp = (rasterio.enums.ColorInterp.red, rasterio.enums.ColorInterp.green, rasterio.enums.ColorInterp.blue, rasterio.enums.ColorInterp.alpha)
         actual_bounds = list(rasterio.windows.bounds(window, a.transform))
-    return dict(site=site, options=options, evidence=evidence, candidates=candidates, bounds=actual_bounds,
+    return dict(analysisStatus='ready', quality=quality, site=site, options=options, evidence=evidence, candidates=candidates, bounds=actual_bounds,
                 width=int(window.width), height=int(window.height), commonValidFraction=coverage, sharedDisplayRangeDb=[float(low), high],
                 changeDisplayRangeDb=[-2*threshold, 2*threshold], crs='EPSG:4326',
-                alignment='Bilinear resampling of later linear power to baseline grid; geocoding is inherited, not independently validated.',
+                alignment=('Independent-control verified relative translation; absolute geolocation remains unknown.' if quality else 'Bilinear resampling of later linear power to baseline grid; geocoding is inherited, not independently validated.'),
                 quantity='Local mean Sigma0 log ratio (after minus before in dB)',
                 limitations=['Candidate patches are radar changes, not confirmed infrastructure events.',
                              'Moisture, vegetation, season, speckle and SAR viewing effects can cause changes.',
@@ -321,11 +343,21 @@ def run(request_file, destination, emit, save_json):
         result.update(site=request.get('site'), options=request.get('options'),
                       sourceJobIDs=[source_job_id(Path(request.get(k, ''))) for k in ('beforeDirectory', 'afterDirectory')])
         save_json(destination/'result.json', result)
+        result['sourceMetadataSHA256'] = [hashlib.sha256((Path(request[k])/'result.json').read_bytes()).hexdigest() for k in ('beforeDirectory', 'afterDirectory')]
         result.update(analyze(request, destination, emit, save_json))
+        if result.get('quality'): save_json(destination/'quality.json', result['quality'])
         result.update(state='completed', completedAt=dt.datetime.now(dt.timezone.utc).isoformat(), elapsedSeconds=time.monotonic()-started)
         save_json(destination/'result.json', result)
         emit('completed', 'Infrastructure change review ready', 1)
     except BaseException as error:
+        if isinstance(getattr(error, 'report', None), dict):
+            emit('exporting', 'Retaining blocked registration quality report', .95)
+            result.update(state='completed', analysisStatus='blocked', quality=error.report, candidates=[],
+                          completedAt=dt.datetime.now(dt.timezone.utc).isoformat(), elapsedSeconds=time.monotonic()-started)
+            save_json(destination/'quality.json', error.report)
+            save_json(destination/'result.json', result)
+            emit('completed', 'Analysis blocked by registration quality checks', 1)
+            return
         (destination/'diagnostics.log').write_text(traceback.format_exc()[-16000:], encoding='utf-8')
         for file in destination.iterdir():
             if file.name not in ('result.json', 'diagnostics.log', 'events.jsonl'):

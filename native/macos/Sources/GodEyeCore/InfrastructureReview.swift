@@ -92,6 +92,9 @@ public struct ChangeReviewResult: Codable, Sendable {
   public var crs: String?
   public var changeDisplayRangeDb: [Double]?
   public var limitations: [String]?
+  public var analysisStatus: String?
+  public var quality: [String: PortableJSONValue]?
+  public var sourceMetadataSHA256: [String]?
   public var isValid: Bool {
     guard version == 1 else { return false }
     guard state == .completed else { return true }

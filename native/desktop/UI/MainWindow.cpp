@@ -1,18 +1,29 @@
 #include "MainWindow.h"
 #include "Core/JsonFile.h"
+#include "Core/MonitoringRunner.h"
 #include "DomainWindow.h"
+#include "DossierPanel.h"
 #include "InferenceWindow.h"
+#include "InvestigationWorkbench.h"
 #include "MapToolsWindow.h"
 #include "MonitorPanel.h"
+#include "MonitoringInboxPanel.h"
+#include "SiteMonitoringPanel.h"
 #include "TimelinePanel.h"
+#include "WorkspacePanel.h"
+#include "WorkspaceStyle.h"
 #include <QActionGroup>
+#include <QButtonGroup>
+#include <QCheckBox>
 #include <QCloseEvent>
+#include <QComboBox>
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDialog>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFormLayout>
 #include <QFutureWatcher>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -23,11 +34,14 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QResizeEvent>
+#include <QShortcut>
 #include <QSignalBlocker>
 #include <QSlider>
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QToolBar>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QtConcurrent>
 #include <cmath>
@@ -37,19 +51,27 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
     : QMainWindow(parent), settings_(profile + "/desktop.ini", QSettings::IniFormat),
       missions_(this) {
   QDir().mkpath(profile);
-  setWindowTitle("GodEye — Desktop preview");
-  resize(1280, 850);
+  setWindowTitle("GodEye — Geospatial intelligence");
+  resize(1440, 960);
+  setMinimumSize(1080, 700);
+  auto *header = new QWidget;
+  header->setObjectName("workspaceHeader");
+  header->setProperty("role", "header");
+  header->setFixedHeight(66);
   auto *root = new QWidget;
   auto *layout = new QVBoxLayout(root);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
+  layout->addWidget(header);
   selection_ = new QLabel;
+  selection_->setProperty("role", "notice");
   selection_->setMargin(8);
   selection_->hide();
   layout->addWidget(selection_);
   map_ = new MapWidget(profile + "/map-cache", networking);
   map_->setObjectName("geographicMap");
-  layout->addWidget(map_, 1);
+  workspace_ = new WorkspaceSurface(map_);
+  layout->addWidget(workspace_, 1);
   overlay_ = new QLabel;
   overlay_->setTextFormat(Qt::PlainText);
   overlay_->setWordWrap(true);
@@ -67,7 +89,7 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
   mission_ = new MissionWindow(missions_, *map_, this);
   processing_ = new ProcessingWindow(profile, *map_, this, networking);
   review_ = new ReviewWindow(profile, *map_, missions_, *satellite_, *processing_, this);
-  domain_ = new DomainWindow(profile, this, networking);
+  domain_ = new DomainWindow(profile, this, networking, true);
   inference_ = new InferenceWindow(profile, this);
   domain_->setAttribute(Qt::WA_QuitOnClose, false);
   inference_->setAttribute(Qt::WA_QuitOnClose, false);
@@ -136,8 +158,7 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
     if (id.startsWith("annotation:"))
       domain_->network().setEnabled("annotations", true);
     domain_->selectRecord(id);
-    domain_->show();
-    domain_->raise();
+    showSources("All", 2);
   });
   connect(domain_, &DomainWindow::focusRequested, this, [this](Coordinate point, double range) {
     frozenEvidence_ = false;
@@ -298,6 +319,155 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
   auto *monitorPanel = new MonitorPanel(missions_, *monitors_);
   mission_->addPage(timeline, "Timeline");
   mission_->addPage(monitorPanel, "Monitors");
+  auto *dossier = mission_->dossierPanel();
+  monitoring_ = new MonitoringRunner(
+      profile + "/jobs", missions_, processing_->scientificQueue(),
+      [this] { return satellite_->library(); },
+      [this](WorkerRequest request, const QString &token) {
+        return processing_->submitMonitoring(std::move(request), token);
+      },
+      this);
+  connect(monitors_, &MonitorRunner::changed, monitoring_,
+          [this] { monitoring_->setAutomatic(monitors_->automatic()); });
+  auto *siteMonitoring = new SiteMonitoringPanel(missions_, *monitoring_);
+  connect(siteMonitoring, &SiteMonitoringPanel::resumeAutomaticRequested, monitors_,
+          &MonitorRunner::start);
+  dossier->addPage(siteMonitoring, "Monitoring");
+  connect(dossier, &DossierPanel::areaChanged, siteMonitoring, &SiteMonitoringPanel::setArea);
+  siteMonitoring->setArea(dossier->areaID());
+  auto *inbox = new MonitoringInboxPanel(missions_, *monitoring_);
+  inbox->setObjectName("missionReviewInbox");
+  mission_->addPage(inbox, "Review inbox");
+  for (auto *panel : {siteMonitoring->findChild<MonitoringInboxPanel *>(), inbox}) {
+    connect(panel, &MonitoringInboxPanel::reviewRequested, review_, &ReviewWindow::openReview);
+    connect(panel, &MonitoringInboxPanel::dossierRequested, this, [this](const QString &area) {
+      mission_->openDossier(area);
+      showMission();
+    });
+  }
+  connect(siteMonitoring, &SiteMonitoringPanel::drawControlRequested, this, [this, siteMonitoring] {
+    map_->beginRegion(siteMonitoring);
+    show();
+    raise();
+  });
+  connect(map_, &MapWidget::regionSelected, siteMonitoring,
+          [this, siteMonitoring](Bounds bounds, QObject *owner) {
+            if (owner == siteMonitoring) {
+              siteMonitoring->acceptControl(bounds);
+              showMission();
+            }
+          });
+  connect(siteMonitoring, &SiteMonitoringPanel::focusControlRequested, this, [this](Bounds bounds) {
+    map_->focus(bounds);
+    show();
+    raise();
+  });
+  connect(satellite_, &SatelliteWindow::libraryChanged, monitoring_, &MonitoringRunner::refresh);
+  connect(monitors_, &MonitorRunner::discovered, monitoring_, &MonitoringRunner::discovered);
+  monitoring_->refresh();
+  auto *investigations = new InvestigationWorkbench(profile, missions_, mission_);
+  mission_->addPage(investigations->overview(), "Investigation");
+  mission_->addPage(investigations->assetsPage(), "Assets");
+  mission_->addPage(investigations->connectionsPage(), "Connections");
+  mission_->addPage(investigations->findingsPage(), "Findings");
+  investigations->setLibrary(satellite_->library());
+  connect(satellite_, &SatelliteWindow::libraryChanged, investigations,
+          [this, investigations] { investigations->setLibrary(satellite_->library()); });
+  investigations->setCaptureProvider([this] {
+    return qMakePair(
+        map_->grabFramebuffer(),
+        QJsonObject{{"capturedAt", foundationNow()},
+                    {"camera", map_->camera().json()},
+                    {"attribution",
+                     "Map context: GodEye display; basemap tiles © OpenStreetMap contributors and "
+                     "Esri World Imagery as configured in the map. Satellite overlays retain "
+                     "provider attribution per evidence source."}});
+  });
+  connect(investigations, &InvestigationWorkbench::focusRequested, this, [this](Bounds bounds) {
+    map_->focus(bounds);
+    show();
+    raise();
+  });
+  connect(investigations, &InvestigationWorkbench::evidenceRequested, this,
+          &MainWindow::showEvidence);
+  connect(investigations, &InvestigationWorkbench::dossierRequested, mission_,
+          &MissionWindow::openDossier);
+  connect(investigations, &InvestigationWorkbench::findingsRequested, this, [this, investigations] {
+    mission_->showPage(investigations->findingsPage());
+    mission_->show();
+    mission_->raise();
+  });
+  connect(review_, &ReviewWindow::findingRequested, investigations,
+          &InvestigationWorkbench::promote);
+  connect(dossier, &DossierPanel::findingRequested, investigations,
+          &InvestigationWorkbench::promote);
+  connect(dossier, &DossierPanel::assetRequested, this, [this, investigations](const QString &) {
+    mission_->showPage(investigations->assetsPage());
+  });
+  for (auto *panel : {siteMonitoring->findChild<MonitoringInboxPanel *>(), inbox})
+    connect(panel, &MonitoringInboxPanel::findingRequested, investigations,
+            &InvestigationWorkbench::promote);
+  dossier->setLibrary(satellite_->library());
+  connect(satellite_, &SatelliteWindow::libraryChanged, this,
+          [this, dossier] { dossier->setLibrary(satellite_->library()); });
+  connect(dossier, &DossierPanel::evidenceRequested, this, &MainWindow::showEvidence);
+  connect(dossier, &DossierPanel::focusRequested, this, [this](Bounds bounds) {
+    map_->focus(bounds);
+    show();
+    raise();
+    activateWindow();
+  });
+  connect(dossier, &DossierPanel::acquisitionRequested, this, [this](Bounds bounds, bool radar) {
+    const auto end = QDateTime::currentDateTimeUtc().date(), start = end.addDays(-14);
+    auto *tabs = processing_->findChild<QTabWidget *>("processingTabs");
+    const bool applied = radar ? processing_->setRadarQuery({bounds, start, end})
+                               : processing_->setQuery({bounds, start, end, 30, "sentinel2"});
+    if (applied)
+      tabs->setCurrentIndex(radar ? 1 : 0);
+    processing_->show();
+    processing_->raise();
+    processing_->activateWindow();
+  });
+  connect(dossier, &DossierPanel::comparisonRequested, this,
+          [this, timeline](const QString &area, const QString &base, const QString &later) {
+            timeline->prepareComparison(area, base, later);
+            mission_->showPage(timeline);
+          });
+  connect(dossier, &DossierPanel::reviewRequested, review_, &ReviewWindow::prepareArea);
+  connect(review_, &ReviewWindow::dossierRequested, this, [this](const QString &area) {
+    mission_->openDossier(area);
+    showMission();
+  });
+  connect(map_, &MapWidget::pointSelected, dossier,
+          [dossier](Coordinate point, double, bool, bool) { dossier->setMapSelection(point); });
+  connect(mission_, &MissionWindow::importSiteRequested, this, [this] {
+    const auto mission = missions_.selectedID();
+    QStringList labels;
+    QVector<QJsonObject> sites;
+    if (review_->sites())
+      for (const auto value : review_->sites()->sites()) {
+        const auto site = value.toObject();
+        sites.append(site);
+        labels.append(site["name"].toString() + " · " + site["id"].toString().left(8));
+      }
+    if (sites.isEmpty()) {
+      QMessageBox::information(
+          mission_, "Import saved site",
+          "Save a site in Infrastructure review first, or draw a new area here.");
+      return;
+    }
+    bool ok = false;
+    const auto picked = QInputDialog::getItem(mission_, "Import saved site",
+                                              "Copy a frozen boundary into the selected mission",
+                                              labels, 0, false, &ok);
+    if (!ok)
+      return;
+    try {
+      mission_->openDossier(missions_.importDossierSite(mission, sites[labels.indexOf(picked)]));
+    } catch (const std::exception &e) {
+      QMessageBox::warning(mission_, "Import saved site", QString::fromUtf8(e.what()));
+    }
+  });
   connect(timeline, &TimelinePanel::evidenceRequested, this, &MainWindow::showEvidence);
   connect(timeline, &TimelinePanel::comparisonRequested, this,
           [this](const QVector<ProductLayer> &layers, double blend) {
@@ -334,34 +504,100 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
           [this](const QString &manifest) { satellite_->importManifest(manifest, true); });
   mission_->setAttribute(Qt::WA_QuitOnClose, false);
   satellite_->setAttribute(Qt::WA_QuitOnClose, false);
-  auto *toolbar = addToolBar("Workspace");
-  toolbar->setMovable(false);
-  toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  auto *mapAction = toolbar->addAction("Map");
-  connect(mapAction, &QAction::triggered, this, [this] {
-    satellite_->hide();
-    raise();
-    map_->setFocus();
-  });
-  auto *satelliteAction = toolbar->addAction("Satellite");
-  connect(satelliteAction, &QAction::triggered, this, &MainWindow::showSatellite);
+  using design::Symbol;
+  auto *headerLayout = new QHBoxLayout(header);
+  headerLayout->setContentsMargins(20, 0, 16, 0);
+  headerLayout->setSpacing(6);
+  auto *logo = new QLabel;
+  logo->setPixmap(design::icon(Symbol::Globe).pixmap(30, 30));
+  headerLayout->addWidget(logo);
+  auto *brand = new QVBoxLayout;
+  brand->setSpacing(0);
+  brand->addWidget(design::label("GODEYE", "brand"));
+  auto *tagline = design::label("GEOSPATIAL INTELLIGENCE", "kicker");
+  tagline->setObjectName("workspaceTagline");
+  brand->addWidget(tagline);
+  headerLayout->addLayout(brand);
+  headerLayout->addSpacing(24);
+  auto *sections = new QButtonGroup(this);
+  sections->setExclusive(true);
+  auto sectionButton = [&](const QString &name, Symbol symbol) {
+    auto *b = new QToolButton;
+    b->setText(name);
+    b->setIcon(design::icon(symbol));
+    b->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    b->setProperty("role", "nav");
+    b->setCheckable(true);
+    b->setObjectName("section-" + name);
+    b->setAccessibleName(name + " workspace");
+    sections->addButton(b);
+    headerLayout->addWidget(b);
+    return b;
+  };
+  auto *mapButton = sectionButton("Map", Symbol::Globe);
+  mapButton->setChecked(true);
+  connect(mapButton, &QToolButton::clicked, this, &MainWindow::hideWorkspacePanels);
+  auto *mapAction = new QAction("Map", this);
+  mapAction->setShortcut(QKeySequence("Ctrl+1"));
+  connect(mapAction, &QAction::triggered, mapButton, &QToolButton::click);
+  addAction(mapAction);
+  auto *satelliteButton = sectionButton("Satellite", Symbol::Satellite);
+  connect(satelliteButton, &QToolButton::clicked, this, &MainWindow::showSatellite);
+  auto *satelliteAction = new QAction("Satellite", this);
+  connect(satelliteAction, &QAction::triggered, satelliteButton, &QToolButton::click);
   satelliteAction->setShortcut(QKeySequence("Ctrl+2"));
-  for (const auto &section : QStringList{"Marine", "Sky", "Ground"}) {
-    auto *action = toolbar->addAction(section);
-    connect(action, &QAction::triggered, this, [this, section] {
+  int shortcut = 3;
+  for (auto entry :
+       {qMakePair(QString("Marine"), Symbol::Marine), qMakePair(QString("Sky"), Symbol::Aircraft),
+        qMakePair(QString("Ground"), Symbol::Ground)}) {
+    auto *b = sectionButton(entry.first, entry.second);
+    connect(b, &QToolButton::clicked, this, [this, name = entry.first] {
       domain_->stopFollowing();
-      domain_->setSection(section);
-      domain_->show();
-      domain_->raise();
+      showSources(name);
     });
+    auto *key = new QShortcut(QKeySequence(QString("Ctrl+%1").arg(shortcut++)), this);
+    connect(key, &QShortcut::activated, b, &QToolButton::click);
   }
+  headerLayout->addStretch();
+  auto *sourceCount = design::label("0 sources on", "secondary");
+  sourceCount->setObjectName("enabledSourceCount");
+  sourceCount->setMinimumWidth(85);
+  auto updateSourceCount = [this, sourceCount] {
+    int count = 0;
+    for (const auto &feed : domainFeeds())
+      if (domain_->network().enabled(feed.id))
+        ++count;
+    sourceCount->setText(QString("%1 source%2 on").arg(count).arg(count == 1 ? "" : "s"));
+  };
+  connect(&domain_->network(), &DomainNetwork::changed, sourceCount, updateSourceCount);
+  updateSourceCount();
+  headerLayout->addWidget(sourceCount);
+  headerLayout->addSpacing(10);
+  auto *missionButton = new QToolButton;
+  missionButton->setText("Mission Control");
+  missionButton->setIcon(design::icon(Symbol::Mission));
+  missionButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  missionButton->setProperty("role", "nav");
+  missionButton->setObjectName("openMissionControl");
+  connect(missionButton, &QToolButton::clicked, this, &MainWindow::showMission);
+  headerLayout->addWidget(missionButton);
+  auto *overflow = new QToolButton;
+  overflow->setIcon(design::icon(Symbol::More));
+  overflow->setProperty("role", "quiet");
+  overflow->setAccessibleName("Application menu");
+  overflow->setToolTip("Application menu");
+  overflow->setObjectName("applicationMenu");
+  overflow->setPopupMode(QToolButton::InstantPopup);
+  auto *applicationMenu = new QMenu(overflow);
+  overflow->setMenu(applicationMenu);
+  headerLayout->addWidget(overflow);
   auto *reviewAction = new QAction("Infrastructure review", this);
   connect(reviewAction, &QAction::triggered, review_, [this] {
     review_->show();
     review_->raise();
     review_->activateWindow();
   });
-  auto *missionAction = toolbar->addAction("Mission Control");
+  auto *missionAction = new QAction("Mission Control", this);
   connect(missionAction, &QAction::triggered, this, &MainWindow::showMission);
   missionAction->setShortcut(QKeySequence("Ctrl+6"));
   auto *surfaceAction = new QAction("3D Surface", this);
@@ -437,55 +673,169 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
     surface->raise();
     surface->activateWindow();
   });
-  auto *sourcesAction = toolbar->addAction("Sources");
-  connect(sourcesAction, &QAction::triggered, this, [this] {
-    domain_->setSection("All");
-    domain_->show();
-    domain_->raise();
-  });
-  auto *toolsAction = toolbar->addAction("Map tools");
-  connect(toolsAction, &QAction::triggered, tools_, [this] {
-    tools_->show();
-    tools_->raise();
-  });
+  auto *sourcesAction = new QAction("Data sources", this);
+  connect(sourcesAction, &QAction::triggered, this, [this] { showSources(); });
+  auto *toolsAction = new QAction("Workspace tools", this);
+  connect(toolsAction, &QAction::triggered, this, &MainWindow::showMapTools);
   auto *inferenceAction = new QAction("Local image assistance…", this);
   connect(inferenceAction, &QAction::triggered, this, &MainWindow::showInference);
-  addToolBarBreak();
-  toolbar = addToolBar("Navigation");
-  toolbar->setMovable(false);
+  auto addPanel = [this](const QString &id, const QString &title, Symbol icon, QWidget *content,
+                         QSize size, bool right) {
+    auto *panel = new WorkspacePanel(id, title, icon, content, workspace_, size, right);
+    panels_.insert(id, panel);
+    workspace_->addPanel(panel);
+    panel->restoreLayout(settings_.value("panels/" + id).toMap());
+    return panel;
+  };
+  addPanel("satellite", "Satellite analysis", Symbol::Satellite, satellite_, {680, 660}, true);
+  addPanel("sources", "Sources & observations", Symbol::Layers, domain_, {470, 660}, false);
+  addPanel("tools", "Workspace tools", Symbol::Tools, tools_, {680, 660}, true);
+  auto *layerContent = new QWidget;
+  auto *layerLayout = new QVBoxLayout(layerContent);
+  layerLayout->setContentsMargins(16, 16, 16, 16);
+  layerLayout->setSpacing(14);
+  layerLayout->addWidget(design::label("SURFACE", "kicker"));
+  auto *layerForm = new QFormLayout;
+  auto *mapChoice = new QComboBox;
+  mapChoice->addItems({"Satellite imagery", "Street mapping"});
+  layerForm->addRow("Basemap", mapChoice);
+  auto *terrainChoice = new QCheckBox("Terrain relief");
+  terrainChoice->setChecked(true);
+  layerForm->addRow("Surface", terrainChoice);
+  auto *styleChoice = new QComboBox;
+  for (const auto &name : QStringList{"Standard", "Monochrome", "Thermal", "Night vision"})
+    styleChoice->addItem(name, name == "Night vision" ? "nightVision" : name.toLower());
+  layerForm->addRow("Display", styleChoice);
+  layerLayout->addLayout(layerForm);
+  auto *displayNote = design::label("Display styles change visualization only. Source measurements "
+                                    "and scientific exports retain their original values.",
+                                    "secondary");
+  displayNote->setWordWrap(true);
+  layerLayout->addWidget(displayNote);
+  connect(mapChoice, &QComboBox::currentIndexChanged, this,
+          [this](int i) { map_->setStreets(i == 1); });
+  connect(terrainChoice, &QCheckBox::toggled, map_, &MapWidget::setTerrain);
+  connect(styleChoice, &QComboBox::currentIndexChanged, this,
+          [this, styleChoice] { map_->setDisplayStyle(styleChoice->currentData().toString()); });
+  connect(map_, &MapWidget::statusChanged, layerContent,
+          [this, mapChoice, terrainChoice, styleChoice] {
+            QSignalBlocker a(mapChoice), b(terrainChoice), c(styleChoice);
+            mapChoice->setCurrentIndex(map_->streets() ? 1 : 0);
+            terrainChoice->setChecked(map_->terrainEnabled());
+            styleChoice->setCurrentIndex(styleChoice->findData(map_->displayStyle()));
+          });
+  auto *cameraTitle = design::label("CAMERA", "kicker");
+  layerLayout->addWidget(cameraTitle);
+  auto *tilt = new QSlider(Qt::Horizontal);
+  tilt->setRange(0, 80);
+  tilt->setAccessibleName("Camera tilt in degrees");
+  auto *heading = new QSlider(Qt::Horizontal);
+  heading->setRange(0, 359);
+  heading->setAccessibleName("Camera heading in degrees");
+  auto *cameraForm = new QFormLayout;
+  cameraForm->addRow("Tilt", tilt);
+  cameraForm->addRow("Heading", heading);
+  layerLayout->addLayout(cameraForm);
+  connect(tilt, &QSlider::valueChanged, this,
+          [this](int value) { map_->orient(map_->camera().heading, value); });
+  connect(heading, &QSlider::valueChanged, this,
+          [this](int value) { map_->orient(value, map_->camera().tilt); });
+  auto *advancedMap = new QPushButton("Daily imagery & workspace tools");
+  connect(advancedMap, &QPushButton::clicked, this, &MainWindow::showMapTools);
+  layerLayout->addWidget(advancedMap);
+  layerLayout->addStretch();
+  addPanel("layers", "Map & layers", Symbol::Layers, layerContent, {380, 560}, true);
+  auto *searchCard = new QFrame;
+  searchCard->setProperty("role", "panel");
+  auto *searchLayout = new QHBoxLayout(searchCard);
+  searchLayout->setContentsMargins(10, 3, 5, 3);
+  searchLayout->setSpacing(6);
+  auto *searchIcon = new QLabel;
+  searchIcon->setPixmap(design::icon(Symbol::Search).pixmap(18, 18));
+  searchLayout->addWidget(searchIcon);
   search_ = new QLineEdit;
-  search_->setPlaceholderText("Place or latitude, longitude");
-  search_->setMaximumWidth(250);
-  search_->setAccessibleName("Go to geographic coordinate");
-  toolbar->addWidget(search_);
-  connect(search_, &QLineEdit::returnPressed, this, [this] {
+  search_->setObjectName("workspaceSearch");
+  search_->setClearButtonEnabled(true);
+  search_->setPlaceholderText("Search places or coordinates…");
+  search_->setFrame(false);
+  search_->setAccessibleName("Search places or latitude, longitude");
+  searchLayout->addWidget(search_, 1);
+  auto *find = new QToolButton;
+  find->setIcon(design::icon(Symbol::Search));
+  find->setProperty("role", "quiet");
+  find->setToolTip("Search location");
+  find->setAccessibleName("Search location");
+  searchLayout->addWidget(find);
+  auto search = [this] {
     const auto parts =
         search_->text().trimmed().split(QRegularExpression("[,\\s]+"), Qt::SkipEmptyParts);
     bool a = false, b = false;
-    const double lat = parts.value(0).toDouble(&a), lon = parts.value(1).toDouble(&b);
-    const Coordinate p{lat, lon};
-    if (parts.size() != 2 || !a || !b || !p.valid()) {
+    const Coordinate point{parts.value(0).toDouble(&a), parts.value(1).toDouble(&b)};
+    if (parts.size() == 2 && a && b && point.valid()) {
+      auto c = map_->camera();
+      c.center = point;
+      c.range = std::min(c.range, 20000.0);
+      map_->setCamera(c);
+    } else if (!search_->text().trimmed().isEmpty()) {
+      showMapTools();
       tools_->search(search_->text());
-      return;
     }
-    auto c = map_->camera();
-    c.center = p;
-    c.range = std::min(c.range, 20000.0);
-    map_->setCamera(c);
+  };
+  connect(search_, &QLineEdit::returnPressed, this, search);
+  connect(find, &QToolButton::clicked, this, search);
+  auto *searchShortcut = new QShortcut(QKeySequence("Ctrl+K"), this);
+  connect(searchShortcut, &QShortcut::activated, this, [this] {
+    search_->setFocus();
+    search_->selectAll();
   });
-  auto *in = toolbar->addAction("Zoom in");
-  connect(in, &QAction::triggered, this, [this] { map_->zoom(2); });
-  auto *out = toolbar->addAction("Zoom out");
-  connect(out, &QAction::triggered, this, [this] { map_->zoom(-2); });
-  auto *north = toolbar->addAction("North-up");
-  connect(north, &QAction::triggered, this, [this] { map_->orient(0, 0); });
-  auto *world = toolbar->addAction("World");
-  connect(world, &QAction::triggered, this,
-          [this] { map_->setCamera(Camera{{0, 0}, 30000000, 0, 0}); });
-  auto *cancel = toolbar->addAction("Cancel selection");
-  cancel->setVisible(false);
+  auto *mapActions = new QFrame;
+  mapActions->setProperty("role", "panel");
+  auto *mapActionsLayout = new QHBoxLayout(mapActions);
+  mapActionsLayout->setContentsMargins(5, 3, 5, 3);
+  mapActionsLayout->setSpacing(2);
+  auto tool = [&](const QString &title, Symbol symbol, const std::function<void()> &fn,
+                  bool text = true) {
+    auto *b = new QToolButton;
+    b->setText(title);
+    b->setIcon(design::icon(symbol));
+    b->setProperty("role", "quiet");
+    b->setToolTip(title);
+    b->setAccessibleName(title);
+    b->setToolButtonStyle(text ? Qt::ToolButtonTextBesideIcon : Qt::ToolButtonIconOnly);
+    connect(b, &QToolButton::clicked, this, fn);
+    mapActionsLayout->addWidget(b);
+    return b;
+  };
+  auto panelTool = [&](const QString &title, Symbol symbol, const QString &id,
+                       const std::function<void()> &fn) {
+    auto *b = tool(title, symbol, [this, id, fn] {
+      if (panels_.value(id)->isVisible())
+        panels_.value(id)->hide();
+      else
+        fn();
+    });
+    b->setCheckable(true);
+    connect(panels_.value(id), &WorkspacePanel::visibilityChanged, b, &QToolButton::setChecked);
+    return b;
+  };
+  panelTool("Layers", Symbol::Layers, "layers", [this] { panels_["layers"]->reveal(); });
+  tool("Inspect", Symbol::Inspect, [this] { showSources("All", 2); });
+  tool("Data", Symbol::Data, [this] { showSources("All", 2, true); });
+  panelTool("Tools", Symbol::Tools, "tools", [this] { showMapTools(); });
+  tool("Zoom in", Symbol::Plus, [this] { map_->zoom(2); }, false);
+  tool("Zoom out", Symbol::Minus, [this] { map_->zoom(-2); }, false);
+  tool("North-up", Symbol::North, [this] { map_->orient(0, 0); }, false);
+  tool(
+      "Full globe", Symbol::Globe, [this] { map_->setCamera(Camera{{0, 0}, 30000000, 0, 0}); },
+      false);
+  workspace_->setCommands(searchCard, mapActions);
+  auto *cancel = new QAction("Cancel selection", this);
   cancel->setShortcut(Qt::Key_Escape);
+  cancel->setEnabled(false);
+  addAction(cancel);
   connect(cancel, &QAction::triggered, map_, &MapWidget::cancelRegion);
+  auto *hidePanels = new QShortcut(QKeySequence("Ctrl+Shift+H"), this);
+  connect(hidePanels, &QShortcut::activated, this, &MainWindow::hideWorkspacePanels);
   auto *view = menuBar()->addMenu("View");
   view->addAction(satelliteAction);
   view->addAction(missionAction);
@@ -508,24 +858,6 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
   terrain->setCheckable(true);
   terrain->setChecked(true);
   connect(terrain, &QAction::toggled, map_, &MapWidget::setTerrain);
-  auto *tiltToolbar = addToolBar("3D camera");
-  tiltToolbar->setMovable(false);
-  tiltToolbar->addWidget(new QLabel("Tilt "));
-  auto *tilt = new QSlider(Qt::Horizontal);
-  tilt->setRange(0, 80);
-  tilt->setMaximumWidth(140);
-  tilt->setAccessibleName("Camera tilt in degrees");
-  tiltToolbar->addWidget(tilt);
-  tiltToolbar->addWidget(new QLabel(" Heading "));
-  auto *heading = new QSlider(Qt::Horizontal);
-  heading->setRange(0, 359);
-  heading->setMaximumWidth(160);
-  heading->setAccessibleName("Camera heading in degrees");
-  tiltToolbar->addWidget(heading);
-  connect(tilt, &QSlider::valueChanged, this,
-          [this](int value) { map_->orient(map_->camera().heading, value); });
-  connect(heading, &QSlider::valueChanged, this,
-          [this](int value) { map_->orient(value, map_->camera().tilt); });
   auto *file = menuBar()->addMenu("File");
   auto *open = file->addAction("Open mission library…");
   connect(open, &QAction::triggered, mission_, &MissionWindow::openLibrary);
@@ -546,23 +878,38 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
         "Fresh Mac checks and real SNAP processing remain unverified.\n\n" +
             map_->backend() + " · " + map_->gpu());
   });
+  applicationMenu->addMenu(file);
+  applicationMenu->addMenu(view);
+  applicationMenu->addMenu(help);
+  applicationMenu->addSeparator();
+  connect(applicationMenu->addAction("Hide all panels  ·  Ctrl+Shift+H"), &QAction::triggered, this,
+          &MainWindow::hideWorkspacePanels);
+  connect(applicationMenu->addAction("Reset panel layout"), &QAction::triggered, workspace_,
+          &WorkspaceSurface::resetPanels);
+#ifndef Q_OS_MACOS
+  menuBar()->hide();
+#endif
   auto *credits = new QLabel(
       "<a href=\"https://www.esri.com/en-us/legal/terms/data-attributions\">Esri imagery "
       "providers</a> · <a href=\"https://www.openstreetmap.org/copyright\">OSM contributors</a> · "
       "<a href=\"https://github.com/tilezen/joerd/blob/master/docs/attribution.md\">Mapzen terrain "
       "credits</a> · Basemap mosaic, not live");
   credits->setOpenExternalLinks(true);
+  credits->setProperty("role", "secondary");
+  credits->setContentsMargins(10, 3, 10, 3);
+  statusBar()->setSizeGripEnabled(false);
   statusBar()->addWidget(credits, 1);
-  coordinates_ = new QLabel;
+  coordinates_ = design::label({}, "mono");
+  coordinates_->setContentsMargins(8, 3, 14, 3);
   statusBar()->addPermanentWidget(coordinates_);
-  status_ = new QLabel;
-  auto *sceneInfo = new QLabel;
+  status_ = design::label({}, "mono");
+  auto *sceneInfo = design::label({}, "secondary");
   sceneInfo->setTextFormat(Qt::PlainText);
   sceneInfo->setWordWrap(true);
   sceneInfo->setMargin(6);
   sceneInfo->hide();
   layout->addWidget(sceneInfo);
-  auto *displayInfo = new QLabel;
+  auto *displayInfo = design::label({}, "secondary");
   displayInfo->setObjectName("mapDisplayCaption");
   displayInfo->setTextFormat(Qt::PlainText);
   displayInfo->setWordWrap(true);
@@ -570,6 +917,8 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
   displayInfo->hide();
   layout->addWidget(displayInfo);
   layout->addWidget(status_);
+  overlay_->setProperty("role", "secondary");
+  domainSummary_->setProperty("role", "secondary");
   status_->setMargin(6);
   status_->setTextFormat(Qt::PlainText);
   auto update = [this, tilt, heading] {
@@ -619,7 +968,7 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
     selection_->setVisible(active);
     selection_->setText(
         "Select two corners on the map. Regions are bounded to 10° per axis; Escape cancels.");
-    cancel->setVisible(active);
+    cancel->setEnabled(active);
   });
   connect(map_, &MapWidget::pointSelected, this,
           [this](Coordinate p, double height, bool terrain, bool scene) {
@@ -712,9 +1061,20 @@ void MainWindow::showMission() {
   mission_->activateWindow();
 }
 void MainWindow::showSatellite() {
-  satellite_->show();
-  satellite_->raise();
-  satellite_->activateWindow();
+  if (auto *button = findChild<QToolButton *>("section-Satellite"))
+    button->setChecked(true);
+  panels_["satellite"]->reveal();
+}
+void MainWindow::showSources(const QString &section, int page, bool raw) {
+  domain_->setSection(section);
+  domain_->showWorkspacePage(page, raw);
+  panels_["sources"]->reveal();
+}
+void MainWindow::showMapTools() {
+  panels_["tools"]->reveal();
+}
+void MainWindow::hideWorkspacePanels() {
+  workspace_->hidePanels();
 }
 void MainWindow::showLayers(const QVector<ProductLayer> &layers, bool focus) {
   activeLayers_ = layers;
@@ -858,6 +1218,27 @@ void MainWindow::showEvidence(const QJsonObject &e) {
   show();
   raise();
 }
+void MainWindow::resizeEvent(QResizeEvent *event) {
+  QMainWindow::resizeEvent(event);
+  const bool compact = width() < 1180;
+  if (auto *tagline = findChild<QLabel *>("workspaceTagline"))
+    tagline->setVisible(!compact);
+  if (auto *count = findChild<QLabel *>("enabledSourceCount"))
+    count->setVisible(!compact);
+  if (auto *mission = findChild<QToolButton *>("openMissionControl")) {
+    mission->setToolButtonStyle(compact ? Qt::ToolButtonIconOnly : Qt::ToolButtonTextBesideIcon);
+    mission->setToolTip("Mission Control · Ctrl+6");
+    mission->setAccessibleName("Mission Control");
+  }
+}
+MainWindow::~MainWindow() {
+  if (monitoring_) {
+    monitoring_->stop();
+    delete monitoring_;
+    monitoring_ = nullptr;
+  }
+  monitors_->stop();
+}
 void MainWindow::closeEvent(QCloseEvent *event) {
   const auto *timeline = mission_->findChild<TimelinePanel *>();
   if (satellite_->busy() || processing_->busy() || review_->busy() || inference_->busy() ||
@@ -890,6 +1271,8 @@ void MainWindow::closeEvent(QCloseEvent *event) {
     return;
   }
   tools_->hide();
+  for (auto it = panels_.cbegin(); it != panels_.cend(); ++it)
+    settings_.setValue("panels/" + it.key(), it.value()->layoutState());
   settings_.setValue("camera", QJsonDocument(map_->camera().json()).toJson(QJsonDocument::Compact));
   settings_.setValue("missionLibrary", missions_.filename());
   domain_->network().cancel();
@@ -898,6 +1281,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
   satellite_->hide();
   mission_->hide();
   processing_->hide();
+  monitoring_->stop();
   monitors_->stop();
   event->accept();
 }

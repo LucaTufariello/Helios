@@ -8,13 +8,15 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QTimeZone>
 #include <QVBoxLayout>
 namespace godeye {
 bool editMissionEntry(QWidget *parent, Missions &missions, const QString &collection,
-                      const QString &id) {
+                      const QString &id, const std::function<void()> &validateContext) {
+  const auto missionID = missions.selectedID();
   const auto plan = missions.selected(), brief = plan["brief"].toObject();
   const auto values = collection == "items" ? plan["items"].toArray() : brief[collection].toArray();
   QJsonObject original;
@@ -23,6 +25,7 @@ bool editMissionEntry(QWidget *parent, Missions &missions, const QString &collec
       original = value.toObject();
   if (original.isEmpty())
     return false;
+  const QJsonObject baseline = original;
   QDialog dialog(parent);
   dialog.setObjectName("missionEntryEditor");
   dialog.setWindowTitle("Edit mission " + collection + " entry");
@@ -48,10 +51,13 @@ bool editMissionEntry(QWidget *parent, Missions &missions, const QString &collec
   auto link = [&](const QString &key, const QString &label, const QJsonArray &choices,
                   const QString &title) {
     auto *field = new QComboBox;
+    field->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    field->setMinimumContentsLength(24);
     field->addItem("None", QString{});
     for (const auto value : choices) {
       const auto o = value.toObject();
-      field->addItem(o[title].toString(), o["id"].toString());
+      field->addItem(o[title].toString().simplified().left(160), o["id"].toString());
+      field->setItemData(field->count() - 1, o[title].toString(), Qt::ToolTipRole);
     }
     field->setCurrentIndex(std::max(0, field->findData(original[key].toString())));
     form->addRow(label, field);
@@ -108,8 +114,34 @@ bool editMissionEntry(QWidget *parent, Missions &missions, const QString &collec
       line("reference", "Citation / reference", 2000);
       link("evidenceID", "Evidence", plan["items"].toArray(), "title");
     }
-    if (collection == "tasks")
+    if (collection == "tasks") {
       date("due", "Due date known");
+      line("owner", "Local owner label", 160);
+      link("findingID", "Finding origin", brief["investigation"].toObject()["findings"].toArray(),
+           "claim");
+      auto *dependencies = new QListWidget;
+      dependencies->setObjectName("taskDependencies");
+      for (auto v : brief["tasks"].toArray()) {
+        const auto t = v.toObject();
+        if (t["id"] == id)
+          continue;
+        auto *item = new QListWidgetItem(t["title"].toString() +
+                                             (t["done"].toBool() ? " (done)" : " (unfinished)"),
+                                         dependencies);
+        item->setData(Qt::UserRole, t["id"]);
+        item->setCheckState(original["dependencyIDs"].toArray().contains(t["id"]) ? Qt::Checked
+                                                                                  : Qt::Unchecked);
+      }
+      form->addRow("Prerequisite tasks", dependencies);
+      fields["dependencyIDs"] = [dependencies] {
+        QJsonArray refs;
+        for (int n = 0; n < dependencies->count(); ++n)
+          if (dependencies->item(n)->checkState() == Qt::Checked)
+            refs.append(dependencies->item(n)->data(Qt::UserRole).toString());
+        return refs;
+      };
+      link("observationID", "Follow-up observation", brief["observations"].toArray(), "title");
+    }
     if (collection == "observations") {
       line("category", "Category", 120);
       date("observedAt", "Observation time known");
@@ -131,6 +163,22 @@ bool editMissionEntry(QWidget *parent, Missions &missions, const QString &collec
   QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
   QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, [&] {
     try {
+      if (missions.selectedID() != missionID)
+        throw std::runtime_error(
+            "The selected mission changed. Close this editor and choose the entry again.");
+      if (validateContext)
+        validateContext();
+      const auto currentPlan = missions.selected();
+      const auto currentRows = collection == "items"
+                                   ? currentPlan["items"].toArray()
+                                   : currentPlan["brief"].toObject()[collection].toArray();
+      QJsonObject current;
+      for (auto value : currentRows)
+        if (value.toObject()["id"] == id)
+          current = value.toObject();
+      if (current != baseline)
+        throw std::runtime_error("This entry changed while the editor was open. Your draft has "
+                                 "been retained; reopen the current entry before saving.");
       QJsonObject edits;
       for (auto i = fields.begin(); i != fields.end(); ++i)
         edits[i.key()] = i.value()();

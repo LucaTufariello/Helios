@@ -116,8 +116,7 @@ final class MissionOperationsTests: XCTestCase {
       for invalid in [
         "", String(repeating: "b", count: 63), String(repeating: "B", count: 64),
         String(repeating: "g", count: 64),
-      ]
-      {
+      ] {
         item = onnxObservation()
         item[keyPath: field] = invalid
         XCTAssertFalse(item.isValid, invalid)
@@ -298,5 +297,48 @@ final class MissionOperationsTests: XCTestCase {
       coordinate: Coordinate(latitude: 44, longitude: 8)!)
     brief.observations = [item, item]
     XCTAssertFalse(brief.isValid(evidence: []))
+  }
+  func testDossierValidationAndDeletionCleanup() throws {
+    var mission = MissionPlan(name: "Generated dossier")
+    let optical = MissionItem(
+      kind: .optical, referenceID: UUID().uuidString, title: "Generated raster")
+    var view = MissionItem(kind: .view, referenceID: UUID().uuidString, title: "Generated view")
+    view.camera = .initial
+    mission.items = [optical, view]
+    var area = MissionArea(name: "Area", region: try region())
+    var dossier = MissionDossier()
+    dossier.linkedEvidenceIDs = [optical.id, view.id]
+    dossier.baselineEvidenceIDs = [optical.id]
+    area.dossier = dossier
+    var brief = MissionBrief()
+    brief.areas = [area]
+    var observation = MissionObservation(
+      title: "Generated object", category: "Infrastructure",
+      coordinate: Coordinate(latitude: 44.01, longitude: 8.01)!)
+    observation.areaID = area.id
+    brief.observations = [observation]
+    var task = MissionTask(title: "Follow up")
+    task.areaID = area.id
+    task.observationID = observation.id
+    brief.tasks = [task]
+    mission.brief = brief
+    XCTAssertTrue(mission.isValid)
+    mission.brief?.areas[0].dossier?.baselineEvidenceIDs = [view.id]
+    XCTAssertFalse(mission.isValid)
+    mission.brief = brief
+    mission.brief?.areas[0].dossier?.linkedEvidenceIDs.append(optical.id)
+    XCTAssertFalse(mission.isValid)
+    mission.brief = brief
+    mission.brief?.tasks[0].observationID = UUID()
+    XCTAssertFalse(mission.isValid)
+    mission.brief = brief
+    mission.brief?.removeDossierEvidence(optical.id)
+    mission.items.removeAll { $0.id == optical.id }
+    XCTAssertTrue(mission.isValid)
+    XCTAssertTrue(mission.brief?.areas[0].dossier?.baselineEvidenceIDs.isEmpty == true)
+    mission.brief?.observations.removeAll { $0.id == observation.id }
+    mission.brief?.removeObservationReferences(observation.id)
+    XCTAssertTrue(mission.isValid)
+    XCTAssertNil(mission.brief?.tasks[0].observationID)
   }
 }

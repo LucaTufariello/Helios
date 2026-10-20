@@ -1,4 +1,5 @@
 #include "TimelinePanel.h"
+#include "WorkspaceStyle.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDateEdit>
@@ -74,7 +75,7 @@ TimelinePanel::TimelinePanel(Missions &missions, SatelliteWindow &satellite, Map
   detail_ = new QPlainTextEdit;
   detail_->setReadOnly(true);
   detail_->setMaximumHeight(110);
-  layout->addWidget(detail_);
+  design::disclosure(layout, detail_, "Source record");
   auto *buttons = new QHBoxLayout;
   auto add = [this, buttons](const QString &text, std::function<void()> fn) {
     auto *button = new QPushButton(text);
@@ -145,6 +146,27 @@ TimelinePanel::TimelinePanel(Missions &missions, SatelliteWindow &satellite, Map
                               : QString{});
   });
   refresh();
+}
+void TimelinePanel::prepareComparison(const QString &areaID, const QString &baselineID,
+                                      const QString &laterID) {
+  refresh();
+  area_->setCurrentIndex(std::max(0, area_->findData(areaID)));
+  query_->clear();
+  kind_->setCurrentIndex(0);
+  dates_->setChecked(false);
+  undated_->setChecked(true);
+  refresh();
+  baseline_->setCurrentIndex(std::max(0, baseline_->findData(baselineID)));
+  later_->setCurrentIndex(std::max(0, later_->findData(laterID)));
+  TimelineEntry a, b;
+  for (const auto &entry : all_) {
+    if (entry.id == baselineID)
+      a = entry;
+    if (entry.id == laterID)
+      b = entry;
+  }
+  const auto issue = timelineComparisonIssue(a, b);
+  status_->setText(issue.isEmpty() ? timelineComparisonWarnings(a, b).join('\n') : issue);
 }
 void TimelinePanel::refresh() {
   if (refreshing_)
@@ -292,30 +314,34 @@ void TimelinePanel::compare() {
       throw std::runtime_error("A selected acquisition is unavailable.");
     const double blend = blend_->value() / 100.0;
     const auto mission = missions_.selectedID();
+    const auto selectedArea = area_->currentData();
     busy_ = true;
     status_->setText("Reading the two bounded previews and checking their saved identities…");
     auto *watcher = new QFutureWatcher<std::pair<QVector<ProductLayer>, QString>>(this);
-    connect(watcher, &QFutureWatcherBase::finished, this, [this, watcher, mission, a, b, blend] {
-      const auto value = watcher->result();
-      watcher->deleteLater();
-      busy_ = false;
-      if (mission != missions_.selectedID()) {
-        status_->setText(
-            "Mission changed before previews finished loading. Choose the comparison again.");
-        return;
-      }
-      if (!value.second.isEmpty()) {
-        status_->setText(value.second);
-        return;
-      }
-      try {
-        missions_.setComparison(a.rasterID, b.rasterID, blend);
-        emit comparisonRequested(value.first, blend);
-        status_->setText(timelineComparisonWarnings(a, b).join('\n'));
-      } catch (const std::exception &e) {
-        status_->setText(QString::fromUtf8(e.what()));
-      }
-    });
+    connect(watcher, &QFutureWatcherBase::finished, this,
+            [this, watcher, mission, selectedArea, a, b, blend] {
+              const auto value = watcher->result();
+              watcher->deleteLater();
+              busy_ = false;
+              if (mission != missions_.selectedID() || selectedArea != area_->currentData() ||
+                  a.id != baseline_->currentData().toString() ||
+                  b.id != later_->currentData().toString()) {
+                status_->setText("The comparison context changed before previews finished loading. "
+                                 "Choose it again.");
+                return;
+              }
+              if (!value.second.isEmpty()) {
+                status_->setText(value.second);
+                return;
+              }
+              try {
+                missions_.setComparison(a.rasterID, b.rasterID, blend);
+                emit comparisonRequested(value.first, blend);
+                status_->setText(timelineComparisonWarnings(a, b).join('\n'));
+              } catch (const std::exception &e) {
+                status_->setText(QString::fromUtf8(e.what()));
+              }
+            });
     watcher->setFuture(QtConcurrent::run([layers] {
       try {
         QVector<ProductLayer> loaded;

@@ -1,4 +1,5 @@
 #include "ReviewWindow.h"
+#include "WorkspaceStyle.h"
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QDateTime>
@@ -39,12 +40,16 @@ ReviewWindow::ReviewWindow(const QString &profile, MapWidget &map, Missions &mis
       processing_(processing), settings_(profile + "/desktop.ini", QSettings::IniFormat) {
   setWindowTitle("GodEye — Infrastructure review");
   setAttribute(Qt::WA_QuitOnClose, false);
-  resize(720, 850);
+  resize(900, 940);
   auto *outer = new QVBoxLayout(this);
+  outer->setContentsMargins(20, 18, 20, 18);
+  outer->setSpacing(12);
+  design::heading(outer, "EVIDENCE ANALYSIS", "Infrastructure review");
   auto *intro = new QLabel(
       "Compare calibrated radar acquisitions over a saved site. Candidate patches measure "
       "backscatter changes; analyst review and corroboration are required to interpret them.");
   intro->setWordWrap(true);
+  intro->setProperty("role", "secondary");
   outer->addWidget(intro);
   tabs_ = new QTabWidget;
   outer->addWidget(tabs_, 1);
@@ -92,29 +97,36 @@ ReviewWindow::ReviewWindow(const QString &profile, MapWidget &map, Missions &mis
     if (!sites_)
       return;
     const auto id = site_->currentData().toString();
+    if (id == missionAreaSite_["id"].toString())
+      throw std::runtime_error("Edit this mission boundary in its dossier.");
     sites_->rename(id, name_->text(), kind_->text());
     refreshSites(id);
   });
   button(siteLayout, "Focus selected site", [this] {
-    const auto site = findSite(sites_.get(), site_->currentData().toString());
+    const auto site = currentSite();
     if (const auto bounds = Bounds::read(site["region"]))
       map_.focus(*bounds);
   });
-  button(siteLayout, "Link site to selected mission", [this] {
-    const auto site = findSite(sites_.get(), site_->currentData().toString());
+  button(siteLayout, "Open mission dossier", [this] {
+    const auto site = currentSite();
     if (site.isEmpty())
       throw std::runtime_error("Choose a saved site first.");
-    missions_.addEvidence({{"id", newID()},
-                           {"kind", "site"},
-                           {"referenceID", site["id"]},
-                           {"title", site["name"]},
-                           {"savedAt", foundationNow()},
-                           {"site", site}});
-    status_->setText("Site snapshot linked to the selected mission.");
+    QString area;
+    if (site["id"] == missionAreaSite_["id"]) {
+      if (areaMissionID_ != missions_.selectedID())
+        throw std::runtime_error("Select the mission that owns this area first.");
+      area = site["id"].toString();
+    } else
+      area = missions_.importDossierSite(missions_.selectedID(), site);
+    emit dossierRequested(area);
+    status_->setText(
+        "Mission dossier opened. The saved site is retained as a frozen mission snapshot.");
   });
   button(siteLayout, "Remove selected saved boundary", [this] {
     if (!sites_)
       return;
+    if (site_->currentData().toString() == missionAreaSite_["id"].toString())
+      throw std::runtime_error("Remove this area in Mission Control.");
     sites_->remove(site_->currentData().toString());
     refreshSites();
     status_->setText("Saved boundary removed. Reviews and source acquisitions remain available; "
@@ -132,7 +144,7 @@ ReviewWindow::ReviewWindow(const QString &profile, MapWidget &map, Missions &mis
     refreshSites();
   });
   connect(site_, &QComboBox::currentIndexChanged, this, [this] {
-    const auto site = findSite(sites_.get(), site_->currentData().toString());
+    const auto site = currentSite();
     if (!site.isEmpty()) {
       name_->setText(site["name"].toString());
       kind_->setText(site["kind"].toString());
@@ -190,7 +202,7 @@ ReviewWindow::ReviewWindow(const QString &profile, MapWidget &map, Missions &mis
   limit->setWordWrap(true);
   compareLayout->addWidget(limit);
   button(compareLayout, "Compare selected site acquisitions", [this] {
-    const auto selected = findSite(sites_.get(), site_->currentData().toString());
+    const auto selected = currentSite();
     if (selected.isEmpty())
       throw std::runtime_error("Choose a saved site.");
     if (!processing_.startReview(selected, before_->currentData().toString(),
@@ -248,6 +260,33 @@ ReviewWindow::ReviewWindow(const QString &profile, MapWidget &map, Missions &mis
   reference_->setMaxLength(1000);
   reference_->setPlaceholderText("Analyst citation / URL");
   resultLayout->addWidget(reference_);
+  button(resultLayout, "Draft finding from selected candidate", [this] {
+    if (!review_ || candidate_.isEmpty())
+      throw std::runtime_error("Select a SAR candidate first.");
+    if (!areaMissionID_.isEmpty() && areaMissionID_ != missions_.selectedID())
+      throw std::runtime_error("Select the mission that owns this review area first.");
+    QJsonObject candidate;
+    for (auto v : review_->result["candidates"].toArray())
+      if (v.toObject()["id"] == candidate_)
+        candidate = v.toObject();
+    if (candidate.isEmpty())
+      throw std::runtime_error("The candidate no longer exists.");
+    emit findingRequested(
+        QJsonObject{{"kind", "SAR candidate"},
+                    {"sourceID", review_->id + ":" + candidate_},
+                    {"label", "SAR candidate " + candidate_},
+                    {"manifest", review_->directory + "/result.json"},
+                    {"record", candidate},
+                    {"reportID", review_->id},
+                    {"site", review_->result["site"]},
+                    {"reportCreatedAt", review_->result["createdAt"]},
+                    {"areaID", missionAreaSite_["id"]},
+                    {"evidence", review_->result["evidence"]},
+                    {"quality", review_->result["quality"]},
+                    {"limitations", review_->result["limitations"]},
+                    {"qualityLimitations", quality_->text()},
+                    {"derivationReferences", QJsonArray{review_->id, candidate_}}});
+  });
   button(resultLayout, "Save analyst decision", [this] { saveDecision(); });
   exportKind_ = new QComboBox;
   exportKind_->addItems({"Evidence and decisions (JSON)", "delta-db.tif", "candidate-mask.tif",
@@ -291,6 +330,46 @@ void ReviewWindow::run(const std::function<void()> &action) {
     status_->setText(QString::fromUtf8(e.what()));
   }
 }
+QJsonObject ReviewWindow::currentSite() const {
+  const auto id = site_->currentData().toString();
+  if (!missionAreaSite_.isEmpty() && missionAreaSite_["id"] == id)
+    return missionAreaSite_;
+  return findSite(sites_.get(), id);
+}
+void ReviewWindow::prepareArea(const QJsonObject &area) {
+  if (!saveDecision())
+    return;
+  missionAreaSite_ = {{"id", area["id"]},
+                      {"name", area["name"].toString().left(120)},
+                      {"kind", "Mission area"},
+                      {"createdAt", foundationNow()},
+                      {"region", area["region"]}};
+  areaMissionID_ = missions_.selectedID();
+  refreshSites(area["id"].toString());
+  refreshProducts();
+  before_->setCurrentIndex(0);
+  after_->setCurrentIndex(0);
+  const auto pins = area["dossier"].toObject()["baselineEvidenceIDs"].toArray();
+  for (const auto value : missions_.selected()["items"].toArray()) {
+    const auto item = value.toObject();
+    if (item["kind"] != "radar" || !pins.contains(item["id"]))
+      continue;
+    for (const auto &p : satellite_.library())
+      if (p.kind == "radar" &&
+          p.jobID.compare(item["referenceID"].toString(), Qt::CaseInsensitive) == 0) {
+        before_->setCurrentIndex(std::max(0, before_->findData(p.manifest)));
+        break;
+      }
+    if (before_->currentIndex() > 0)
+      break;
+  }
+  tabs_->setCurrentIndex(1);
+  status_->setText("Mission area selected. Verify both calibrated acquisitions and review settings "
+                   "before starting.");
+  show();
+  raise();
+  activateWindow();
+}
 void ReviewWindow::refreshSites(const QString &selected) {
   QSignalBlocker block(site_);
   site_->clear();
@@ -300,6 +379,9 @@ void ReviewWindow::refreshSites(const QString &selected) {
       const auto o = value.toObject();
       site_->addItem(o["name"].toString(), o["id"].toString());
     }
+  if (!missionAreaSite_.isEmpty())
+    site_->addItem("Mission area · " + missionAreaSite_["name"].toString(),
+                   missionAreaSite_["id"].toString());
   site_->setCurrentIndex(std::max(0, site_->findData(selected)));
   block.unblock();
   if (site_->currentIndex() > 0)
@@ -379,6 +461,13 @@ void ReviewWindow::loadReview(const QString &manifest) {
           .arg(next.result["width"].toInt())
           .arg(next.result["height"].toInt())
           .arg(next.result["alignment"].toString(), limitations.join('\n')));
+  if (next.result["quality"].toObject()["state"] == "passed")
+    quality_->setText(
+        quality_->text() +
+        QString("\nIndependent relative registration check: max residual %1 pixels. Absolute "
+                "geolocation/radiometry remain unknown.")
+            .arg(next.result["quality"].toObject()["maximumVerificationResidualPixels"].toDouble(),
+                 0, 'f', 3));
   loading_ = false;
   rationale_->clear();
   reference_->clear();

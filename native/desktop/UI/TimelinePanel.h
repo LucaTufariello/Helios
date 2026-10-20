@@ -20,6 +20,7 @@ public:
   TimelinePanel(Missions &missions, SatelliteWindow &satellite, MapWidget &map,
                 QWidget *parent = nullptr);
   void refresh();
+  void prepareComparison(const QString &areaID, const QString &baselineID, const QString &laterID);
   bool busy() const {
     return busy_;
   }

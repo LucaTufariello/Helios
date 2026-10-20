@@ -7,6 +7,14 @@ are recorded in [migration status](../../docs/MIGRATION-STATUS.md).
 
 ## Implemented
 
+- A shared native analyst design with domain navigation, floating map palettes,
+  compact-window layouts and a Mission Control sidebar following the Swift
+  reference. See the [desktop design guide](../../docs/DESKTOP-DESIGN.md).
+- Area dossiers with curated evidence, pinned reference acquisitions, scoped reviews,
+  notes/tasks and existing map/Timeline/SAR handoffs. See [site dossiers](../../docs/SITE-DOSSIERS.md).
+- Site watches, an inbox, translation-only registration with independent controls,
+  and bounded local SAR analysis through the shared scientific queue.
+  See [site monitoring](../../docs/SITE-MONITORING.md) for optional dependencies and limits.
 - Qt Widgets map workspace and a separate Mission Control window sharing one model.
 - GPU rendering through Qt RHI: Metal on the tested Mac, Vulkan verified on the
   Omarchy/GTX 1070 with generated imagery and live public map/terrain checks.
@@ -32,7 +40,7 @@ are recorded in [migration status](../../docs/MIGRATION-STATUS.md).
 - Timeline filters, acquisition gaps, persisted A/B comparisons, CSV/JSON exports
   and in-app acquisition/evidence monitors with baselines, deduplication and pause.
 - Native Map/Satellite/Marine/Sky/Ground sections and a Sources & observations
-  window covering all 19 enabled layers, source inspection, attribution, retained
+  palette covering all 19 enabled layers, source inspection, attribution, retained
   fixes, estimated orbits, map selection and saved mission snapshots.
 - Bounded native camera still/clip playback using an owned FFmpeg process; optional
   provider keys use the operating-system secret store, with no plaintext fallback.
@@ -122,7 +130,7 @@ It never automatically imports or replaces the existing macOS mission library.
   Use separate working copies while both clients are open: the old Swift writer
   does not participate in the Qt file lock, so this is not a shared-editing protocol.
 - `--mission-library /absolute/path/to/missions.json` opens a chosen library with
-  automatic monitor checks paused. The Monitors page can explicitly resume them.
+  automatic monitor checks paused. The Automations page can explicitly resume them.
 - **Satellite → Import result.json:** choose a completed optical or SAR job manifest.
   **Add library folder** examines immediate job subfolders, capped at 500 entries.
 - Choose an output and **Show selected image on map**. SAR can expose VV, VH and
@@ -137,7 +145,7 @@ Processing Center can create fresh products directly; copied Mac experiments are
 not required. Saved source snapshots stay inspectable when their live provider is
 unavailable. Monitors run while this app is open and do not download products or
 install a background service.
-The **Monitors** page controls automatic checks for the session. Running a check
+The **Automations** page controls automatic checks for the session. Running a check
 saves its checkpoint into the mission library; disable automatic checks when
 inspecting a library without intending those updates.
 
@@ -175,7 +183,8 @@ Unicode, timestamps, refinement masks, invalid product paths/CRS, scientific ver
 preview dimensions, exports and cancellation cleanup. The Qt-authored generated
 mission fixture is covered by the Swift compatibility tests; their current execution
 remains a Mac acceptance gate. The expanded suites also cover jobs/downloads,
-timeline/monitor persistence, source parsers/orbits, credential boundaries, map
+dossier/link/pin/review/task persistence and stale-dialog isolation,
+ timeline/monitor persistence, source parsers/orbits, credential boundaries, map
 documents, daily caches and CPU inference admission.
 
 See [cross-platform architecture](../../docs/CROSS-PLATFORM.md) and [notices](NOTICE.md).

@@ -121,6 +121,14 @@ QVector<TimelineEntry> timelineEntries(const QJsonObject &plan,
                           : "Metadata read from local library; save acquisition metadata to retain "
                             "it after raster removal.";
     }
+    for (const auto value : plan["brief"].toObject()["areas"].toArray()) {
+      const auto area = value.toObject();
+      for (const auto linked : area["dossier"].toObject()["linkedEvidenceIDs"].toArray())
+        if (linked.toString().compare(e.evidenceID, Qt::CaseInsensitive) == 0) {
+          e.areaIDs.append(area["id"].toString());
+          break;
+        }
+    }
     entries.append(e);
   }
   const auto brief = plan["brief"].toObject();

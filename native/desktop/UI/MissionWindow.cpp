@@ -1,22 +1,32 @@
 #include "MissionWindow.h"
+#include "DossierPanel.h"
 #include "MissionEditor.h"
+#include "SiteMonitoringPanel.h"
+#include "WorkspaceStyle.h"
 #include <QAction>
 #include <QComboBox>
 #include <QFileDialog>
 #include <QFormLayout>
+#include <QGridLayout>
+#include <QHBoxLayout>
 #include <QInputDialog>
 #include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMenu>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSignalBlocker>
 #include <QSplitter>
+#include <QStackedWidget>
 #include <QStandardPaths>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QToolBar>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 namespace godeye {
@@ -67,20 +77,20 @@ void choices(QComboBox *combo, const QJsonArray &array, const QString &key) {
 MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent)
     : QMainWindow(parent), missions_(missions), map_(map) {
   setWindowTitle("GodEye — Mission Control");
-  resize(1080, 760);
+  resize(1240, 860);
+  setMinimumSize(1000, 700);
   setAttribute(Qt::WA_DeleteOnClose, false);
   setWindowFlag(Qt::Window, true);
-  auto *toolbar = addToolBar("Mission documents");
-  toolbar->setMovable(false);
+  auto *documents = new QMenu(this);
   selector_ = new QComboBox;
   selector_->setMinimumWidth(260);
-  toolbar->addWidget(selector_);
+  selector_->setAccessibleName("Selected mission");
   auto action = [&](const QString &label, const std::function<void()> &fn) {
-    auto *a = toolbar->addAction(label);
+    auto *a = documents->addAction(label);
     connect(a, &QAction::triggered, this, fn);
     return a;
   };
-  action("New", [this] {
+  auto *newMission = action("New mission…", [this] {
     if (!resolveDrafts())
       return;
     bool ok = false;
@@ -89,8 +99,10 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
     if (ok)
       run([&] { missions_.create(name); });
   });
-  action("Open…", [this] { openLibrary(); })->setShortcut(QKeySequence::Open);
-  action("Save", [this] { save(); })->setShortcut(QKeySequence::Save);
+  action("Open library…", [this] { openLibrary(); })->setShortcut(QKeySequence::Open);
+  auto *saveMission = action("Save changes", [this] { save(); });
+  saveMission->setShortcut(QKeySequence::Save);
+  saveMission->setObjectName("saveMission");
   action("Save as…", [this] { save(true); })->setShortcut(QKeySequence::SaveAs);
   action("Delete selected mission…", [this] {
     if (!resolveDrafts() || missions_.selectedID().isEmpty())
@@ -102,28 +114,188 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
             QMessageBox::Cancel | QMessageBox::Yes) == QMessageBox::Yes)
       run([this] { missions_.removeMission(missions_.selectedID()); });
   });
-  action("Show map", [this] {
+  auto *showMap = action("Show map", [this] {
     map_.window()->show();
     map_.window()->raise();
     map_.window()->activateWindow();
   });
   auto *root = new QWidget;
   auto *layout = new QVBoxLayout(root);
-  summary_ = new QLabel;
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+  auto *header = new QWidget;
+  header->setProperty("role", "header");
+  auto *headerLayout = new QHBoxLayout(header);
+  headerLayout->setContentsMargins(24, 18, 24, 18);
+  headerLayout->setSpacing(16);
+  auto *glyph = new QLabel;
+  glyph->setPixmap(design::icon(design::Symbol::Mission).pixmap(32, 32));
+  headerLayout->addWidget(glyph);
+  auto *titles = new QVBoxLayout;
+  titles->setSpacing(4);
+  titles->addWidget(design::label("MISSION CONTROL", "kicker"));
+  missionTitle_ = design::label("Mission workspace", "title");
+  missionTitle_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+  titles->addWidget(missionTitle_);
+  summary_ = design::label({}, "secondary");
   summary_->setWordWrap(true);
-  layout->addWidget(summary_);
+  titles->addWidget(summary_);
+  headerLayout->addLayout(titles, 1);
+  auto actionButton = [&](QAction *action, design::Symbol icon, const char *role) {
+    auto *b = new QToolButton;
+    b->setDefaultAction(action);
+    b->setIcon(design::icon(icon));
+    b->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    b->setProperty("role", role);
+    headerLayout->addWidget(b);
+    return b;
+  };
+  actionButton(showMap, design::Symbol::Globe, "nav");
+  actionButton(saveMission, design::Symbol::Save, "primary");
+  auto *documentMenu = new QToolButton;
+  documentMenu->setIcon(design::icon(design::Symbol::More));
+  documentMenu->setMenu(documents);
+  documentMenu->setPopupMode(QToolButton::InstantPopup);
+  documentMenu->setProperty("role", "quiet");
+  documentMenu->setToolTip("Mission library actions");
+  documentMenu->setAccessibleName("Mission library actions");
+  headerLayout->addWidget(documentMenu);
+  layout->addWidget(header);
+  auto *body = new QHBoxLayout;
+  body->setContentsMargins(0, 0, 0, 0);
+  body->setSpacing(0);
+  layout->addLayout(body, 1);
+  auto *sidebar = new QWidget;
+  sidebar->setProperty("role", "sidebar");
+  sidebar->setFixedWidth(220);
+  auto *side = new QVBoxLayout(sidebar);
+  side->setContentsMargins(16, 20, 16, 16);
+  side->setSpacing(12);
+  auto *sideHeading = new QHBoxLayout;
+  sideHeading->addWidget(design::label("MISSIONS", "kicker"));
+  sideHeading->addStretch();
+  auto *create = new QToolButton;
+  create->setDefaultAction(newMission);
+  create->setText("+");
+  create->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  create->setIcon(design::icon(design::Symbol::Plus));
+  create->setProperty("role", "quiet");
+  create->setToolTip("Create mission");
+  create->setAccessibleName("Create mission");
+  sideHeading->addWidget(create);
+  side->addLayout(sideHeading);
+  selector_->setMinimumWidth(0);
+  side->addWidget(selector_);
+  navigation_ = new QListWidget;
+  navigation_->setObjectName("missionNavigation");
+  navigation_->setProperty("role", "navigation");
+  navigation_->setAccessibleName("Mission sections");
+  side->addWidget(navigation_, 1);
+  auto *local = design::label("LOCAL WORKSPACE", "kicker");
+  side->addWidget(local);
+  auto *note = design::label(
+      "Mission entries and evidence share the map. Automations run while GodEye is open.",
+      "secondary");
+  note->setWordWrap(true);
+  side->addWidget(note);
+  body->addWidget(sidebar);
+  auto *content = new QWidget;
+  auto *column = new QVBoxLayout(content);
+  column->setContentsMargins(24, 20, 24, 20);
+  column->setSpacing(12);
+  pageTitle_ = design::label("Overview", "title");
+  column->addWidget(pageTitle_);
+  pageDescription_ =
+      design::label("Define the mission and review its evidence at a glance.", "secondary");
+  pageDescription_->setWordWrap(true);
+  column->addWidget(pageDescription_);
   tabs_ = new QTabWidget;
   tabs_->setObjectName("missionTabs");
+  tabs_->tabBar()->hide();
+  tabs_->setStyleSheet("QTabWidget#missionTabs::pane { border: none; background: transparent; }");
   auto *tabs = tabs_;
-  layout->addWidget(tabs, 1);
+  column->addWidget(tabs, 1);
+  missionContent_ = new QStackedWidget;
+  auto *empty = new QWidget;
+  auto *emptyLayout = new QVBoxLayout(empty);
+  emptyLayout->setContentsMargins(60, 40, 60, 40);
+  emptyLayout->setSpacing(16);
+  emptyLayout->addStretch();
+  auto *emptyTitle = design::label("Create your first mission", "title");
+  emptyTitle->setAlignment(Qt::AlignCenter);
+  emptyLayout->addWidget(emptyTitle);
+  auto *emptyDescription = design::label("Organize areas of interest, connect dated evidence, and "
+                                         "record what you know and what needs review.",
+                                         "secondary");
+  emptyDescription->setAlignment(Qt::AlignCenter);
+  emptyDescription->setWordWrap(true);
+  emptyLayout->addWidget(emptyDescription);
+  auto *emptyActions = new QHBoxLayout;
+  emptyActions->addStretch();
+  auto *createMission = new QPushButton("Create mission");
+  createMission->setProperty("role", "primary");
+  connect(createMission, &QPushButton::clicked, newMission, &QAction::trigger);
+  auto *openMission = new QPushButton("Open library…");
+  connect(openMission, &QPushButton::clicked, this, &MissionWindow::openLibrary);
+  emptyActions->addWidget(createMission);
+  emptyActions->addWidget(openMission);
+  emptyActions->addStretch();
+  emptyLayout->addLayout(emptyActions);
+  emptyLayout->addStretch();
+  missionContent_->addWidget(empty);
+  missionContent_->addWidget(content);
+  body->addWidget(missionContent_, 1);
+  connect(navigation_, &QListWidget::currentItemChanged, this, [this](QListWidgetItem *item) {
+    if (item)
+      tabs_->setCurrentIndex(item->data(Qt::UserRole).toInt());
+  });
+  connect(tabs_, &QTabWidget::currentChanged, this, [this](int index) {
+    for (int i = 0; i < navigation_->count(); ++i)
+      if (navigation_->item(i)->data(Qt::UserRole).toInt() == index) {
+        QSignalBlocker block(navigation_);
+        navigation_->setCurrentRow(i);
+        pageTitle_->setText(navigation_->item(i)->data(Qt::UserRole + 1).toString());
+        pageDescription_->setText(navigation_->item(i)->toolTip());
+      }
+  });
   setCentralWidget(root);
   auto page = [&](const QString &name) {
     auto *w = new QWidget;
     auto *l = new QVBoxLayout(w);
-    tabs->addTab(w, name);
+    l->setContentsMargins(0, 4, 8, 4);
+    l->setSpacing(12);
+    auto *scroll = new QScrollArea;
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setWidget(w);
+    tabs->addTab(scroll, name);
     return l;
   };
   auto *overview = page("Brief");
+  auto *metrics = new QHBoxLayout;
+  metrics->setSpacing(12);
+  overview->addLayout(metrics);
+  for (const auto &name : QStringList{"Areas", "Evidence", "Objects", "Tasks"}) {
+    auto *card = new QPushButton;
+    card->setProperty("role", "summaryCard");
+    card->setMinimumHeight(106);
+    card->setAccessibleName("Open " + name.toLower());
+    auto *cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(14, 10, 14, 10);
+    auto *count = design::label("0", "title");
+    count->setAttribute(Qt::WA_TransparentForMouseEvents);
+    metrics_.append(count);
+    cardLayout->addWidget(count);
+    auto *title = design::label(name, "secondary");
+    title->setAttribute(Qt::WA_TransparentForMouseEvents);
+    cardLayout->addWidget(title);
+    metrics->addWidget(card, 1);
+    connect(card, &QPushButton::clicked, this, [this, name] {
+      for (int i = 0; i < navigation_->count(); ++i)
+        if (navigation_->item(i)->data(Qt::UserRole + 1) == name)
+          navigation_->setCurrentRow(i);
+    });
+  }
   auto *form = new QFormLayout;
   form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
   form->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
@@ -142,53 +314,83 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
   form->addRow("Working brief", workingNotes_);
   button("Apply brief", overview, [this] { applyBrief(); });
   auto *areaPage = page("Areas");
+  auto *areaSplit = new QSplitter;
+  areaSplit->setObjectName("dossierSplit");
+  areaPage->addWidget(areaSplit, 1);
+  auto *master = new QWidget;
+  auto *areaColumn = new QVBoxLayout(master);
+  areaColumn->setContentsMargins(0, 0, 8, 0);
+  master->setMinimumWidth(220);
+  master->setMaximumWidth(290);
+  areaSearch_ = new QLineEdit;
+  areaSearch_->setPlaceholderText("Find area…");
+  areaSearch_->setClearButtonEnabled(true);
+  areaSearch_->setObjectName("dossierAreaSearch");
+  areaColumn->addWidget(areaSearch_);
   areas_ = new QListWidget;
-  areaPage->addWidget(areas_, 1);
+  areas_->setObjectName("dossierAreaList");
+  areas_->setWordWrap(true);
+  areas_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  areaColumn->addWidget(areas_, 1);
+  auto filterAreas = [this] {
+    for (int i = 0; i < areas_->count(); ++i)
+      areas_->item(i)->setHidden(!(areas_->item(i)->text() + areas_->item(i)->toolTip())
+                                      .contains(areaSearch_->text(), Qt::CaseInsensitive));
+  };
+  connect(areaSearch_, &QLineEdit::textChanged, this, filterAreas);
+  button("Import saved site…", areaColumn, [this] { emit importSiteRequested(); });
+  button("Edit boundary / purpose…", areaColumn, [this] {
+    run([this] { editMissionEntry(this, missions_, "areas", selectedID(areas_)); });
+  });
+  button("Remove area…", areaColumn, [this] { remove(areas_, "areas"); });
+  auto *newArea = new QWidget;
+  auto *newAreaColumn = new QVBoxLayout(newArea);
+  newAreaColumn->setContentsMargins(0, 0, 0, 0);
   areaName_ = new QLineEdit;
   areaName_->setPlaceholderText("Area name");
   areaPurpose_ = new QPlainTextEdit;
   areaPurpose_->setPlaceholderText("Monitoring purpose");
   areaPurpose_->setMaximumHeight(90);
-  areaPage->addWidget(areaName_);
-  areaPage->addWidget(areaPurpose_);
+  newAreaColumn->addWidget(areaName_);
+  newAreaColumn->addWidget(areaPurpose_);
   regionLabel_ = new QLabel("Draw a region on the map.");
-  areaPage->addWidget(regionLabel_);
-  button("Draw area on map", areaPage, [this] {
+  regionLabel_->setWordWrap(true);
+  newAreaColumn->addWidget(regionLabel_);
+  button("Draw area on map", newAreaColumn, [this] {
     captureMission_ = missions_.selectedID();
     if (captureMission_.isEmpty())
       return;
     map_.beginRegion(this);
+    map_.window()->show();
     map_.window()->raise();
   });
-  button("Add area", areaPage, [this] {
+  button("Create dossier", newAreaColumn, [this] {
     run([&] {
       if (!pendingRegion_)
         throw std::runtime_error("Draw an area first.");
-      missions_.addArea(areaName_->text(), areaPurpose_->toPlainText(), *pendingRegion_);
+      const auto id =
+          missions_.addArea(areaName_->text(), areaPurpose_->toPlainText(), *pendingRegion_);
       areaName_->clear();
       areaPurpose_->clear();
       pendingRegion_.reset();
       regionLabel_->setText("Draw a region on the map.");
+      openDossier(id);
     });
   });
-  button("Show selected area", areaPage, [this] {
-    const auto a = entry(missions_, "areas", selectedID(areas_));
-    if (auto b = Bounds::read(a["region"])) {
-      map_.focus(*b);
-      map_.window()->raise();
-    }
-  });
-  button("Remove area…", areaPage, [this] { remove(areas_, "areas"); });
-  button("Edit selected area…", areaPage, [this] {
-    run([this] { editMissionEntry(this, missions_, "areas", selectedID(areas_)); });
-  });
+  design::disclosure(areaColumn, newArea, "New area");
+  areaSplit->addWidget(master);
+  dossier_ = new DossierPanel(missions_);
+  areaSplit->addWidget(dossier_);
+  areaSplit->setStretchFactor(1, 1);
+  connect(areas_, &QListWidget::currentItemChanged, this,
+          [this] { dossier_->setArea(selectedID(areas_)); });
   auto *evidencePage = page("Evidence");
   evidence_ = new QListWidget;
   evidencePage->addWidget(evidence_, 1);
   raw_ = new QPlainTextEdit;
   raw_->setReadOnly(true);
   raw_->setMaximumHeight(180);
-  evidencePage->addWidget(raw_);
+  design::disclosure(evidencePage, raw_, "Evidence record");
   button("Show selected evidence on map", evidencePage, [this] {
     const auto e = entry(missions_, "items", selectedID(evidence_));
     if (!e.isEmpty())
@@ -378,10 +580,76 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
         QString("Selected: %1, %2").arg(p.latitude, 0, 'f', 6).arg(p.longitude, 0, 'f', 6));
   });
   connect(&missions_, &Missions::changed, this, &MissionWindow::refresh);
+  updateNavigation();
   refresh();
 }
 void MissionWindow::addPage(QWidget *page, const QString &title) {
   tabs_->addTab(page, title);
+  updateNavigation();
+}
+void MissionWindow::showPage(QWidget *page) {
+  tabs_->setCurrentWidget(page);
+}
+void MissionWindow::openDossier(const QString &areaID) {
+  for (int i = 0; i < tabs_->count(); ++i)
+    if (tabs_->tabText(i) == "Areas")
+      tabs_->setCurrentIndex(i);
+  areaSearch_->clear();
+  for (int i = 0; i < areas_->count(); ++i)
+    if (areas_->item(i)->data(Qt::UserRole).toString() == areaID) {
+      areas_->setCurrentRow(i);
+      dossier_->setArea(areaID);
+      return;
+    }
+}
+void MissionWindow::updateNavigation() {
+  const int current = tabs_->currentIndex();
+  QSignalBlocker block(navigation_);
+  navigation_->clear();
+  struct Section {
+    const char *tab;
+    const char *title;
+    const char *description;
+    design::Symbol icon;
+  };
+  const Section sections[] = {
+      {"Brief", "Overview", "Define the mission and review its evidence at a glance.",
+       design::Symbol::Mission},
+      {"Investigation", "Investigation", "Define completion, retain case versions and export a briefing.", design::Symbol::Mission},
+      {"Assets", "Asset registry", "Share stable infrastructure identities across missions.", design::Symbol::Data},
+      {"Connections", "Connections", "Explore bounded infrastructure relationships and evidence.", design::Symbol::Globe},
+      {"Findings", "Findings", "Review claims, alternative explanations and dated citations.", design::Symbol::Inspect},
+      {"Areas", "Areas",
+       "Connect site evidence, reference acquisitions, reviews and follow-up work.",
+       design::Symbol::Globe},
+      {"Evidence", "Evidence", "Connect source material and retain its acquisition and provenance.",
+       design::Symbol::Layers},
+      {"Review inbox", "Review inbox",
+       "Review acquisition events, analysis quality and follow-up work.", design::Symbol::Inspect},
+      {"Timeline", "Timeline", "Review dated evidence, acquisition gaps and visual comparisons.",
+       design::Symbol::Satellite},
+      {"Observations", "Objects",
+       "Review observations and distinguish proposals from accepted findings.",
+       design::Symbol::Inspect},
+      {"Notes", "Notes", "Record analyst context and connect it to mission evidence.",
+       design::Symbol::Data},
+      {"Tasks", "Tasks", "Track follow-up work and completion within this mission.",
+       design::Symbol::Mission},
+      {"Monitors", "Automations",
+       "Check acquisition and evidence availability while GodEye is open.", design::Symbol::Tools},
+      {"Activity", "Activity", "Inspect the history retained in this local mission library.",
+       design::Symbol::Data}};
+  for (const auto &section : sections)
+    for (int i = 0; i < tabs_->count(); ++i)
+      if (tabs_->tabText(i) == QLatin1String(section.tab)) {
+        auto *item = new QListWidgetItem(design::icon(section.icon),
+                                         QString::fromLatin1(section.title), navigation_);
+        item->setData(Qt::UserRole, i);
+        item->setData(Qt::UserRole + 1, QString::fromLatin1(section.title));
+        item->setToolTip(QString::fromLatin1(section.description));
+        if (i == current)
+          navigation_->setCurrentItem(item);
+      }
 }
 void MissionWindow::run(const std::function<void()> &action) {
   try {
@@ -421,6 +689,16 @@ void MissionWindow::refresh() {
   }
   displayedMission_ = id;
   briefBaseline_ = p;
+  missionTitle_->setText(p.isEmpty() ? "Mission workspace" : p["name"].toString());
+  missionTitle_->setToolTip(p["name"].toString());
+  missionContent_->setCurrentIndex(p.isEmpty() ? 0 : 1);
+  navigation_->setEnabled(!p.isEmpty());
+  findChild<QAction *>("saveMission")->setEnabled(!p.isEmpty());
+  const QList<int> counts{int(b["areas"].toArray().size()), int(p["items"].toArray().size()),
+                          int(b["observations"].toArray().size()),
+                          int(b["tasks"].toArray().size())};
+  for (int i = 0; i < metrics_.size(); ++i)
+    metrics_[i]->setText(QString::number(counts[i]));
   summary_->setText(
       p.isEmpty()
           ? "Create or open a mission to connect areas, evidence, observations and follow-up work."
@@ -430,8 +708,20 @@ void MissionWindow::refresh() {
                 .arg(b["observations"].toArray().size())
                 .arg(b["tasks"].toArray().size())
                 .arg(missions_.dirty() ? " · Unsaved changes" : ""));
-  populate(areas_, b["areas"].toArray(),
-           [](auto o) { return o["name"].toString() + "\n" + o["purpose"].toString(); });
+  populate(areas_, b["areas"].toArray(), [](auto o) {
+    const auto purpose = o["purpose"].toString().simplified();
+    return o["name"].toString() + "\n" + purpose.left(100) + (purpose.size() > 100 ? "…" : "");
+  });
+  for (int i = 0; i < areas_->count(); ++i)
+    areas_->item(i)->setToolTip(
+        entry(missions_, "areas", areas_->item(i)->data(Qt::UserRole).toString())["purpose"]
+            .toString());
+  for (int i = 0; i < areas_->count(); ++i)
+    areas_->item(i)->setHidden(!(areas_->item(i)->text() + areas_->item(i)->toolTip())
+                                    .contains(areaSearch_->text(), Qt::CaseInsensitive));
+  if (!areas_->currentItem() && areas_->count())
+    areas_->setCurrentRow(0);
+  dossier_->setArea(selectedID(areas_));
   populate(evidence_, p["items"].toArray(),
            [](auto o) { return o["kind"].toString().toUpper() + " · " + o["title"].toString(); });
   populate(notes_, b["notes"].toArray(),
@@ -465,6 +755,9 @@ void MissionWindow::applyBrief() {
   });
 }
 bool MissionWindow::resolveDrafts() {
+  if (auto *monitoring = findChild<SiteMonitoringPanel *>())
+    if (!monitoring->resolveDrafts())
+      return false;
   if (!resolveReview())
     return false;
   const auto p = missions_.selected();

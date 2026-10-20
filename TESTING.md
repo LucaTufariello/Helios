@@ -88,3 +88,23 @@ tiles or a selected existing product. Neither test establishes SAR scientific ac
 GitHub Actions is configured for the shared core on Linux and native checks on an
 Apple Silicon macOS runner. No browser,
 Node dependency installation or website test suite is part of the project.
+
+## Connected investigation regressions
+
+The desktop suite includes `desktop-investigations` and
+`desktop-investigations-ui`. They cover legacy/portable documents, registry
+conflicts, snapshot preservation, missing evidence, archive/import behavior,
+review resets, source promotion, task cycles, stale dialogs, frozen briefing
+previews and bounded graphs. Run them through the existing `make test-desktop`
+workflow or select these targets with CTest.
+
+Set `GODEYE_INVESTIGATION_QA` to an absolute output directory when running
+`GodEyeInvestigationTests` or `GodEyeInvestigationUiTests` directly to retain the
+civilian evaluation library, briefings, screenshots and graph timing evidence.
+UI/headless runs use `QT_QPA_PLATFORM=offscreen`. These generated fixtures are not
+real satellite-analysis validation. `GodEyeDesktop --validate` additionally
+exercises the connected workflow with the native GPU and a captured map.
+
+Swift fixture/registry regressions are in
+`native/macos/Tests/GodEyeCoreTests/InvestigationTests.swift`. A fresh Mac execution
+and real cross-platform case round-trip remain required acceptance gates.

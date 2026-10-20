@@ -20,6 +20,7 @@ public:
   ReviewWindow(const QString &profile, MapWidget &map, Missions &missions,
                SatelliteWindow &satellite, ProcessingWindow &processing, QWidget *parent = nullptr);
   ~ReviewWindow() override;
+  void prepareArea(const QJsonObject &area);
   void openReview(const QString &manifest);
   SiteLibrary *sites() const {
     return sites_.get();
@@ -28,6 +29,8 @@ public:
     return busy_;
   }
 signals:
+  void dossierRequested(QString areaID);
+  void findingRequested(QJsonObject origin);
   void layersChanged(QVector<godeye::ProductLayer> layers, bool focus);
 
 protected:
@@ -53,6 +56,9 @@ private:
   QLabel *status_, *quality_, *bounds_;
   QTabWidget *tabs_;
   QString candidate_;
+  QJsonObject missionAreaSite_;
+  QString areaMissionID_;
+  QJsonObject currentSite() const;
   bool busy_ = false, loading_ = false;
   void run(const std::function<void()> &action);
   void refreshSites(const QString &selected = {});
