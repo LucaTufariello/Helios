@@ -18,7 +18,8 @@ namespace godeye {
 class DomainWindow : public QDialog {
   Q_OBJECT
 public:
-  explicit DomainWindow(const QString &profile, QWidget *parent = nullptr, bool networking = true);
+  explicit DomainWindow(const QString &profile, QWidget *parent = nullptr, bool networking = true,
+                        bool workspace = false);
   ~DomainWindow() override;
   DomainNetwork &network() {
     return network_;
@@ -28,6 +29,7 @@ public:
   }
   void setSection(const QString &section);
   void selectFeed(const QString &feed);
+  void showWorkspacePage(int page, bool raw = false);
   void selectRecord(const QString &id);
   void setConfiguration(DomainConfiguration configuration);
   void stopFollowing();
@@ -62,7 +64,7 @@ private:
   QCheckBox *trails_, *selectedOnly_;
   QSpinBox *playbackSeconds_;
   QLineEdit *sourceQuery_;
-  QTabWidget *inspection_;
+  QTabWidget *inspection_, *workspaceTabs_ = nullptr;
   QVector<DomainRecord> currentRecords_;
   QMap<QString, QLineEdit *> keys_;
   QFutureWatcher<QImage> *imageWatcher_ = nullptr;

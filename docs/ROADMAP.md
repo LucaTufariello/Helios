@@ -234,6 +234,11 @@ No background task runs outside the user's configured policy.
 unauthorized access is rejected and independently installed clients can reproduce
 an exported review. The free local workflow remains useful on its own.
 
+The shared Qt client now has [connected dossiers](SITE-DOSSIERS.md) and a
+[site monitoring workbench](SITE-MONITORING.md), including relative correction
+and an inbox. These implementations do not complete real-data or fresh Mac
+acceptance. The historical ordering below remains context for those gates.
+
 ## Next implementation batch
 
 First establish [milestone 0](CROSS-PLATFORM.md) on both target platforms. Shared
@@ -303,3 +308,17 @@ No roadmap task reinstates bike tracking, radio, cockpit or voice features.
 - [Palantir Defense OSDK: mission planning](https://www.palantir.com/docs/defense-osdk/api/missionPlanning/overview/about)
   — primary public description of plans, tasks, entities, resources and links;
   consulted October 12, 2026. Used for high-level architectural context only.
+
+## Connected investigations implementation update — October 20, 2026
+
+The Qt client now connects shared asset identities, evidence-backed relationships,
+approved geographic/identifier associations, reviewed findings, dependent tasks
+and native briefing export. Cases keep adopted versions when the registry changes;
+imports and updates require an explicit preview/adoption action. This implements
+the connected case workflow across parts of milestones 1, 3 and 5. It does not
+complete service-impact modeling, authenticated collaboration, quantitative optical
+analysis, additional satellite-provider integrations or real monitoring accuracy
+evaluation. Fresh macOS execution remains a release acceptance gate.
+
+See [the workflow guide](CONNECTED-INVESTIGATIONS.md) and the investigation
+acceptance record in `docs/evaluation/CONNECTED-INVESTIGATIONS-ACCEPTANCE.md`.

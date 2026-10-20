@@ -1,5 +1,6 @@
 #include "Infrastructure.h"
 #include "Missions.h"
+#include "Monitoring.h"
 #include "WorkerJob.h"
 #include <QDateTime>
 #include <QDir>
@@ -153,6 +154,12 @@ void validateChangeReview(const QJsonObject &r) {
   require(r["version"] == 1 && r["state"] == "completed" && site(r["site"].toObject()) &&
               options(r["options"].toObject()),
           "Choose a completed supported change review with a valid site and settings.");
+  if (!r["quality"].isNull() && !r["quality"].isUndefined()) {
+    require(r["quality"].isObject(), "Registration quality metadata is invalid.");
+    validateRegistrationReport(r["quality"].toObject());
+    require(r["quality"].toObject()["state"] == "passed",
+            "This review did not pass registration verification.");
+  }
   const auto width = r["width"], height = r["height"], fraction = r["commonValidFraction"];
   require(integer(width, 1, 1000000) && integer(height, 1, 1000000) &&
               width.toInt() <= 1000000 / height.toInt() && Bounds::read(r["bounds"]) &&

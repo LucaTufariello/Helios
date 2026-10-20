@@ -119,6 +119,12 @@ Windows builds and packages are not currently supported. See
 
 ## Workspaces
 
+The Qt interface follows the macOS workspace with floating map palettes, a
+consistent dark analyst theme and a Mission Control sidebar. Search is available
+with **Ctrl+K** on Linux; **Ctrl+Shift+H** hides the palettes. See the
+[desktop design and navigation guide](docs/DESKTOP-DESIGN.md) for panel controls,
+keyboard access and the relationship to the Swift reference.
+
 - **Map:** geographic search, terrain and 3D Tiles, layers, record inspection,
   raw data, annotations, directions and saved view state.
 - **Satellite:** a searchable saved library, dated optical acquisitions,
@@ -129,7 +135,11 @@ Windows builds and packages are not currently supported. See
   aircraft, propagated satellite positions, infrastructure and environmental data.
 - **Mission Control**: a separate window for mission areas, linked evidence,
   timelines, reviewed observations, notes, tasks and acquisition checks. Its
-  actions update the shared map. Automations run while GodEye is open.
+  actions update the shared map. **Areas** connects each site’s evidence, reference
+  acquisitions, reviews, notes and follow-up tasks in a [site dossier](docs/SITE-DOSSIERS.md).
+  **Site monitoring** adds stable controls, verified relative translation, local SAR
+  analysis and a persistent review inbox. See the [monitoring guide](docs/SITE-MONITORING.md).
+  Automations run while GodEye is open.
 
 Provider data can be delayed, incomplete or unavailable. Propagated orbits are
 estimates; basemap mosaics do not establish an acquisition date. Raster blending
@@ -151,8 +161,10 @@ Use an installed Python 3.12 interpreter to create an isolated environment:
   -r native/macos/Sources/GodEyeMac/Resources/SAR/requirements.txt
 ```
 
-In **Satellite → Processing Center**, select the environment's Python executable
-(the absolute path to `.venv/bin/python`). On Linux you can also pass it at launch:
+In **Processing Center → Engine and jobs**, set **Raster Python** to the environment's
+Python executable (the absolute path to `.venv/bin/python`), then click **Check Python
+raster imports**. This selection is saved for that profile. The default system
+Python may not contain these packages. On Linux you can also select it at launch:
 
 ```sh
 ./output/desktop/build/bin/GodEyeDesktop --raster-python "$PWD/.venv/bin/python"
@@ -241,6 +253,8 @@ checks. A trained CPU model execution is recorded in migration status.
 - [Architecture and native rendering](docs/NATIVE-MACOS.md)
 - [Current capabilities and limits](docs/CURRENT-STATE.md)
 - [Mission Control](docs/MISSION-CONTROL.md)
+- [Connected site dossiers in the shared Qt client](docs/SITE-DOSSIERS.md)
+- [Site monitoring and verified relative correction](docs/SITE-MONITORING.md)
 - [Map workspace and evidence overlays](docs/MAP-WORKSPACE-AND-MISSIONS.md)
 - [Map navigation performance and benchmark](docs/MAP-PERFORMANCE.md)
 - [Sentinel-1 SAR](docs/SENTINEL1-SAR.md)
@@ -271,3 +285,7 @@ have separate terms. In particular, the bundled TeleGeography cable data is
 **CC BY-NC-SA 3.0** and is not licensed for commercial use. See
 [data sources and attribution](DATA_SOURCES.md), [notices](NOTICE.md), and the
 resource-specific READMEs before redistribution.
+
+## Connected investigations
+
+Use Mission Control’s Investigation, Asset registry, Connections and Findings pages to retain shared infrastructure identities, review dated evidence, track dependent follow-up and export an A4 PDF with a JSON evidence manifest. See [Connected investigations](docs/CONNECTED-INVESTIGATIONS.md) for the complete workflow and historical-record rules.

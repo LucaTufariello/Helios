@@ -185,7 +185,9 @@ QJsonObject ProductLayer::missionEvidence() const {
           {"referenceID", jobID},
           {"title", label},
           {"savedAt", foundationNow()},
-          {"acquisition", a}};
+          {"acquisition", a},
+          {"manifest", manifest},
+          {"manifestHash", QString::fromLatin1(manifestHash.toHex())}};
 }
 void exportProductFile(const QString &source, const QString &destination,
                        std::shared_ptr<std::atomic_bool> cancelled) {

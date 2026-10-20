@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "id": "gagarin-civilian-construction-held-out",
+  "name": "Gagarin civilian infrastructure — held-out temporal comparison",
+  "split": "held-out",
+  "searchBounds": {
+    "west": 46.13,
+    "south": 51.68,
+    "east": 46.22,
+    "north": 51.75
+  },
+  "discoveryWindows": [
+    {
+      "role": "held-out",
+      "start": "2020-07-28",
+      "endExclusive": "2020-08-10"
+    }
+  ],
+  "references": [
+    {
+      "url": "https://favt.gov.ru/novosti-novosti/?id=7990",
+      "purpose": "Official documentation of a newly built civilian airport entering service in August 2019; not a pixel-level change label."
+    },
+    {
+      "url": "https://special.favt.gov.ru/novosti-novosti/?id=5320",
+      "purpose": "Dated April 2019 construction progress; not a claim that the 2016 site was unchanged."
+    }
+  ],
+  "selectionPolicy": "Reserved before threshold tuning. Use only independently documented changed, unchanged and uncertain regions; do not presume the whole site was unchanged.",
+  "heldOutPolicy": "Select additional acquisitions and independently documented unchanged areas before threshold tuning. Record held-out acquisition IDs in a separate protocol; never relabel development results as held-out.",
+  "labels": [],
+  "evaluationStatus": "pending real scientific rasters and independent labels",
+  "limitations": [
+    "Search bounds are a coarse discovery envelope, not a surveyed airport boundary.",
+    "No current flight, aircraft or operational-status inference is part of this construction evaluation.",
+    "Do not treat catalogue metadata or generated fixtures as real-data detection validation."
+  ],
+  "selectedCandidates": [
+    {
+      "id": "708d3ee8-cf41-594f-9ee5-d2a5f0521105",
+      "name": "S1A_IW_GRDH_1SDV_20200728T030555_20200728T030620_033649_03E657_BBCA.SAFE",
+      "contentDate": {
+        "Start": "2020-07-28T03:05:55.092000Z",
+        "End": "2020-07-28T03:06:20.090000Z"
+      },
+      "bytes": 1746868524,
+      "online": true,
+      "attributes": {
+        "timeliness": "Fast-24h",
+        "orbitNumber": 33649,
+        "sliceNumber": 4,
+        "productClass": "S",
+        "orbitDirection": "DESCENDING",
+        "operationalMode": "IW",
+        "processingLevel": "LEVEL1",
+        "swathIdentifier": "IW",
+        "platformShortName": "SENTINEL-1",
+        "instrumentShortName": "SAR",
+        "relativeOrbitNumber": 152,
+        "polarisationChannels": "VV&VH",
+        "platformSerialIdentifier": "A",
+        "productType": "IW_GRDH_1S",
+        "beginningDateTime": "2020-07-28T03:05:55.092000Z",
+        "endingDateTime": "2020-07-28T03:06:20.090000Z"
+      }
+    },
+    {
+      "id": "33ae7569-ff07-5e6a-822b-9e856ee679d7",
+      "name": "S1A_IW_GRDH_1SDV_20200809T030555_20200809T030620_033824_03EBF1_1210.SAFE",
+      "contentDate": {
+        "Start": "2020-08-09T03:05:55.649000Z",
+        "End": "2020-08-09T03:06:20.646000Z"
+      },
+      "bytes": 1746866216,
+      "online": true,
+      "attributes": {
+        "timeliness": "Fast-24h",
+        "orbitNumber": 33824,
+        "sliceNumber": 4,
+        "productClass": "S",
+        "orbitDirection": "DESCENDING",
+        "operationalMode": "IW",
+        "processingLevel": "LEVEL1",
+        "swathIdentifier": "IW",
+        "platformShortName": "SENTINEL-1",
+        "instrumentShortName": "SAR",
+        "relativeOrbitNumber": 152,
+        "polarisationChannels": "VV&VH",
+        "platformSerialIdentifier": "A",
+        "productType": "IW_GRDH_1S",
+        "beginningDateTime": "2020-08-09T03:05:55.649000Z",
+        "endingDateTime": "2020-08-09T03:06:20.646000Z"
+      }
+    }
+  ],
+  "catalogueCheckedAt": "2026-10-18",
+  "candidateStatus": "Candidate geometry/season match only; covering controls, optical labels and scientific processing remain pending."
+}

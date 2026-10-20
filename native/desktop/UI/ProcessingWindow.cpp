@@ -1,5 +1,7 @@
 #include "ProcessingWindow.h"
 #include "Core/Infrastructure.h"
+#include "Core/Missions.h"
+#include "WorkspaceStyle.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDateEdit>
@@ -30,11 +32,48 @@ ProcessingWindow::ProcessingWindow(const QString &profile, MapWidget &map, QWidg
                                    bool networking)
     : QDialog(parent, Qt::Tool), profile_(profile), networking_(networking), map_(map),
       settings_(profile + "/desktop.ini", QSettings::IniFormat), catalog_(this) {
+  queue_ = new ScientificQueue(profile + "/jobs", this);
+  connect(queue_, &ScientificQueue::started, this,
+          [this](const QString &, WorkerJob *job, bool automatic) {
+            job_ = job;
+            if (automatic)
+              status_->setText("Background site analysis running. Manual work takes priority.");
+            connect(job, &WorkerJob::changed, this, [this, job] {
+              if (job_ == job) {
+                status_->setText(job->record()["stage"].toString(job->error()));
+                refresh();
+              }
+            });
+            refresh();
+          });
+  connect(queue_, &ScientificQueue::finished, this,
+          [this](const QString &, const QString &directory, bool success, bool automatic,
+                 const QString &error) {
+            const auto record = WorkerJob::readRecord(directory + "/run.json");
+            if (!automatic && success) {
+              if (record["operation"] == "compare")
+                emit reviewReady(directory + "/product/result.json");
+              else if (record["operation"] != "inspect")
+                emit productReady(directory + "/product/result.json");
+              else
+                details_->setPlainText(QString::fromUtf8(
+                    QJsonDocument(WorkerJob::readRecord(directory + "/inspection.json")).toJson()));
+            }
+            if (!success)
+              status_->setText(error);
+            reloadJobs();
+            refresh();
+          });
+  connect(queue_, &ScientificQueue::changed, this, [this] { refresh(); });
   setWindowTitle("GodEye — Satellite acquisition and processing");
   setAttribute(Qt::WA_QuitOnClose, false);
-  resize(720, 850);
+  resize(900, 940);
   setMinimumSize(640, 660);
   auto *layout = new QVBoxLayout(this);
+  layout->setContentsMargins(20, 18, 20, 18);
+  layout->setSpacing(12);
+  design::heading(layout, "SATELLITE OPERATIONS", "Processing Center",
+                  "Find acquisitions, define coverage, and manage local processing jobs.");
   auto *regionBox = new QGroupBox("Query bounds · decimal degrees");
   auto *boundsLayout = new QFormLayout(regionBox);
   auto spin = [](double low, double high, int decimals, double value) {
@@ -395,9 +434,10 @@ ProcessingWindow::ProcessingWindow(const QString &profile, MapWidget &map, QWidg
   check->setObjectName("checkRasterPython");
   engineLayout->addWidget(check);
   connect(check, &QPushButton::clicked, this, &ProcessingWindow::checkPython);
-  engineStatus_ = new QLabel(
-      "Select an environment with NumPy, Rasterio/GDAL, Pillow and h5py. SNAP is a separate "
-      "dependency for raw radar processing; optical viewing does not require SNAP.");
+  engineStatus_ =
+      new QLabel("Select an environment with NumPy, Rasterio/GDAL, Pillow and h5py. Monitoring "
+                 "additionally needs requirements-monitoring.txt. SNAP is a separate "
+                 "dependency for raw radar processing; optical viewing does not require SNAP.");
   engineStatus_->setWordWrap(true);
   engineLayout->addWidget(engineStatus_);
   auto *reload = new QPushButton("Refresh saved jobs");
@@ -480,8 +520,15 @@ ProcessingWindow::ProcessingWindow(const QString &profile, MapWidget &map, QWidg
   reloadJobs();
   refresh();
 }
+ProcessingWindow::~ProcessingWindow() {
+  disconnect(queue_, nullptr, this, nullptr);
+  if (queue_->activeJob())
+    disconnect(queue_->activeJob(), nullptr, this, nullptr);
+  delete queue_;
+  queue_ = nullptr;
+}
 bool ProcessingWindow::busy() const {
-  return (job_ && job_->running()) || catalog_.busy() || (radarPanel_ && radarPanel_->busy()) ||
+  return queue_->busy() || catalog_.busy() || (radarPanel_ && radarPanel_->busy()) ||
          preflight_.state() != QProcess::NotRunning;
 }
 void ProcessingWindow::setEngines(const QString &python, const QString &gpt) {
@@ -514,42 +561,22 @@ void ProcessingWindow::setRegion(Bounds bounds) {
   east_->setValue(bounds.east);
   north_->setValue(bounds.north);
 }
+bool ProcessingWindow::submitMonitoring(WorkerRequest request, const QString &token) {
+  request.python = python_->text();
+  request.worker = WorkerJob::workerPath(false);
+  request.gpt = gpt_->text();
+  return queue_->submit(std::move(request), token, true);
+}
 bool ProcessingWindow::launch(WorkerRequest request) {
-  if (job_ && job_->running()) {
-    status_->setText("Wait for the active job or cancel it before starting another.");
-    return false;
-  }
   request.python = python_->text();
   request.worker = WorkerJob::workerPath(request.optical);
   request.gpt = gpt_->text();
-  auto *job = new WorkerJob(profile_ + "/jobs", this);
-  connect(job, &WorkerJob::changed, this, [this, job] {
-    if (job_ != job)
-      return;
-    status_->setText(job->record()["stage"].toString(job->error()));
-    refresh();
-  });
-  connect(job, &WorkerJob::finished, this, [this, job](bool success) {
-    if (success && job->record()["operation"] == "compare")
-      emit reviewReady(job->resultFile());
-    else if (success && job->record()["operation"] != "inspect")
-      emit productReady(job->resultFile());
-    if (success && job->record()["operation"] == "inspect")
-      details_->setPlainText(QString::fromUtf8(
-          QJsonDocument(WorkerJob::readRecord(job->resultFile())).toJson(QJsonDocument::Indented)));
-    reloadJobs();
-    refresh();
-  });
-  if (job_)
-    job_->deleteLater();
-  job_ = job;
-  if (!job->start(request)) {
-    status_->setText(job->error());
-    refresh();
-    return false;
-  }
+  const auto accepted = queue_->submit(std::move(request), newID(), false);
+  if (!accepted)
+    status_->setText(
+        "The scientific queue is full. Cancel pending work before submitting another job.");
   refresh();
-  return true;
+  return accepted;
 }
 bool ProcessingWindow::startOptical(const QJsonObject &scene, Bounds bounds, const QString &mode) {
   if (!networking_) {
@@ -624,19 +651,17 @@ bool ProcessingWindow::startReview(const QJsonObject &site, const QString &befor
 void ProcessingWindow::cancel() {
   catalog_.cancel();
   radarPanel_->cancel();
-  if (job_)
-    job_->cancel();
+  queue_->cancelAll();
   if (preflight_.state() != QProcess::NotRunning)
     preflight_.kill();
   refresh();
 }
 void ProcessingWindow::refresh() {
-  const bool processing = job_ && job_->running();
+  const bool processing = queue_->busy();
   for (auto *button : startButtons_)
-    button->setEnabled(!processing &&
-                       (networking_ || !button->property("requiresNetwork").toBool()));
+    button->setEnabled((networking_ || !button->property("requiresNetwork").toBool()));
   cancel_->setEnabled(busy());
-  if (processing) {
+  if (processing && job_) {
     const auto fraction = job_->record()["progress"];
     if (fraction.isDouble()) {
       progress_->setRange(0, 1000);

@@ -231,6 +231,17 @@ bool MonitorRunner::run(QString missionID, QString monitorID) {
     if (current.isEmpty() || signature(currentPlan, current) != querySignature)
       return;
     try {
+      QStringList discovered;
+      if (result.error.isEmpty() && missionTime(monitor["lastSuccess"]).isValid()) {
+        QSet<QString> known;
+        for (const auto v : monitor["seenIDs"].toArray())
+          known.insert(v.toString().toLower());
+        for (const auto &id : result.identifiers)
+          if (!known.contains(id.toLower())) {
+            discovered.append(id);
+            known.insert(id.toLower());
+          }
+      }
       if (!result.error.isEmpty())
         monitor["failure"] = "Check failed. Check network and catalogue availability, then retry. "
                              "Previous successful results remain retained.";
@@ -246,8 +257,11 @@ bool MonitorRunner::run(QString missionID, QString monitorID) {
           (result.error.isEmpty()
                ? monitor["kind"].toString() + ": " + monitor["summary"].toString()
                : "Monitor failed: " + monitor["kind"].toString()));
-      if (result.error.isEmpty())
+      if (result.error.isEmpty()) {
         emit guard->results(missionID, monitorID, result.identifiers);
+        if (!discovered.isEmpty())
+          emit guard->discovered(missionID, monitorID, discovered);
+      }
     } catch (const std::exception &e) {
       emit guard->failed(QString::fromUtf8(e.what()));
     }

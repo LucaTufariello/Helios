@@ -61,7 +61,8 @@ def main() -> None:
             if not path.resolve().is_relative_to(app) or sha256(path) != checksum:
                 raise ValueError("Package checksum or path admission failed: " + name)
         checks.append("package-checksums")
-        required_resources = ("SAR/sentinel1.py", "SAR/change_review.py", "SAR/requirements.txt",
+        required_resources = ("SAR/sentinel1.py", "SAR/change_review.py", "SAR/registration.py",
+                              "SAR/requirements.txt", "SAR/requirements-monitoring.txt",
                               "Optical/sentinel2.py", "Optical/optical_sources.py",
                               "Inference/infer.py", "Inference/requirements.txt",
                               "Inference/tinyyolov2-voc.contract.json")

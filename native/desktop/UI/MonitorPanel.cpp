@@ -1,4 +1,5 @@
 #include "MonitorPanel.h"
+#include "WorkspaceStyle.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
@@ -123,7 +124,7 @@ MonitorPanel::MonitorPanel(Missions &missions, MonitorRunner &runner, QWidget *p
   detail_ = new QPlainTextEdit;
   detail_->setReadOnly(true);
   detail_->setMaximumHeight(140);
-  layout->addWidget(detail_);
+  design::disclosure(layout, detail_, "Source record");
   status_ = new QLabel;
   status_->setTextFormat(Qt::PlainText);
   status_->setWordWrap(true);

@@ -159,6 +159,7 @@ import SwiftUI
     var next = plans
     next[index].items.removeAll { $0.id == id }
     if var brief = next[index].brief {
+      brief.removeDossierEvidence(id)
       for i in brief.notes.indices where brief.notes[i].evidenceID == id {
         brief.notes[i].evidenceID = nil
       }

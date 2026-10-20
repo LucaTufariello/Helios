@@ -355,6 +355,40 @@ private slots:
     restored.load(d.filePath("copy.json"));
     QCOMPARE(restored.plans(), m.plans());
   }
+  void sharedDossierFixturePreservesPortableMetadata() {
+    Missions m;
+    m.load(QStringLiteral(GODEYE_FIXTURE_DIR) + "/cross-platform-dossier.json");
+    const auto brief = m.selected()["brief"].toObject();
+    const auto dossier = brief["areas"].toArray()[0].toObject()["dossier"].toObject();
+    QCOMPARE(dossier["linkedEvidenceIDs"].toArray().size(), 2);
+    QCOMPARE(dossier["baselineEvidenceIDs"].toArray().size(), 1);
+    QVERIFY(dossier["sourceSiteEvidenceID"].isString());
+    QVERIFY(brief["tasks"].toArray()[0].toObject()["observationID"].isString());
+    QTemporaryDir root;
+    m.save(root.filePath("plans.json"));
+    Missions copy;
+    copy.load(root.filePath("plans.json"));
+    QCOMPARE(copy.plans(), m.plans());
+  }
+  void sharedMonitoringFixturePreservesConfigurationInboxAndTaskOrigin() {
+    Missions m;
+    m.load(QStringLiteral(GODEYE_FIXTURE_DIR) + "/cross-platform-monitoring.json");
+    auto b = m.selected()["brief"].toObject();
+    QCOMPARE(b["monitoringInbox"].toArray().size(), 1);
+    QCOMPARE(b["areas"]
+                 .toArray()[0]
+                 .toObject()["dossier"]
+                 .toObject()["monitoring"]
+                 .toObject()["controls"]
+                 .toArray()
+                 .size(),
+             6);
+    QTemporaryDir d;
+    m.save(d.filePath("copy.json"));
+    Missions copy;
+    copy.load(d.filePath("copy.json"));
+    QCOMPARE(copy.plans(), m.plans());
+  }
   void existingMissionLibraryReadOnlyCheck() {
     const auto filename = qEnvironmentVariable("GODEYE_MISSION_CHECK");
     if (filename.isEmpty())

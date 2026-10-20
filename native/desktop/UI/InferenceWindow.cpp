@@ -1,4 +1,5 @@
 #include "InferenceWindow.h"
+#include "WorkspaceStyle.h"
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QDoubleSpinBox>
@@ -24,7 +25,9 @@ InferenceWindow::InferenceWindow(const QString &profile, QWidget *parent)
   auto *columns = new QHBoxLayout(body);
   auto *controls = new QWidget;
   auto *layout = new QVBoxLayout(controls);
-  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setContentsMargins(12, 12, 12, 12);
+  layout->setSpacing(12);
+  design::heading(layout, "ANALYST ASSISTANCE", "Local image assistance");
   columns->addWidget(controls, 3);
   auto *review = new QWidget;
   auto *reviewLayout = new QVBoxLayout(review);
@@ -37,6 +40,7 @@ InferenceWindow::InferenceWindow(const QString &profile, QWidget *parent)
                  "preview accuracy still apply. "
                  "No aerial accuracy, construction or damage capability has been validated.");
   disclosure->setWordWrap(true);
+  disclosure->setProperty("role", "secondary");
   layout->addWidget(disclosure);
   source_ = new QLabel("Select linked optical evidence from Mission Control.");
   source_->setWordWrap(true);

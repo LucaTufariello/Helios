@@ -18,6 +18,10 @@ gates. The historical Mac preview check does not validate the expanded client.
 Keep the Swift reference available; see the [platform transition](CROSS-PLATFORM.md),
 [Qt guide](../native/desktop/README.md) and [migration status](MIGRATION-STATUS.md).
 
+The Qt workspace follows the Swift reference navigation and floating-palette
+layout, with a shared dark analyst theme and a separate Mission Control sidebar.
+See the [desktop design guide](DESKTOP-DESIGN.md) for navigation and validation.
+
 ## Available workflows
 
 - Full-map navigation with terrain/3D Tiles, loaded-surface picking, tilt/heading,
@@ -31,12 +35,17 @@ Keep the Swift reference available; see the [platform transition](CROSS-PLATFORM
   and analyst review decisions with evidence references.
 - A separate Mission Control window with areas, evidence, timelines, observations,
   notes, tasks, acquisition checks, comparisons and portable local documents.
+  [Area dossiers](SITE-DOSSIERS.md) connect curated evidence, pinned references,
+  reviews and follow-up tasks to the existing map, Timeline and SAR tools.
+- Site monitoring with persistent acquisition/analysis inbox entries, independent-control
+  relative translation checks, derived corrected power rasters and analyst follow-up.
+  See [monitoring](SITE-MONITORING.md). Real-data detection accuracy remains unevaluated.
 - Optional local model proposals with explicit model/source provenance and review.
 - Dated daily visualization, approximate solar terminator, annotation drawing and
   portable workspace/view links. Scientific acquisitions remain distinct from
   daily mosaics and display shaders.
 
-The Qt source window covers all 19 enabled layers and shares the map with mission,
+The Qt source palette covers all 19 enabled layers and shares the map with mission,
 processing, infrastructure and local-assistance windows. See [Mission Control](MISSION-CONTROL.md),
 [map workspace](MAP-WORKSPACE-AND-MISSIONS.md), [Qt sources](../native/desktop/DOMAIN-SOURCES.md),
 [map tools](MAP-TOOLS.md), [daily imagery](DAILY-IMAGERY.md) and
@@ -82,3 +91,19 @@ website does not delete user data in Application Support or Keychain. Qt uses a
 separate platform profile or explicit `--profile DIRECTORY`; it does not silently
 replace the Swift library. Linux credentials use optional Secret Service, with no
 plaintext fallback.
+
+## Connected investigations (October 20, 2026)
+
+The shared Qt Mission Control now includes Investigation, Asset registry,
+Connections and Findings pages, with explicit asset adoption, evidence association
+approval, immutable case versions, retained review decisions, dependent follow-up,
+and native A4 PDF / JSON briefing export. Existing mission/evidence identities are
+preserved. See [Connected investigations](CONNECTED-INVESTIGATIONS.md).
+
+Linux regression, native Vulkan workflow, bounded graph and briefing rendering
+results are recorded in `output/qa/investigations-20261020/`. Swift parsing,
+formatting and a Linux compatibility harness exercise the new persistence models;
+that harness uses minimal existing-model stubs and does not replace a fresh Mac
+application build/run. macOS execution remains an acceptance gate. Generated
+civilian evaluation records demonstrate workflow behavior, not real facility
+changes or satellite-analysis accuracy.

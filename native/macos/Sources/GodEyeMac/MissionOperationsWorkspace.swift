@@ -313,6 +313,7 @@ extension MissionWorkspace {
     alert.addButton(withTitle: "Remove area")
     guard alert.runModal() == .alertSecondButtonReturn else { return }
     _ = editBrief("Mission area removed; source evidence retained") { brief in
+      brief.removeMonitoringArea(id)
       brief.areas.removeAll { $0.id == id }
       brief.monitors.removeAll { $0.areaID == id }
       for i in brief.notes.indices where brief.notes[i].areaID == id { brief.notes[i].areaID = nil }
@@ -339,8 +340,12 @@ extension MissionWorkspace {
       switch kind {
       case .note: brief.notes.removeAll { $0.id == id }
       case .task: brief.tasks.removeAll { $0.id == id }
-      case .observation: brief.observations.removeAll { $0.id == id }
-      case .automation: brief.monitors.removeAll { $0.id == id }
+      case .observation:
+        brief.observations.removeAll { $0.id == id }
+        brief.removeObservationReferences(id)
+      case .automation:
+        brief.removeMonitoringCheck(id)
+        brief.monitors.removeAll { $0.id == id }
       }
     }
     if saved, kind == .observation { reviewDrafts[id] = nil }

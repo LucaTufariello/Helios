@@ -21,6 +21,7 @@
 #include <QShowEvent>
 #include <QSignalBlocker>
 #include <QSlider>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <algorithm>
@@ -61,6 +62,8 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
   auto *layout = new QVBoxLayout(this);
   auto *tabs = new QTabWidget;
   tabs->setObjectName("mapToolsTabs");
+  tabs->setUsesScrollButtons(true);
+  tabs->tabBar()->setExpanding(false);
   layout->addWidget(tabs);
   auto page = [tabs](const QString &name) {
     auto *p = new QWidget;
@@ -463,6 +466,10 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
     if (solar_->isChecked())
       updateSolarCaption();
   });
+  connect(&map_, &MapWidget::statusChanged, this, [this] {
+    if (isVisible())
+      synchronizeDisplayControls();
+  });
   auto *workspaceLayout = page("Workspace");
   auto *workspaceHelp = new QLabel(
       "Workspace files retain display choices, camera, source configuration and annotations. Share "
@@ -845,7 +852,14 @@ void MapToolsWindow::hideEvent(QHideEvent *event) {
   persistDraft();
   QDialog::hideEvent(event);
 }
+void MapToolsWindow::synchronizeDisplayControls() {
+  const QSignalBlocker a(basemap_), b(style_), c(terrain_);
+  basemap_->setCurrentIndex(basemap_->findData(map_.streets() ? "streets" : "satellite"));
+  style_->setCurrentIndex(style_->findData(map_.displayStyle()));
+  terrain_->setChecked(map_.terrainEnabled());
+}
 void MapToolsWindow::showEvent(QShowEvent *event) {
+  synchronizeDisplayControls();
   QDialog::showEvent(event);
   if (drawing_ && title_->isVisible()) {
     map_.beginPointCapture(this);

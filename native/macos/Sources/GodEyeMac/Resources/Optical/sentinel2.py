@@ -237,7 +237,11 @@ def run(request_file, destination):
         for file in destination.iterdir():
             if file.name not in ('result.json', 'events.jsonl', 'diagnostics.log'):
                 file.unlink()
-        result['error'] = str(error) if isinstance(error, OpticalError) or type(error).__name__ == 'SourceError' else 'Optical image request failed. Check your connection and configured Python raster environment; a local diagnostic log is available.'
+        if isinstance(error, ModuleNotFoundError):
+            package = {'rasterio': 'Rasterio', 'numpy': 'NumPy', 'PIL': 'Pillow', 'h5py': 'h5py'}.get((error.name or '').split('.')[0], 'a required package')
+            result['error'] = f'Raster Python is missing {package}. Open Engine and jobs, select your prepared Python environment, then click Check Python raster imports. The Python used is recorded in the job details.'
+        else:
+            result['error'] = str(error) if isinstance(error, OpticalError) or type(error).__name__ == 'SourceError' else 'Optical image request failed. Check your connection and configured Python raster environment; a local diagnostic log is available.'
         emit('failed', result['error'])
         raise
     finally:

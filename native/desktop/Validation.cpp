@@ -1,11 +1,17 @@
 #include "Validation.h"
+#include "Core/MonitoringRunner.h"
 #include "Tests/SceneFixture.h"
+#include "UI/DossierPanel.h"
 #include "UI/InferenceWindow.h"
+#include "UI/InvestigationWorkbench.h"
 #include "UI/MainWindow.h"
 #include "UI/MapToolsWindow.h"
 #include "UI/MissionEditor.h"
 #include "UI/MonitorPanel.h"
+#include "UI/MonitoringInboxPanel.h"
+#include "UI/SiteMonitoringPanel.h"
 #include "UI/TimelinePanel.h"
+#include "UI/WorkspacePanel.h"
 #include <QApplication>
 #include <QBuffer>
 #include <QCheckBox>
@@ -27,10 +33,12 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSettings>
+#include <QSplitter>
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <QToolButton>
 #include <QUuid>
 #include <cmath>
 #include <ctime>
@@ -56,6 +64,7 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
   MainWindow window(profile.path(), !generated);
   window.show();
   QStringList checks;
+  QStringList skipped;
   QJsonArray actualAcquisitions;
   QJsonObject actualDaily;
   QTimer modalGuard;
@@ -651,7 +660,8 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
         require(missionTime(due) == missionTime("2026-11-01T12:34:56Z"),
                 "Task deadline keeps its exact UTC meaning");
         auto &tools = window.mapToolsWindow();
-        tools.show();
+        window.showMapTools();
+        require(tools.isVisible(), "Drawing tools are visible inside their workspace palette");
         auto *toolTabs = tools.findChild<QTabWidget *>("mapToolsTabs");
         auto *annotationTitle = tools.findChild<QLineEdit *>("annotationTitle");
         auto *annotationShape = tools.findChild<QComboBox *>("annotationShape");
@@ -972,6 +982,585 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
       image.save(output + "/map.png");
       window.grab().save(output + "/workspace.png");
       window.missionWindow().grab().save(output + "/mission-control.png");
+      window.hideWorkspacePanels();
+      window.setFixedSize(1280, 820);
+      QTest::qWait(100);
+      require(window.findChild<QWidget *>("workspaceHeader") != nullptr,
+              "Map workspace exposes unified domain navigation");
+      auto *search = window.findChild<QLineEdit *>("workspaceSearch");
+      require(search && !search->accessibleName().isEmpty(),
+              "Map search has a keyboard-accessible label");
+      const auto cameraBeforeSearch = window.map().camera();
+      search->setText("45.4642, 9.1900");
+      QTest::keyClick(search, Qt::Key_Return);
+      require(std::abs(window.map().camera().center.latitude - 45.4642) < 1e-6 &&
+                  std::abs(window.map().camera().center.longitude - 9.19) < 1e-6,
+              "Unified search navigates valid coordinates without a provider request");
+      window.map().setCamera(cameraBeforeSearch);
+      search->clear();
+      window.grab().save(output + "/design-map.png");
+      window.showSatellite();
+      QTest::qWait(50);
+      auto *satellitePanel = window.findChild<WorkspacePanel *>("workspacePanel-satellite");
+      require(satellitePanel && satellitePanel->isVisible() && !window.satelliteWindow().isWindow(),
+              "Satellite palette stays inside the shared map workspace");
+      window.grab().save(output + "/design-satellite.png");
+      window.hideWorkspacePanels();
+      window.showSources();
+      QTest::qWait(50);
+      window.grab().save(output + "/design-sources.png");
+      window.hideWorkspacePanels();
+      auto *layers = window.findChild<WorkspacePanel *>("workspacePanel-layers");
+      require(layers != nullptr, "Map layer palette is available");
+      layers->reveal();
+      QTest::qWait(30);
+      auto *layerViewport = layers->findChild<QScrollArea *>();
+      require(layerViewport && layerViewport->horizontalScrollBar()->maximum() == 0,
+              "Default layer palette fits its controls without horizontal scrolling");
+      if (live)
+        for (auto *button : layers->findChildren<QPushButton *>())
+          if (button->text().contains("Daily imagery"))
+            require(layerViewport->viewport()->rect().contains(
+                        button->mapTo(layerViewport->viewport(), button->rect().center())),
+                    "Default layer palette exposes its advanced tools action");
+      window.grab().save(output + "/design-layers.png");
+      const auto currentStyle = window.map().displayStyle();
+      window.map().setDisplayStyle("monochrome");
+      window.showMapTools();
+      auto *styleControl = window.mapToolsWindow().findChild<QComboBox *>("displayStyle");
+      require(styleControl && styleControl->currentData() == "monochrome",
+              "Workspace tools reflect display changes made in the layer palette");
+      window.map().setDisplayStyle(currentStyle);
+      auto *displayTabs = window.mapToolsWindow().findChild<QTabWidget *>("mapToolsTabs");
+      if (displayTabs)
+        displayTabs->setCurrentIndex(3);
+      window.grab().save(output + "/design-tools.png");
+      window.hideWorkspacePanels();
+      layers->reveal();
+      layers->setCollapsed(true);
+      require(layers->height() == 44, "Workspace palette collapses to a compact header");
+      layers->setCollapsed(false);
+      window.setFixedSize(1080, 700);
+      QTest::qWait(100);
+      require(window.map().width() >= 1080 && layers->geometry().right() < window.map().width(),
+              "Floating palettes stay bounded in a 1080 by 700 workspace");
+      require(window.findChild<QLabel *>("workspaceTagline")->isHidden() &&
+                  window.findChild<QToolButton *>("openMissionControl")->toolButtonStyle() ==
+                      Qt::ToolButtonIconOnly,
+              "Compact header preserves domain labels and accessible mission access");
+      window.grab().save(output + "/design-compact.png");
+      window.hideWorkspacePanels();
+      window.setFixedSize(1280, 820);
+      auto &missionView = window.missionWindow();
+      auto *missionNav = missionView.findChild<QListWidget *>("missionNavigation");
+      auto *missionPages = missionView.findChild<QTabWidget *>("missionTabs");
+      require(missionNav && missionPages && missionNav->count() == missionPages->count(),
+              "Mission sidebar exposes every mission workflow");
+      for (int n = 0; n < missionNav->count(); ++n)
+        if (missionNav->item(n)->text() == "Areas")
+          missionNav->setCurrentRow(n);
+      require(missionPages->tabText(missionPages->currentIndex()) == "Areas",
+              "Mission sidebar switches its underlying working page");
+      missionNav->setCurrentRow(0);
+      missionView.setFixedSize(1180, 820);
+      window.showMission();
+      QTest::qWait(100);
+      missionView.grab().save(output + "/design-mission.png");
+      if (generated) {
+        auto &missions = window.missions();
+        const auto mission = missions.selectedID();
+        const QJsonObject site{{"id", newID()},
+                               {"name", "GENERATED QA · Infrastructure site"},
+                               {"kind", "Infrastructure"},
+                               {"createdAt", foundationNow()},
+                               {"region", Bounds{9, 45.08272, 9.01728, 45.1}.json()}};
+        const auto area = missions.importDossierSite(mission, site);
+        missions.editEntry("areas", area,
+                           {{"purpose", "Assess dated acquisitions, document uncertainty and "
+                                        "request corroborating evidence. Generated QA data."}});
+        missionView.openDossier(area);
+        auto *dossier = missionView.dossierPanel();
+        auto settle = [&] {
+          QElapsedTimer timer;
+          timer.start();
+          while (dossier->busy() && timer.elapsed() < 10000)
+            QTest::qWait(20);
+          require(!dossier->busy(), "Dossier background projection settles");
+        };
+        auto click = [&](const QString &name) {
+          auto *b = dossier->findChild<QPushButton *>(name);
+          require(b && b->isEnabled(), "Dossier control available: " + name);
+          b->click();
+        };
+        settle();
+        require(dossier->currentView().linked.size() == 1,
+                "Saved site creates one explicitly linked frozen mission snapshot");
+        require(!dossier->currentView().suggestions.isEmpty(),
+                "Overlapping local evidence is suggested without automatic linking");
+        auto *tabs = dossier->findChild<QTabWidget *>("dossierTabs");
+        auto *evidenceTabs = dossier->findChild<QTabWidget *>("dossierEvidenceTabs");
+        tabs->setCurrentIndex(1);
+        evidenceTabs->setCurrentIndex(1);
+        QString reference, later;
+        QDateTime firstTime, lastTime;
+        for (const auto &e : dossier->currentView().suggestions)
+          if (e.product) {
+            const auto id = missions.linkDossierEvidence(mission, area, e.item);
+            if (e.item["kind"] == "radar" && (!firstTime.isValid() || e.time < firstTime)) {
+              reference = id;
+              firstTime = e.time;
+            }
+            if (e.item["kind"] == "radar" && (!lastTime.isValid() || e.time > lastTime)) {
+              later = id;
+              lastTime = e.time;
+            }
+          }
+        if (reference == later)
+          later.clear();
+        settle();
+        require(!reference.isEmpty(),
+                "Dossier can link processed radar evidence from the local library");
+        evidenceTabs->setCurrentIndex(0);
+        auto *linked = dossier->findChild<QListWidget *>("dossierLinkedEvidence");
+        auto select = [&](const QString &id) {
+          for (int i = 0; i < linked->count(); ++i)
+            if (linked->item(i)->data(Qt::UserRole).toString() == id)
+              linked->setCurrentRow(i);
+        };
+        select(reference);
+        click("dossierPinBaseline");
+        settle();
+        require(dossier->findChild<QListWidget *>("dossierBaselines")->count() == 1,
+                "Pinned reference appears in dossier overview");
+        QTest::qWait(150);
+        missionView.grab().save(output + "/dossier-evidence.png");
+        auto *evidenceScroll = qobject_cast<QScrollArea *>(tabs->widget(1));
+        auto *preview = dossier->findChild<QLabel *>("dossierPreview");
+        require(preview && !preview->pixmap().isNull(),
+                "Dossier reads a bounded local display preview asynchronously");
+        evidenceScroll->ensureWidgetVisible(preview);
+        QTest::qWait(30);
+        missionView.grab().save(output + "/dossier-evidence-source.png");
+        evidenceScroll->verticalScrollBar()->setValue(0);
+        const auto observation =
+            missions.addObservation("GENERATED QA · Change needs corroboration", "Infrastructure",
+                                    {45.46, 9.19}, reference, area);
+        settle();
+        tabs->setCurrentIndex(2);
+        dossier->findChild<QListWidget *>("dossier-observations")->setCurrentRow(0);
+        bool reviewed = false;
+        QTimer::singleShot(100, &window, [&] {
+          auto *d = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+          if (!d)
+            return;
+          auto *state = d->findChild<QComboBox *>("dossierReviewState");
+          auto *note = d->findChild<QPlainTextEdit *>("dossierReviewRationale");
+          if (!state || !note) {
+            d->reject();
+            return;
+          }
+          state->setCurrentText("Uncertain");
+          note->setPlainText("Generated fixture. Seek an independent dated acquisition before "
+                             "interpreting this change.");
+          reviewed = true;
+          d->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Save)->click();
+        });
+        click("dossierReviewObservation");
+        settle();
+        require(reviewed &&
+                    dossier->currentView().observations[0].toObject()["state"] == "Uncertain",
+                "Observation review saves explicit rationale in the dossier");
+        QTimer::singleShot(100, &window, [&] {
+          auto *d = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+          if (!d)
+            return;
+          auto *title = d->findChild<QLineEdit *>("dossierEntryTitle");
+          if (!title) {
+            d->reject();
+            return;
+          }
+          title->setText("Obtain independent corroborating acquisition");
+          d->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Save)->click();
+        });
+        click("dossierFollowUp");
+        settle();
+        require(dossier->currentView().tasks[0].toObject()["observationID"] == observation,
+                "Dossier follow-up retains its originating observation");
+        missions.addNote("GENERATED QA · Assessment context",
+                         "The linked previews are generated test inputs. No real-world operational "
+                         "finding is implied.",
+                         "Local generated QA fixture", reference, area);
+        settle();
+        missionView.grab().save(output + "/dossier-reviews.png");
+        tabs->setCurrentIndex(0);
+        missionView.grab().save(output + "/dossier-overview.png");
+        missionView.setFixedSize(1000, 700);
+        QTest::qWait(100);
+        missionView.grab().save(output + "/dossier-compact.png");
+        auto *split = missionView.findChild<QSplitter *>("dossierSplit");
+        require(split && split->width() <= missionView.width(),
+                "Dossier master list and detail fit the compact mission window");
+        missionView.setFixedSize(1180, 820);
+        if (!later.isEmpty()) {
+          tabs->setCurrentIndex(1);
+          select(later);
+          click("dossierCompare");
+          require(missionPages->currentWidget() == missionView.findChild<TimelinePanel *>(),
+                  "Dossier comparison opens the existing Timeline workspace");
+          require(missionView.findChild<QComboBox *>("timelineBaseline")->currentData() ==
+                          reference &&
+                      missionView.findChild<QComboBox *>("timelineLater")->currentData() == later,
+                  "Dossier comparison retains selected reference and later acquisition");
+        }
+        missionView.openDossier(area);
+        click("dossierMeasuredReview");
+        require(window.reviewWindow().findChild<QComboBox *>("reviewSite")->currentData() == area,
+                "Measured SAR review retains the mission area boundary");
+        window.reviewWindow().hide();
+        QString previewFile;
+        for (const auto &e : dossier->currentView().linked)
+          if (e.key == reference && e.product)
+            previewFile = e.product->preview;
+        require(!previewFile.isEmpty() && QFile::rename(previewFile, previewFile + ".qa-hidden"),
+                "Generated reference preview can be temporarily removed for availability check");
+        dossier->refresh();
+        settle();
+        bool missingPin = false;
+        for (const auto &e : dossier->currentView().linked)
+          if (e.key == reference)
+            missingPin = e.baseline && !e.available;
+        require(missingPin,
+                "Missing local preview retains reference pin and portable source metadata");
+        require(QFile::rename(previewFile + ".qa-hidden", previewFile),
+                "Generated reference preview restored");
+        dossier->refresh();
+        settle();
+        const auto before = missions.plans();
+        missions.save(output + "/dossier-mission.json");
+        missions.load(output + "/dossier-mission.json");
+        settle();
+        require(missions.plans() == before,
+                "Dossier evidence, pins, review, note and follow-up survive native save/reopen");
+        tabs->setCurrentIndex(0);
+        missionView.openDossier(area);
+      }
+      if (generated) {
+        auto &m = window.missions();
+        auto &runner = window.monitoringRunner();
+        auto *setup = missionView.findChild<SiteMonitoringPanel *>();
+        auto *inbox = missionView.findChild<MonitoringInboxPanel *>("missionReviewInbox");
+        require(setup && inbox,
+                "Site monitoring and mission-wide review inbox are connected to Mission Control");
+        QProcess optional;
+        optional.start(python, {"-I", "-c", "import scipy,skimage"});
+        const bool optionalReady = optional.waitForFinished(10000);
+        if (optionalReady && optional.exitStatus() == QProcess::NormalExit &&
+            optional.exitCode() == 0) {
+          QFile fixture(":/godeye/Tests/monitoring_fixture.py");
+          require(fixture.open(QIODevice::ReadOnly), "Monitoring QA fixture resource is available");
+          const auto script = profile.path() + "/monitoring-fixture.py";
+          QFile saved(script);
+          require(saved.open(QIODevice::WriteOnly), "Monitoring QA generator can be staged");
+          saved.write(fixture.readAll());
+          saved.close();
+          const auto root = output + "/generated-monitoring";
+          QProcess create;
+          create.start(python, {"-I", script, root});
+          require(create.waitForFinished(30000) && create.exitCode() == 0,
+                  "Generated textured registration controls and change inputs created");
+          const auto request = WorkerJob::readRecord(root + "/request.json");
+          auto &satellite = window.satelliteWindow();
+          for (const auto key : {"beforeDirectory", "afterDirectory"})
+            satellite.importManifest(request[key].toString() + "/result.json");
+          QElapsedTimer timer;
+          timer.start();
+          while (satellite.busy() && timer.elapsed() < 10000)
+            QTest::qWait(30);
+          require(!satellite.busy(), "Monitoring scientific fixtures enter the metadata library");
+          const auto mission = m.selectedID(),
+                     area =
+                         m.addArea("GENERATED QA · Registration monitoring",
+                                   "Generated controls and a known change; no real-world finding",
+                                   *Bounds::read(request["site"].toObject()["region"]));
+          const auto products =
+              readProducts(request["beforeDirectory"].toString() + "/result.json", false);
+          const auto baseline =
+              m.linkDossierEvidence(mission, area, products.first().missionEvidence());
+          m.setDossierBaseline(mission, area, baseline, true);
+          auto config = monitoringDefaults();
+          config["baselineEvidenceID"] = baseline;
+          config["controls"] = request["registration"].toObject()["controls"];
+          m.configureMonitoring(mission, area, config);
+          m.save(profile.path() + "/monitoring-missions.json");
+          missionView.openDossier(area);
+          auto *dossier = missionView.dossierPanel();
+          dossier->findChild<QTabWidget *>("dossierTabs")->setCurrentIndex(5);
+          require(!monitoringArea(m.selected(), area)["dossier"]
+                       .toObject()["monitoring"]
+                       .toObject()["enabled"]
+                       .toBool(),
+                  "New watch configuration starts paused");
+          timer.restart();
+          while ((dossier->busy() || runner.busy()) && timer.elapsed() < 10000)
+            QTest::qWait(30);
+          require(setup->findChild<QPushButton *>("runLocalMonitoring")->isEnabled(),
+                  "Local monitoring run control becomes available after dossier loading");
+          setup->findChild<QPushButton *>("runLocalMonitoring")->click();
+          timer.restart();
+          while (runner.busy() && timer.elapsed() < 30000)
+            QTest::qWait(30);
+          require(!runner.busy(),
+                  "Manual local monitoring analysis settles through the shared scientific queue");
+          QJsonObject ready;
+          for (const auto v : m.selected()["brief"].toObject()["monitoringInbox"].toArray())
+            if (v.toObject()["areaID"] == area && v.toObject()["status"] == "Ready")
+              ready = v.toObject();
+          if (ready.isEmpty()) {
+            QFile debug(output + "/monitoring-inbox-debug.json");
+            if (debug.open(QIODevice::WriteOnly))
+              debug.write(QJsonDocument(QJsonObject{{"runner", runner.status()},
+                                                    {"brief", m.selected()["brief"]}})
+                              .toJson());
+            for (const auto v : m.selected()["brief"].toObject()["monitoringInbox"].toArray()) {
+              const auto e = v.toObject();
+              if (e["areaID"] != area)
+                continue;
+              const auto report = runner.reportFile(e);
+              QFile::copy(report, output + "/monitoring-result-debug.json");
+              QFile::copy(QFileInfo(report).absolutePath() + "/../worker.log",
+                          output + "/monitoring-worker-debug.log");
+            }
+          }
+          require(!ready.isEmpty() && ready["candidateCount"].toInt() > 0,
+                  "Independent verified correction produces reviewable measured change candidates");
+          const auto result = WorkerJob::readRecord(runner.reportFile(ready));
+          require(
+              result["quality"].toObject()["maximumVerificationResidualPixels"].toDouble(99) <= .5,
+              "Independent verification residual remains below its provisional half-pixel limit");
+          require(result["quality"].toObject()["absoluteGeolocation"] == "unknown",
+                  "Relative registration does not claim absolute geolocation validation");
+          missionView.grab().save(output + "/monitoring-setup.png");
+          auto *tabs = setup->findChild<QTabWidget *>("monitoringTabs");
+          tabs->setCurrentIndex(1);
+          QTest::qWait(30);
+          missionView.grab().save(output + "/monitoring-controls.png");
+          missionView.showPage(inbox);
+          QTest::qWait(80);
+          missionView.grab().save(output + "/monitoring-inbox.png");
+          inbox->findChild<QPushButton *>("inboxOpenReview")->click();
+          require(window.reviewWindow().isVisible(),
+                  "Inbox opens the existing measured candidate review");
+          window.reviewWindow().grab().save(output + "/monitoring-review.png");
+          window.reviewWindow().hide();
+          const auto job = ready["jobID"];
+          runner.runNow(area);
+          timer.restart();
+          while (runner.busy() && timer.elapsed() < 10000)
+            QTest::qWait(30);
+          bool sameJob = false;
+          for (const auto v : m.selected()["brief"].toObject()["monitoringInbox"].toArray())
+            if (v.toObject()["key"] == ready["key"])
+              sameJob = v.toObject()["jobID"] == job;
+          require(sameJob, "Repeated local analysis does not duplicate an already completed "
+                           "source/configuration pair");
+          auto controls = config["controls"].toArray();
+          for (qsizetype i = 0; i < controls.size(); ++i) {
+            auto c = controls[i].toObject();
+            c["role"] = "Fit";
+            controls[i] = c;
+          }
+          config["controls"] = controls;
+          m.configureMonitoring(mission, area, config);
+          runner.runNow(area);
+          timer.restart();
+          while (runner.busy() && timer.elapsed() < 30000)
+            QTest::qWait(30);
+          QJsonObject blocked;
+          for (const auto v : m.selected()["brief"].toObject()["monitoringInbox"].toArray())
+            if (v.toObject()["areaID"] == area && v.toObject()["status"] == "Blocked")
+              blocked = v.toObject();
+          if (blocked.isEmpty()) {
+            QFile debug(output + "/monitoring-blocked-debug.json");
+            if (debug.open(QIODevice::WriteOnly))
+              debug.write(QJsonDocument(QJsonObject{{"runner", runner.status()},
+                                                    {"brief", m.selected()["brief"]}})
+                              .toJson());
+            for (const auto v : m.selected()["brief"].toObject()["monitoringInbox"].toArray()) {
+              const auto e = v.toObject();
+              if (e["areaID"] == area && e["status"] != "Ready")
+                QFile::copy(runner.reportFile(e), output + "/monitoring-blocked-result-debug.json");
+            }
+          }
+          require(!blocked.isEmpty(),
+                  "Missing independent verification creates a persistent blocked analysis entry");
+          require(
+              WorkerJob::readRecord(runner.reportFile(blocked))["candidates"].toArray().isEmpty(),
+              "Blocked registration publishes no change candidates");
+          m.reviewMonitoringEvent(blocked["id"].toString(), "Investigating",
+                                  "Generated test: configure independent verification controls");
+          m.addMonitoringTask(blocked["id"].toString(), "Review independent controls");
+          const auto before = m.plans();
+          m.save(output + "/monitoring-mission.json");
+          m.load(output + "/monitoring-mission.json");
+          require(m.plans() == before, "Monitoring configuration, inbox rationale, job references "
+                                       "and follow-up survive native save/reopen");
+          missionView.showPage(inbox);
+          missionView.setFixedSize(1000, 700);
+          QTest::qWait(100);
+          missionView.grab().save(output + "/monitoring-compact.png");
+          missionView.setFixedSize(1180, 820);
+          const auto jobFile = runner.reportFile(blocked);
+          require(QFile::rename(jobFile, jobFile + ".qa-hidden"),
+                  "Generated monitoring report can be removed for missing-file inspection");
+          inbox->refresh();
+          QTest::qWait(100);
+          require(!m.selected()["brief"].toObject()["monitoringInbox"].toArray().isEmpty(),
+                  "Missing detailed report retains portable monitoring summaries");
+          require(QFile::rename(jobFile + ".qa-hidden", jobFile),
+                  "Generated monitoring report restored");
+        } else
+          skipped.append("Scientific monitoring QA: install optional requirements-monitoring.txt "
+                         "into raster Python");
+      }
+      missionView.hide();
+      window.grab().save(output + "/workspace.png");
+      if (generated) {
+        auto &m = window.missions();
+        auto &missionView = window.missionWindow();
+        auto *work = missionView.findChild<InvestigationWorkbench *>();
+        require(work, "Connected investigation workbench is available in Mission Control");
+        const auto mid = m.create("GENERATED EVALUATION - civilian infrastructure investigation");
+        m.setField("objective",
+                   "Evaluate linked civilian airport infrastructure, conflicting evidence, analyst "
+                   "review and dependent follow-up. Synthetic fixture only.");
+        const auto area = m.addArea("Generated civilian terminal", "Workflow evaluation",
+                                    {9.18, 45.46, 9.20, 45.48});
+        Asset terminal;
+        terminal.id = newID();
+        terminal.name = "Generated civilian terminal";
+        terminal.category = "Civilian airport";
+        terminal.boundary = Bounds{9.18, 45.46, 9.20, 45.48};
+        Asset access = terminal;
+        access.id = newID();
+        access.name = "Generated access road";
+        access.category = "Civilian road";
+        work->registry().saveAsset(terminal, 0);
+        work->registry().saveAsset(access, 0);
+        const auto terminalSnapshot = m.adoptAsset(mid, terminal, area);
+        m.adoptAsset(mid, access, area);
+        auto source = citationForOrigin(
+            {{"label", "Generated infrastructure source"},
+             {"sourceID", "evaluation:connection-diagram"},
+             {"kind", "Synthetic evaluation"},
+             {"qualityLimitations",
+              "Generated diagram reference; not evidence of a real infrastructure dependency."}});
+        AssetRelationship relationship;
+        relationship.id = newID();
+        relationship.kind = "Connected to";
+        relationship.fromAssetID = terminal.id;
+        relationship.toAssetID = access.id;
+        relationship.citations = {source};
+        relationship.reviewState = "Supported";
+        relationship.rationale = "Analyst evaluation of the synthetic connection diagram.";
+        work->registry().saveRelationship(relationship, 0);
+        m.adoptRelationship(mid, relationship);
+        QJsonObject evidence{
+            {"id", newID()},
+            {"kind", "optical"},
+            {"referenceID", newID()},
+            {"title", "Generated evaluation - intentionally unavailable optical raster"},
+            {"savedAt", foundationNow()},
+            {"acquisition", QJsonObject{{"sensor", "Generated fixture"},
+                                        {"sourceID", "evaluation:optical-missing"},
+                                        {"bounds", terminal.boundary->json()},
+                                        {"acquiredAt", foundationNow() - 86400}}}};
+        m.addEvidence(evidence);
+        const auto suggestions = suggestAssociations(m.selected());
+        require(!suggestions.isEmpty(),
+                "Geographic evidence association is suggested with an explicit reason");
+        const auto before = m.plans();
+        require(m.plans() == before, "Suggestion inspection preserves case state");
+        m.approveAssociation(mid, suggestions.first());
+        require(!investigation(m.selected())["associations"].toArray().isEmpty(),
+                "Analyst approval retains an evidence association and citation snapshot");
+        const auto cid =
+            investigation(m.selected())["citations"].toArray()[0].toObject()["id"].toString();
+        const auto opposing = m.retainCitation(mid, source);
+        Finding f;
+        f.claim = "Generated civilian terminal and access road have a documented connection.";
+        f.assetSnapshotIDs = {terminalSnapshot};
+        f.areaIDs = {area};
+        f.timeContext = "Synthetic evaluation on 2026-10-20; source acquisition and capture dates "
+                        "are distinct.";
+        f.citations = {QJsonObject{{"citationID", cid}, {"role", "Supporting"}},
+                       QJsonObject{{"citationID", opposing}, {"role", "Contradicting"}}};
+        f.rationale = "Analyst workflow judgment using a synthetic fixture. The conflicting source "
+                      "remains explicit.";
+        f.alternatives = "The apparent connection could be incomplete or the source boundary may "
+                         "be inaccurate. No operational assessment is made.";
+        f.state = "Supported";
+        const auto fid = m.saveFinding(mid, f, 0);
+        const auto prerequisite = m.addFindingTask(mid, fid, "Verify the conflicting source"),
+                   dependent = m.addFindingTask(mid, fid, "Prepare the final evaluation");
+        m.editEntry(
+            "tasks", dependent,
+            {{"owner", "Local evaluation analyst"}, {"dependencyIDs", QJsonArray{prerequisite}}});
+        bool blocked = false;
+        try {
+          m.setTaskDone(dependent, true);
+        } catch (const std::exception &) {
+          blocked = true;
+        }
+        require(blocked, "Dependent follow-up cannot complete before its prerequisite");
+        const QJsonArray history = investigation(m.selected())["snapshots"].toArray();
+        terminal.name = "Generated civilian terminal - registry amended";
+        work->registry().saveAsset(terminal, 1);
+        require(investigation(m.selected())["snapshots"].toArray() == history,
+                "Registry edits preserve the case's adopted asset and relationship records");
+        const auto second = m.create("Generated second case sharing a stable asset");
+        m.adoptAsset(second, Asset::read(work->registry().asset(terminal.id)));
+        m.select(mid);
+        require(investigation(m.selected())["snapshots"].toArray() == history,
+                "Two missions share an asset without rewriting historical case records");
+        window.map().focus(*terminal.boundary);
+        QTest::qWait(100);
+        const auto capture = window.map().grabFramebuffer();
+        const auto frozen = prepareBriefing(
+            m.selected(), {fid}, window.satelliteWindow().library(), capture,
+            {{"capturedAt", foundationNow()},
+             {"camera", window.map().camera().json()},
+             {"attribution",
+              "Generated offline map context; no provider requests. Map rendering: GodEye."}});
+        const auto exportDirectory = exportBriefing(frozen, output);
+        validateBriefingManifest(frozen.manifest);
+        require(QFile::exists(exportDirectory + "/briefing.pdf") &&
+                    QFile::exists(exportDirectory + "/evidence-manifest.json"),
+                "Native Qt briefing publishes a PDF and validated evidence manifest together");
+        m.save(output + "/investigation-missions.json");
+        missionView.resize(1360, 920);
+        missionView.show();
+        for (const auto &page :
+             QList<QPair<QWidget *, QString>>{{work->overview(), "case"},
+                                              {work->assetsPage(), "registry"},
+                                              {work->connectionsPage(), "connections"},
+                                              {work->findingsPage(), "findings"}}) {
+          missionView.showPage(page.first);
+          QTest::qWait(40);
+          missionView.grab().save(output + "/investigation-" + page.second + ".png");
+        }
+        require(!capture.isNull(),
+                "Investigation briefing captures actual native GPU map context explicitly");
+        window.show();
+        window.raise();
+      }
+      if (generated) {
+        window.map().setFocus();
+        QTest::qWait(400);
+        const auto idleFrames = window.map().frames();
+        QTest::qWait(300);
+        require(window.map().frames() == idleFrames,
+                "Unified workspace does not continuously redraw an idle map");
+      }
       QFile result(output + "/validation.json");
       require(result.open(QIODevice::WriteOnly), "Validation report created");
       QJsonArray labels;
@@ -981,6 +1570,7 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
           QJsonDocument(
               QJsonObject{
                   {"passed", true},
+                  {"skipped", QJsonArray::fromStringList(skipped)},
                   {"checks", labels},
                   {"backend", window.map().backend()},
                   {"gpu", window.map().gpu()},

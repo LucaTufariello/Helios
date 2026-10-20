@@ -59,6 +59,7 @@ private:
   void updateSolar();
   void updateSolarCaption();
   void updateDaily();
+  void synchronizeDisplayControls();
   void showError(const QString &message);
   std::optional<Coordinate> coordinate(const QString &text) const;
 };

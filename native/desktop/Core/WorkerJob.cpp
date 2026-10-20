@@ -159,6 +159,7 @@ bool WorkerJob::start(const WorkerRequest &request) {
       {"stage", "Queued for local processing"},
       {"createdAt", now()},
       {"operation", request.operation},
+      {"pythonExecutable", python.absoluteFilePath()},
       {"inputName", request.document.isEmpty() ? input.fileName()
                     : request.operation == "compare"
                         ? request.document["site"].toObject()["name"].toString()
@@ -328,7 +329,8 @@ void WorkerJob::cleanupIncomplete() {
                     "result.tmp"};
   if (record_["operation"] == "compare")
     names << "Before.png" << "After.png" << "Change.png"
-          << "delta-db.tif" << "candidate-mask.tif" << "change-display.tif";
+          << "delta-db.tif" << "candidate-mask.tif" << "change-display.tif"
+          << "corrected-linear-power.tif" << "quality.json";
   for (const auto &band : {"VV", "VH", "Composite"})
     for (const auto &suffix : {"-preview.png", "-display.tif", "-sigma0.tif", "-db.tif"})
       names.append(QString(band) + suffix);

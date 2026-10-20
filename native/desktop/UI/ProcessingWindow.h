@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/OpticalCatalog.h"
+#include "Core/ScientificQueue.h"
 #include "Core/WorkerJob.h"
 #include "Graphics/MapWidget.h"
 #include "RadarPanel.h"
@@ -21,6 +22,7 @@ class ProcessingWindow : public QDialog {
 public:
   ProcessingWindow(const QString &profile, MapWidget &map, QWidget *parent = nullptr,
                    bool networking = true);
+  ~ProcessingWindow() override;
   bool busy() const;
   void setEngines(const QString &python, const QString &gpt = {});
   bool setQuery(const OpticalQuery &query);
@@ -37,6 +39,10 @@ public:
   WorkerJob *job() const {
     return job_;
   }
+  ScientificQueue &scientificQueue() {
+    return *queue_;
+  }
+  bool submitMonitoring(WorkerRequest request, const QString &token);
   void cancel();
 signals:
   void productReady(QString manifest);
@@ -50,6 +56,7 @@ private:
   OpticalCatalog catalog_;
   RadarPanel *radarPanel_ = nullptr;
   QPointer<WorkerJob> job_;
+  ScientificQueue *queue_;
   QProcess preflight_;
   quint64 preflightGeneration_ = 0;
   QByteArray preflightOutput_, preflightErrors_;

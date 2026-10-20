@@ -6,7 +6,7 @@ set_target_properties(GodEyeWorkerHost PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CM
 add_subdirectory(../scene "${CMAKE_BINARY_DIR}/native/scene")
 
 add_library(GodEyeDesktopCore STATIC
-  Core/Geography.cpp Core/Missions.cpp Core/Products.cpp Core/WorkerJob.cpp Core/OpticalCatalog.cpp Core/Credentials.cpp
+  Core/Geography.cpp Core/Investigations.cpp Core/Briefing.cpp Core/Missions.cpp Core/Monitoring.cpp Core/ScientificQueue.cpp Core/MonitoringRunner.cpp Core/Dossiers.cpp Core/Products.cpp Core/WorkerJob.cpp Core/OpticalCatalog.cpp Core/Credentials.cpp
   Core/HttpRequest.cpp Core/RadarCatalog.cpp Core/RadarDownload.cpp Core/JsonFile.cpp Core/Infrastructure.cpp Core/Timeline.cpp Core/Monitors.cpp Core/LibraryStorage.cpp Core/MapTools.cpp Core/Inference.cpp Core/DailyImagery.cpp
   Core/DomainFeeds.cpp Core/DomainParsers.cpp Core/DomainProto.cpp Core/DomainOrbit.cpp Core/DomainSocket.cpp Core/DomainNetwork.cpp Core/DomainHistory.cpp
   ../macos/Sources/CSGP4/GodEyeSGP4.cpp ../macos/Sources/CSGP4/SGP4.cpp)
@@ -31,8 +31,8 @@ elseif(UNIX)
 endif()
 
 qt_add_executable(GodEyeDesktop MACOSX_BUNDLE
-  main.cpp Graphics/TileCache.cpp Graphics/MapWidget.cpp
-  UI/MainWindow.cpp UI/MissionWindow.cpp UI/MissionEditor.cpp UI/SatelliteWindow.cpp UI/ProcessingWindow.cpp UI/RadarPanel.cpp UI/ReviewWindow.cpp UI/TimelinePanel.cpp UI/MonitorPanel.cpp UI/MapToolsWindow.cpp UI/InferenceWindow.cpp UI/DomainWindow.cpp UI/CameraViewer.cpp Validation.cpp)
+  main.cpp Graphics/TileCache.cpp Graphics/MapWidget.cpp UI/WorkspaceStyle.cpp UI/WorkspacePanel.cpp
+  UI/InvestigationWorkbench.cpp UI/SiteMonitoringPanel.cpp UI/MonitoringInboxPanel.cpp UI/DossierPanel.cpp UI/MainWindow.cpp UI/MissionWindow.cpp UI/MissionEditor.cpp UI/SatelliteWindow.cpp UI/ProcessingWindow.cpp UI/RadarPanel.cpp UI/ReviewWindow.cpp UI/TimelinePanel.cpp UI/MonitorPanel.cpp UI/MapToolsWindow.cpp UI/InferenceWindow.cpp UI/DomainWindow.cpp UI/CameraViewer.cpp Validation.cpp)
 target_link_libraries(GodEyeDesktop PRIVATE GodEyeDesktopCore GodEyeScene Qt6::GuiPrivate
   Qt6::Widgets Qt6::Network Qt6::Concurrent Qt6::Test)
 add_dependencies(GodEyeDesktop GodEyeWorkerHost)
@@ -46,7 +46,7 @@ set_target_properties(GodEyeDesktop PROPERTIES
 qt_add_shaders(GodEyeDesktop "godeye_shaders"
   PREFIX "/godeye"
   FILES shaders/globe.vert shaders/globe.frag)
-qt_add_resources(GodEyeDesktop "godeye_qa" PREFIX "/godeye" FILES Tests/review_fixture.py Tests/inference_fixture.py)
+qt_add_resources(GodEyeDesktop "godeye_qa" PREFIX "/godeye" FILES Tests/review_fixture.py Tests/monitoring_fixture.py Tests/inference_fixture.py)
 
 if(NOT MSVC)
   target_compile_options(GodEyeDesktopCore PRIVATE -Wall -Wextra -Wpedantic)
@@ -54,6 +54,39 @@ if(NOT MSVC)
 endif()
 
 if(BUILD_TESTING)
+  qt_add_executable(GodEyeInvestigationTests Tests/InvestigationTests.cpp)
+  target_link_libraries(GodEyeInvestigationTests PRIVATE GodEyeDesktopCore Qt6::Test)
+  target_compile_definitions(GodEyeInvestigationTests PRIVATE GODEYE_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Tests/GodEyeCoreTests/Fixtures")
+  add_test(NAME desktop-investigations COMMAND GodEyeInvestigationTests)
+  set_tests_properties(desktop-investigations PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+  qt_add_executable(GodEyeInvestigationUiTests Tests/InvestigationUITests.cpp UI/InvestigationWorkbench.cpp UI/MissionEditor.cpp UI/WorkspaceStyle.cpp)
+  target_link_libraries(GodEyeInvestigationUiTests PRIVATE GodEyeDesktopCore Qt6::Widgets Qt6::Test)
+  add_test(NAME desktop-investigations-ui COMMAND GodEyeInvestigationUiTests)
+  set_tests_properties(desktop-investigations-ui PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  qt_add_executable(GodEyeMonitoringUiTests Tests/MonitoringUITests.cpp UI/SiteMonitoringPanel.cpp UI/MonitoringInboxPanel.cpp UI/WorkspaceStyle.cpp)
+  target_link_libraries(GodEyeMonitoringUiTests PRIVATE GodEyeDesktopCore Qt6::Widgets Qt6::Test)
+  add_test(NAME desktop-monitoring-ui COMMAND GodEyeMonitoringUiTests)
+  set_tests_properties(desktop-monitoring-ui PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+  qt_add_executable(GodEyeMonitoringTests Tests/MonitoringTests.cpp)
+  target_link_libraries(GodEyeMonitoringTests PRIVATE GodEyeDesktopCore Qt6::Test)
+  target_compile_definitions(GodEyeMonitoringTests PRIVATE GODEYE_TEST_PYTHON="${Python3_EXECUTABLE}" GODEYE_TEST_WORKER="${CMAKE_CURRENT_SOURCE_DIR}/Tests/worker_fixture.py" GODEYE_TEST_HOST="$<TARGET_FILE:GodEyeWorkerHost>")
+  add_dependencies(GodEyeMonitoringTests GodEyeWorkerHost)
+  add_test(NAME desktop-monitoring COMMAND GodEyeMonitoringTests)
+  set_tests_properties(desktop-monitoring PROPERTIES TIMEOUT 45)
+  qt_add_executable(GodEyeDossierTests Tests/DossierTests.cpp)
+  target_link_libraries(GodEyeDossierTests PRIVATE GodEyeDesktopCore Qt6::Test)
+  add_test(NAME desktop-dossiers COMMAND GodEyeDossierTests)
+  qt_add_executable(GodEyeDossierUiTests Tests/DossierUITests.cpp UI/DossierPanel.cpp UI/MissionEditor.cpp UI/WorkspaceStyle.cpp)
+  target_include_directories(GodEyeDossierUiTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(GodEyeDossierUiTests PRIVATE GodEyeDesktopCore Qt6::Widgets Qt6::Concurrent Qt6::Test)
+  add_test(NAME desktop-dossier-ui COMMAND GodEyeDossierUiTests)
+  set_tests_properties(desktop-dossier-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+  qt_add_executable(GodEyeWorkspaceUiTests Tests/WorkspaceUITests.cpp UI/WorkspacePanel.cpp UI/WorkspaceStyle.cpp)
+  target_include_directories(GodEyeWorkspaceUiTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(GodEyeWorkspaceUiTests PRIVATE Qt6::Widgets Qt6::Test)
+  add_test(NAME desktop-workspace-ui COMMAND GodEyeWorkspaceUiTests)
+  set_tests_properties(desktop-workspace-ui PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
   qt_add_executable(GodEyeDesktopTests Tests/CoreTests.cpp)
   target_link_libraries(GodEyeDesktopTests PRIVATE GodEyeDesktopCore Qt6::Test)
   target_compile_definitions(GodEyeDesktopTests PRIVATE
@@ -104,7 +137,7 @@ if(BUILD_TESTING)
   add_dependencies(GodEyeInferenceTests GodEyeWorkerHost)
   add_test(NAME desktop-inference COMMAND GodEyeInferenceTests)
   set_tests_properties(desktop-inference PROPERTIES TIMEOUT 60)
-  qt_add_executable(GodEyeInferenceUiTests Tests/InferenceUiTests.cpp UI/InferenceWindow.cpp)
+  qt_add_executable(GodEyeInferenceUiTests Tests/InferenceUiTests.cpp UI/InferenceWindow.cpp UI/WorkspaceStyle.cpp)
   target_link_libraries(GodEyeInferenceUiTests PRIVATE GodEyeDesktopCore Qt6::Widgets Qt6::Concurrent Qt6::Test)
   target_compile_definitions(GodEyeInferenceUiTests PRIVATE
     GODEYE_INFERENCE_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/Tests/inference_fixture.py")
@@ -122,7 +155,7 @@ if(BUILD_TESTING)
     GODEYE_DOMAIN_SOURCE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Sources/GodEyeCore/Resources"
     GODEYE_DOMAIN_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Tests/GodEyeCoreTests/Fixtures")
   add_test(NAME desktop-domain COMMAND GodEyeDomainTests)
-  qt_add_executable(GodEyeDomainUiTests Tests/DomainUITests.cpp UI/DomainWindow.cpp UI/CameraViewer.cpp)
+  qt_add_executable(GodEyeDomainUiTests Tests/DomainUITests.cpp UI/DomainWindow.cpp UI/CameraViewer.cpp UI/WorkspaceStyle.cpp)
   target_link_libraries(GodEyeDomainUiTests PRIVATE GodEyeDesktopCore Qt6::Widgets Qt6::Test)
   set_target_properties(GodEyeDomainUiTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
   add_test(NAME desktop-domain-ui COMMAND GodEyeDomainUiTests)
@@ -175,7 +208,7 @@ endif()
 
 install(TARGETS GodEyeDesktop BUNDLE DESTINATION . COMPONENT GodEye RUNTIME DESTINATION bin COMPONENT GodEye)
 set(godeye_workers_source "${PROJECT_SOURCE_DIR}/native/macos/Sources/GodEyeMac/Resources")
-set(godeye_worker_files SAR/sentinel1.py SAR/change_review.py SAR/requirements.txt
+set(godeye_worker_files SAR/sentinel1.py SAR/change_review.py SAR/registration.py SAR/requirements-monitoring.txt SAR/requirements.txt
   Optical/sentinel2.py Optical/optical_sources.py)
 foreach(godeye_worker IN LISTS godeye_worker_files)
   configure_file("${godeye_workers_source}/${godeye_worker}"

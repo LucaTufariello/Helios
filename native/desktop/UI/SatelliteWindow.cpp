@@ -1,5 +1,6 @@
 #include "SatelliteWindow.h"
 #include "Core/LibraryStorage.h"
+#include "WorkspaceStyle.h"
 #include <QCheckBox>
 #include <QDir>
 #include <QFileDialog>
@@ -16,6 +17,7 @@
 #include <QScrollArea>
 #include <QSlider>
 #include <QSplitter>
+#include <QStackedWidget>
 #include <QStandardPaths>
 #include <QVBoxLayout>
 #include <QtConcurrent>
@@ -38,24 +40,59 @@ SatelliteWindow::SatelliteWindow(const QString &profile, QWidget *parent)
   resize(820, 720);
   setMinimumSize(640, 540);
   auto *layout = new QVBoxLayout(this);
-  auto *intro = new QLabel("Import completed optical or Sentinel-1 product manifests. These are "
-                           "dated display previews; scientific files remain separate.");
+  layout->setContentsMargins(16, 12, 16, 12);
+  layout->setSpacing(12);
+  design::heading(layout, "IMAGERY WORKSPACE", "Satellite analysis");
+  auto *intro = new QLabel(
+      "Build a library of dated optical and radar acquisitions for your areas of interest.");
   intro->setWordWrap(true);
+  intro->setProperty("role", "secondary");
   layout->addWidget(intro);
   auto *actions = new QHBoxLayout;
   layout->addLayout(actions);
-  auto *import = new QPushButton("Import result.json…");
-  auto *folder = new QPushButton("Add library folder…");
+  auto *import = new QPushButton("Import product…");
+  auto *folder = new QPushButton("Add folder…");
   actions->addWidget(import);
   actions->addWidget(folder);
-  auto *processing = new QPushButton("Find / process imagery…");
+  auto *processing = new QPushButton("Find imagery…");
+  processing->setProperty("role", "primary");
   actions->addWidget(processing);
   connect(processing, &QPushButton::clicked, this, &SatelliteWindow::processingRequested);
   auto *split = new QSplitter;
   split->setChildrenCollapsible(false);
-  layout->addWidget(split, 1);
+  auto *libraryStack = new QStackedWidget;
+  layout->addWidget(libraryStack, 1);
+  auto *empty = new QWidget;
+  auto *emptyLayout = new QVBoxLayout(empty);
+  emptyLayout->setContentsMargins(44, 30, 44, 30);
+  emptyLayout->setSpacing(14);
+  emptyLayout->addStretch();
+  auto *emptyIcon = new QLabel;
+  emptyIcon->setPixmap(design::icon(design::Symbol::Satellite).pixmap(48, 48));
+  emptyIcon->setAlignment(Qt::AlignCenter);
+  emptyLayout->addWidget(emptyIcon);
+  auto *emptyTitle = design::label("Your imagery workspace", "title");
+  emptyTitle->setAlignment(Qt::AlignCenter);
+  emptyLayout->addWidget(emptyTitle);
+  auto *emptyHelp =
+      design::label("Find an acquisition for an area of interest, or import a completed product to "
+                    "inspect its imagery, provenance and scientific outputs.",
+                    "secondary");
+  emptyHelp->setAlignment(Qt::AlignCenter);
+  emptyHelp->setWordWrap(true);
+  emptyLayout->addWidget(emptyHelp);
+  emptyLayout->addStretch();
+  libraryStack->addWidget(empty);
+  libraryStack->addWidget(split);
+
   list_ = new QListWidget;
   list_->setObjectName("satelliteProducts");
+  auto updateLibraryState = [libraryStack, this] {
+    libraryStack->setCurrentIndex(list_->count() ? 1 : 0);
+  };
+  connect(list_->model(), &QAbstractItemModel::rowsInserted, this, updateLibraryState);
+  connect(list_->model(), &QAbstractItemModel::rowsRemoved, this, updateLibraryState);
+
   list_->setMinimumWidth(200);
   list_->setMaximumWidth(360);
   list_->setTextElideMode(Qt::ElideRight);

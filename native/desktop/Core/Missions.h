@@ -1,5 +1,6 @@
 #pragma once
 #include "Geography.h"
+#include "Investigations.h"
 #include <QJsonArray>
 #include <QMap>
 #include <QObject>
@@ -46,15 +47,38 @@ public:
   void setBrief(const QString &name, const QString &objective, const QString &notes);
   void addNote(const QString &title, const QString &body, const QString &reference = {},
                const QString &evidenceID = {}, const QString &areaID = {});
-  void addTask(const QString &title, const QString &areaID = {});
+  QString addTask(const QString &title, const QString &areaID = {},
+                  const QString &observationID = {});
   void setTaskDone(const QString &id, bool done);
-  void addArea(const QString &name, const QString &purpose, Bounds bounds);
+  QString addArea(const QString &name, const QString &purpose, Bounds bounds);
+  QString importDossierSite(const QString &missionID, const QJsonObject &site);
+  QString linkDossierEvidence(const QString &missionID, const QString &areaID, QJsonObject item);
+  void setDossierEvidence(const QString &missionID, const QString &areaID,
+                          const QString &evidenceID, bool linked);
+  void setDossierBaseline(const QString &missionID, const QString &areaID,
+                          const QString &evidenceID, bool pinned);
+  void configureMonitoring(const QString &missionID, const QString &areaID, QJsonObject profile);
+  QString upsertMonitoringEvent(const QString &missionID, QJsonObject event);
+  void reviewMonitoringEvent(const QString &eventID, const QString &state,
+                             const QString &rationale);
+  QString addMonitoringTask(const QString &eventID, const QString &title);
+  void removeMonitoringEvent(const QString &eventID);
   void addView(const QString &title, const Camera &camera);
   void addEvidence(QJsonObject item);
   void removeEntry(const QString &collection, const QString &id);
   void setObservationReview(const QString &id, const QString &state, const QString &note);
-  void addObservation(const QString &title, const QString &category, Coordinate coordinate,
-                      const QString &evidenceID = {});
+  QString addObservation(const QString &title, const QString &category, Coordinate coordinate,
+                         const QString &evidenceID = {}, const QString &areaID = {});
+  void setInvestigationOverview(const QString &missionID, const QJsonObject &expected,
+                                const QJsonObject &fields);
+  QString adoptAsset(const QString &missionID, const Asset &asset, const QString &areaID = {});
+  QString adoptRelationship(const QString &missionID, const AssetRelationship &relationship);
+  QString retainCitation(const QString &missionID, QJsonObject citation);
+  void approveAssociation(const QString &missionID, const AssociationSuggestion &suggestion);
+  QString saveFinding(const QString &missionID, Finding finding, int expectedRevision,
+                      const QJsonArray &newCitations = {});
+  QString draftFinding(const QString &missionID, const QJsonObject &origin);
+  QString addFindingTask(const QString &missionID, const QString &findingID, const QString &title);
 signals:
   void changed();
 
@@ -63,6 +87,8 @@ private:
   QString selectedID_, filename_;
   QByteArray originalHash_;
   bool dirty_ = false;
+  void updateMission(const QString &missionID, const std::function<void(QJsonObject &)> &mutation,
+                     bool persist);
   void update(const std::function<void(QJsonObject &)> &mutation);
   static QJsonObject brief(QJsonObject plan);
   static void activity(QJsonObject &brief, const QString &message);

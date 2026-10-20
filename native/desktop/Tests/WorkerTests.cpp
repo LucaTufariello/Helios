@@ -40,6 +40,8 @@ private slots:
     QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 5000);
     QVERIFY(done.first().first().toBool());
     QCOMPARE(job.record()["state"], QJsonValue("completed"));
+    QCOMPARE(job.record()["pythonExecutable"],
+             QJsonValue(QFileInfo(config.python).absoluteFilePath()));
     QCOMPARE(godeye::WorkerJob::readRecord(job.resultFile())["originalInput"],
              QJsonValue(config.input));
     QVERIFY(godeye::WorkerJob::readRecord(job.resultFile())["inheritedJobLock"].toBool());
