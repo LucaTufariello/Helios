@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded local ONNX proposals. Run through GodEyeWorkerHost; never imports model code."""
+"""Bounded local ONNX proposals. Run through HeliosWorkerHost; never imports model code."""
 import argparse
 import hashlib
 import io

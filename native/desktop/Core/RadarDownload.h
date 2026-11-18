@@ -3,7 +3,7 @@
 #include <QFutureWatcher>
 #include <atomic>
 #include <memory>
-namespace godeye {
+namespace helios {
 struct DownloadResult {
   QString file, error;
 };
@@ -37,4 +37,4 @@ private:
   NetworkFactory factory_;
   bool busy_ = false;
 };
-} // namespace godeye
+} // namespace helios

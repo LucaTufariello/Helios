@@ -12,7 +12,7 @@ class QSlider;
 class QListWidget;
 class QLabel;
 class QCheckBox;
-namespace godeye {
+namespace helios {
 class MapToolsWindow : public QDialog {
   Q_OBJECT
 public:
@@ -63,4 +63,4 @@ private:
   void showError(const QString &message);
   std::optional<Coordinate> coordinate(const QString &text) const;
 };
-} // namespace godeye
+} // namespace helios

@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Setup and quick start
-    url: https://github.com/LucaTufariello/GodEye#readme
+    url: https://github.com/LucaTufariello/Helios#readme
     about: Native Apple Silicon macOS build, setup and workflow guides.
   - name: Known limitations
-    url: https://github.com/LucaTufariello/GodEye/blob/main/docs/KNOWN-ISSUES.md
+    url: https://github.com/LucaTufariello/Helios/blob/main/docs/KNOWN-ISSUES.md
     about: Check supported workflows and current limits before filing.
   - name: Security reporting
-    url: https://github.com/LucaTufariello/GodEye/blob/main/SECURITY.md
+    url: https://github.com/LucaTufariello/Helios/blob/main/SECURITY.md
     about: Follow the private reporting instructions; do not include secrets in a public issue.

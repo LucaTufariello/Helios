@@ -6,7 +6,7 @@
 #include <limits>
 #include <stdexcept>
 
-using namespace godeye;
+using namespace helios;
 namespace {
 std::vector<float> flat(float height) {
   return std::vector<float>(256 * 256, height);

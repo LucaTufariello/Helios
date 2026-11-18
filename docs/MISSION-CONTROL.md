@@ -5,7 +5,7 @@ and the [desktop guide](../native/desktop/README.md). The interface descriptions
 below refer to the Swift macOS reference.
 
 Mission Control (Command-6) opens a separate, resizable macOS window. It shares
-GodEye's existing map, imagery libraries and selected mission. Move it to another
+Helios's existing map, imagery libraries and selected mission. Move it to another
 display if useful; **Show map** returns to the geographic context.
 
 ## Workspace navigation
@@ -71,7 +71,7 @@ A one-time backup protects the legacy mission library.
 - **Evidence availability:** check linked local raster previews and stored snapshots.
   Availability does not certify radiometry, geolocation or original download integrity.
 
-Checks run only while GodEye is open, including when the mission window is closed.
+Checks run only while Helios is open, including when the mission window is closed.
 A 60-second scheduler admits at most two checks concurrently. Intervals are 1–168
 hours. Reopening/sleep recovery performs one overdue check, rather than replaying
 all missed intervals. There is no background daemon or macOS notification service.
@@ -115,18 +115,18 @@ See Apple's [Vision image transformation API](https://developer.apple.com/docume
 
 ## Architecture and storage
 
-- `GodEyeCore/MissionOperations.swift`: bounded Codable area/note/object/task/monitor
+- `HeliosCore/MissionOperations.swift`: bounded Codable area/note/object/task/monitor
   models, review states, deterministic scheduling/deduplication and box georeferencing.
-- `GodEyeCore/MissionPlan.swift`: backward-compatible optional mission brief, validation,
+- `HeliosCore/MissionPlan.swift`: backward-compatible optional mission brief, validation,
   atomic persistence and one-time `plans-before-mission-control.json` migration backup.
-- `GodEyeMac/MissionControlView.swift`: native dedicated window content, imagery preview,
+- `HeliosMac/MissionControlView.swift`: native dedicated window content, imagery preview,
   metadata inspector, comparison and mission forms.
-- `GodEyeMac/MissionOperationsWorkspace.swift`: shared map commands, saved edits and local
+- `HeliosMac/MissionOperationsWorkspace.swift`: shared map commands, saved edits and local
   asynchronous automation runner using the existing catalogue clients.
-- `GodEyeMac/MissionDetection.swift`: replaceable local Vision/Core ML adapter.
-- `GodEyeMac/MissionValidation.swift`: isolated opt-in application integration checks.
+- `HeliosMac/MissionDetection.swift`: replaceable local Vision/Core ML adapter.
+- `HeliosMac/MissionValidation.swift`: isolated opt-in application integration checks.
 
-Storage remains `~/Library/Application Support/GodEye/Missions/plans.json`. The
+Storage remains `~/Library/Application Support/Helios/Missions/plans.json`. The
 mission library is capped at 8 MB, 200 plans, and per plan: 500 evidence links,
 100 areas, 500 observations, 200 notes, 200 tasks, 50 monitors and 200 activity events.
 Other shared JSON consumers retain their existing 1 MB default. Invalid/unreadable
@@ -142,8 +142,8 @@ corruption preservation, model scores, schedule recovery/deduplication and norma
 box orientation/invalid coordinates.
 
 For opt-in application checks, create a disposable directory whose name starts
-`godeye-mission-validation-`, set `GODEYE_VALIDATION_ROOT` to it and
-`GODEYE_VALIDATION_FIXTURES` to `native/macos/Tests/GodEyeCoreTests/Fixtures` (absolute),
+`helios-mission-validation-`, set `HELIOS_VALIDATION_ROOT` to it and
+`HELIOS_VALIDATION_FIXTURES` to `native/macos/Tests/HeliosCoreTests/Fixtures` (absolute),
 and run the native binary with `--mission-validation`. It generates explicitly labeled
 fixtures only in that root, exercises shared map actions, review/persistence/exports,
 runs an evidence monitor and captures the nine sections. Window capture uses macOS
@@ -204,7 +204,7 @@ basis, source identifiers, availability, evidence references, bounds and review 
 Spreadsheet formula prefixes and quoted text are escaped. The full mission JSON
 also retains acquisition snapshots; neither export embeds imagery.
 
-Implementation: `GodEyeCore/MissionTimeline.swift` contains deterministic filtering,
+Implementation: `HeliosCore/MissionTimeline.swift` contains deterministic filtering,
 assessment, comparison checks and CSV export. `MissionTimelineWorkspace.swift`
 builds entries from existing stores and controls the shared map;
 `MissionTimelineView.swift` provides the native interface. `MissionTimelineTests`

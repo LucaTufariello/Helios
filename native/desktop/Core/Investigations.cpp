@@ -11,7 +11,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace godeye {
+namespace helios {
 namespace {
 void require(bool ok, const char *message) {
   if (!ok)
@@ -739,4 +739,4 @@ void AssetRegistry::importSnapshots(const QJsonObject &plan, const QJsonArray &a
   o["relationships"] = r;
   publish(o);
 }
-} // namespace godeye
+} // namespace helios

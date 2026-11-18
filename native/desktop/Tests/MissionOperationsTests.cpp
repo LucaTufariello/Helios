@@ -5,7 +5,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
-using namespace godeye;
+using namespace helios;
 class MissionOperationsTests : public QObject {
   Q_OBJECT
   QJsonObject monitor(const Missions &m, const QString &id) {

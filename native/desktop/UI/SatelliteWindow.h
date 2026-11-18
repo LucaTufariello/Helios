@@ -7,7 +7,7 @@ class QListWidget;
 class QLabel;
 class QPlainTextEdit;
 class QPushButton;
-namespace godeye {
+namespace helios {
 class SatelliteWindow : public QDialog {
   Q_OBJECT
 public:
@@ -24,8 +24,8 @@ public:
     return busy_;
   }
 signals:
-  void layersChanged(QVector<godeye::ProductLayer> layers, bool focus);
-  void linkRequested(godeye::ProductLayer product);
+  void layersChanged(QVector<helios::ProductLayer> layers, bool focus);
+  void linkRequested(helios::ProductLayer product);
   void blendChanged(double value);
   void pixelGridChanged(bool grid);
   void processingRequested();
@@ -50,4 +50,4 @@ private:
   void remember();
   void forgetManifest(const QString &path);
 };
-} // namespace godeye
+} // namespace helios

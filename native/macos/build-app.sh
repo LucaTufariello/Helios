@@ -1,39 +1,39 @@
 #!/bin/bash
 set -euo pipefail
-godeye_package="$(cd "$(dirname "$0")" && pwd)"
-godeye_root="$(cd "$godeye_package/../.." && pwd)"
+helios_package="$(cd "$(dirname "$0")" && pwd)"
+helios_root="$(cd "$helios_package/../.." && pwd)"
 if [[ "$(uname -m)" != "arm64" ]]; then
   echo "This build targets Apple Silicon. Run on an arm64 Mac." >&2
   exit 1
 fi
-"$godeye_package/build-engine.sh"
-swift build --package-path "$godeye_package" --scratch-path "$godeye_package/.build" -c release --arch arm64
-godeye_products="$(swift build --package-path "$godeye_package" --scratch-path "$godeye_package/.build" -c release --arch arm64 --show-bin-path)"
-godeye_app="$godeye_root/output/native/GodEye.app"
-mkdir -p "$godeye_app/Contents/MacOS" "$godeye_app/Contents/Resources"
-cp "$godeye_products/GodEyeMac" "$godeye_app/Contents/MacOS/GodEyeMac"
-cp "$godeye_package/Info.plist" "$godeye_app/Contents/Info.plist"
-ditto "$godeye_products/GodEyeNative_GodEyeMac.bundle" "$godeye_app/Contents/Resources/GodEyeNative_GodEyeMac.bundle"
+"$helios_package/build-engine.sh"
+swift build --package-path "$helios_package" --scratch-path "$helios_package/.build" -c release --arch arm64
+helios_products="$(swift build --package-path "$helios_package" --scratch-path "$helios_package/.build" -c release --arch arm64 --show-bin-path)"
+helios_app="$helios_root/output/native/Helios.app"
+mkdir -p "$helios_app/Contents/MacOS" "$helios_app/Contents/Resources"
+cp "$helios_products/HeliosMac" "$helios_app/Contents/MacOS/HeliosMac"
+cp "$helios_package/Info.plist" "$helios_app/Contents/Info.plist"
+ditto "$helios_products/HeliosNative_HeliosMac.bundle" "$helios_app/Contents/Resources/HeliosNative_HeliosMac.bundle"
 # Replace the core resource bundle so old generated catalogs cannot survive a rebuild.
-rm -rf "$godeye_app/Contents/Resources/GodEyeNative_GodEyeCore.bundle"
-ditto "$godeye_products/GodEyeNative_GodEyeCore.bundle" "$godeye_app/Contents/Resources/GodEyeNative_GodEyeCore.bundle"
+rm -rf "$helios_app/Contents/Resources/HeliosNative_HeliosCore.bundle"
+ditto "$helios_products/HeliosNative_HeliosCore.bundle" "$helios_app/Contents/Resources/HeliosNative_HeliosCore.bundle"
 # SwiftPM's cached directory copy may retain removed files from an earlier build.
-godeye_core_bundle="$godeye_app/Contents/Resources/GodEyeNative_GodEyeCore.bundle"
-if [[ -d "$godeye_core_bundle/Contents/Resources" ]]; then godeye_core_bundle="$godeye_core_bundle/Contents/Resources"; fi
-rm -rf "$godeye_core_bundle/Resources/neighborhoods"
-cp "$godeye_root/LICENSE" "$godeye_app/Contents/Resources/LICENSE"
-cp "$godeye_package/.build/scene/SCENE-NOTICES.txt" "$godeye_app/Contents/Resources/SCENE-NOTICES.txt"
-godeye_work="$(mktemp -d "${TMPDIR:-/tmp}/godeye-native.XXXXXX")"
-trap 'rm -rf "$godeye_work"' EXIT
-xcrun -sdk macosx metal -mmacosx-version-min=14.0 -c "$godeye_package/Sources/GodEyeMac/Resources/Globe.metal" -o "$godeye_work/Globe.air"
-godeye_bundle="$godeye_app/Contents/Resources/GodEyeNative_GodEyeMac.bundle"
-if [[ -d "$godeye_bundle/Contents/Resources" ]]; then godeye_bundle="$godeye_bundle/Contents/Resources"; fi
-mkdir -p "$godeye_bundle/Resources"
-xcrun -sdk macosx metallib "$godeye_work/Globe.air" -o "$godeye_bundle/Resources/Globe.metallib"
-swift "$godeye_package/Icon.swift" "$godeye_work/AppIcon.iconset"
-iconutil -c icns "$godeye_work/AppIcon.iconset" -o "$godeye_app/Contents/Resources/AppIcon.icns"
+helios_core_bundle="$helios_app/Contents/Resources/HeliosNative_HeliosCore.bundle"
+if [[ -d "$helios_core_bundle/Contents/Resources" ]]; then helios_core_bundle="$helios_core_bundle/Contents/Resources"; fi
+rm -rf "$helios_core_bundle/Resources/neighborhoods"
+cp "$helios_root/LICENSE" "$helios_app/Contents/Resources/LICENSE"
+cp "$helios_package/.build/scene/SCENE-NOTICES.txt" "$helios_app/Contents/Resources/SCENE-NOTICES.txt"
+helios_work="$(mktemp -d "${TMPDIR:-/tmp}/helios-native.XXXXXX")"
+trap 'rm -rf "$helios_work"' EXIT
+xcrun -sdk macosx metal -mmacosx-version-min=14.0 -c "$helios_package/Sources/HeliosMac/Resources/Globe.metal" -o "$helios_work/Globe.air"
+helios_bundle="$helios_app/Contents/Resources/HeliosNative_HeliosMac.bundle"
+if [[ -d "$helios_bundle/Contents/Resources" ]]; then helios_bundle="$helios_bundle/Contents/Resources"; fi
+mkdir -p "$helios_bundle/Resources"
+xcrun -sdk macosx metallib "$helios_work/Globe.air" -o "$helios_bundle/Resources/Globe.metallib"
+swift "$helios_package/Icon.swift" "$helios_work/AppIcon.iconset"
+iconutil -c icns "$helios_work/AppIcon.iconset" -o "$helios_app/Contents/Resources/AppIcon.icns"
 # Local ad-hoc signature, without disabling Gatekeeper or changing system settings.
-codesign --force --sign - "$godeye_app"
-codesign --verify --strict "$godeye_app"
-file "$godeye_app/Contents/MacOS/GodEyeMac"
-echo "Native app: $godeye_app"
+codesign --force --sign - "$helios_app"
+codesign --verify --strict "$helios_app"
+file "$helios_app/Contents/MacOS/HeliosMac"
+echo "Native app: $helios_app"

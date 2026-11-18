@@ -1,4 +1,4 @@
-# Testing GodEye
+# Testing Helios
 
 Run these commands from the repository root on an Apple Silicon Mac with the
 native build prerequisites from [README.md](README.md).
@@ -17,12 +17,12 @@ mission documents, timelines, satellite products and processing orchestration.
 Ordinary tests use bounded local fixtures. Public-provider checks are opt-in:
 
 ```sh
-GODEYE_LIVE_CHECKS=1 native/macos/test.sh --filter Live
+HELIOS_LIVE_CHECKS=1 native/macos/test.sh --filter Live
 ```
 
 `make test-raster` uses the Python environment created by `make setup-raster`.
 Select another environment explicitly with
-`GODEYE_SAR_PYTHON=/absolute/path/to/python3 make test-raster`.
+`HELIOS_SAR_PYTHON=/absolute/path/to/python3 make test-raster`.
 Tests cover SAFE/ZIP admission, noise/orbit graph configuration, calibration
 pipeline boundaries, dB conversion, nodata, display/composite scaling, georeferenced
 optical raster reads, bounded requests, retries, cancellation and failure cleanup.
@@ -31,13 +31,13 @@ Generated fixtures are not operational satellite acquisitions.
 ## Native window and map checks
 
 The app's opt-in harness uses a disposable library and never needs real user
-missions. Its root name must start with `godeye-mission-validation-`:
+missions. Its root name must start with `helios-mission-validation-`:
 
 ```sh
-godeye_validation_root="$(mktemp -d /tmp/godeye-mission-validation-ui.XXXXXX)"
-GODEYE_VALIDATION_ROOT="$godeye_validation_root" \
-GODEYE_VALIDATION_FIXTURES="$PWD/native/macos/Tests/GodEyeCoreTests/Fixtures" \
-output/native/GodEye.app/Contents/MacOS/GodEyeMac --mission-validation
+helios_validation_root="$(mktemp -d /tmp/helios-mission-validation-ui.XXXXXX)"
+HELIOS_VALIDATION_ROOT="$helios_validation_root" \
+HELIOS_VALIDATION_FIXTURES="$PWD/native/macos/Tests/HeliosCoreTests/Fixtures" \
+output/native/Helios.app/Contents/MacOS/HeliosMac --mission-validation
 ```
 
 Read `validation.json` and inspect the screenshots in that root. The harness
@@ -48,7 +48,7 @@ session and screen-recording access. This is programmatic native state validatio
 manual pointer checks remain necessary for dragging, resizing and menu behavior.
 Remove only the disposable root you created after retaining needed evidence.
 
-`output/native/GodEye.app/Contents/MacOS/GodEyeMac --native-smoke` performs a short
+`output/native/Helios.app/Contents/MacOS/HeliosMac --native-smoke` performs a short
 native map/provider smoke check and terminates. It uses the normal application
 profile; use the isolated mission harness when modifying test mission state.
 
@@ -98,13 +98,13 @@ review resets, source promotion, task cycles, stale dialogs, frozen briefing
 previews and bounded graphs. Run them through the existing `make test-desktop`
 workflow or select these targets with CTest.
 
-Set `GODEYE_INVESTIGATION_QA` to an absolute output directory when running
-`GodEyeInvestigationTests` or `GodEyeInvestigationUiTests` directly to retain the
+Set `HELIOS_INVESTIGATION_QA` to an absolute output directory when running
+`HeliosInvestigationTests` or `HeliosInvestigationUiTests` directly to retain the
 civilian evaluation library, briefings, screenshots and graph timing evidence.
 UI/headless runs use `QT_QPA_PLATFORM=offscreen`. These generated fixtures are not
-real satellite-analysis validation. `GodEyeDesktop --validate` additionally
+real satellite-analysis validation. `HeliosDesktop --validate` additionally
 exercises the connected workflow with the native GPU and a captured map.
 
 Swift fixture/registry regressions are in
-`native/macos/Tests/GodEyeCoreTests/InvestigationTests.swift`. A fresh Mac execution
+`native/macos/Tests/HeliosCoreTests/InvestigationTests.swift`. A fresh Mac execution
 and real cross-platform case round-trip remain required acceptance gates.

@@ -20,7 +20,7 @@ def sha256(path: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--package", required=True, type=Path, help="Extracted godeye-desktop directory.")
+    parser.add_argument("--package", required=True, type=Path, help="Extracted helios-desktop directory.")
     parser.add_argument("--output", required=True, type=Path, help="New evidence directory.")
     parser.add_argument("--gpu", action="store_true", help="Run generated checks in the actual graphical session.")
     parser.add_argument("--live", action="store_true", help="Also opt in to public HTTPS map/terrain requests.")
@@ -33,7 +33,7 @@ def main() -> None:
     output.mkdir(parents=True)
     manifest = json.loads((source / "package-manifest.json").read_text())
     checks = []
-    with tempfile.TemporaryDirectory(prefix="godeye-package-check-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="helios-package-check-") as temporary:
         root = Path(temporary)
         app = root / "extracted app"
         shutil.copytree(source, app, symlinks=True)
@@ -42,7 +42,7 @@ def main() -> None:
         if args.inference_python:
             # Keep a virtual environment's interpreter entrypoint: resolving
             # its symlink selects the base Python and loses installed packages.
-            environment["GODEYE_INFERENCE_PYTHON"] = str(args.inference_python.expanduser().absolute())
+            environment["HELIOS_INFERENCE_PYTHON"] = str(args.inference_python.expanduser().absolute())
 
         def run(name: str, command: list[str], *, graphical: bool = False, timeout: int = 120) -> None:
             current_environment = environment if graphical else {**environment, "QT_QPA_PLATFORM": "offscreen"}
@@ -67,32 +67,32 @@ def main() -> None:
                               "Inference/infer.py", "Inference/requirements.txt",
                               "Inference/tinyyolov2-voc.contract.json")
         for resource in required_resources:
-            if not (app / "share/godeye/workers" / resource).is_file():
+            if not (app / "share/helios/workers" / resource).is_file():
                 raise ValueError("Packaged worker resource is missing: " + resource)
         for resource in ("transit-feeds.json", "SGP4-LICENSE.txt", "datacenters/datacenters.geojsonl",
                          "dams/dams.geojsonl", "telegeography_submarine_cables/cable-geo.json"):
-            if not (app / "share/godeye/sources" / resource).is_file():
+            if not (app / "share/helios/sources" / resource).is_file():
                 raise ValueError("Packaged source resource is missing: " + resource)
         if any(path.name == "__pycache__" or path.suffix in (".pyc", ".pyo")
-               for path in (app / "share/godeye/workers").rglob("*")):
+               for path in (app / "share/helios/workers").rglob("*")):
             raise ValueError("Machine-specific Python bytecode entered the runtime package.")
         checks.append("worker-and-source-resources")
         if any(component in library for library in manifest["bundledLibraries"]
                for component in ("Qml", "Quick", "WebEngine", "WebChannel")):
             raise ValueError("A browser or JavaScript UI runtime entered the package.")
         checks.append("native-ui-runtime")
-        run("runtime", [str(app / "godeye-desktop"), "--check-runtime"])
-        run("version", [str(app / "godeye-desktop"), "--version"])
+        run("runtime", [str(app / "helios-desktop"), "--check-runtime"])
+        run("version", [str(app / "helios-desktop"), "--version"])
         run("native-media-runtime", ["env", "LD_LIBRARY_PATH=" + str(app / "lib"),
                                      str(app / "bin/ffmpeg"), "-hide_banner", "-version"])
         install = root / "installed app with spaces"
         desktop = root / "desktop entries"
         installer = ["python3", str(app / "install-user.py"), "--prefix", str(install), "--desktop-dir", str(desktop)]
         run("user-install", installer)
-        run("installed-runtime", [str(install / "godeye-desktop"), "--check-runtime"])
-        run("installed-version", [str(install / "godeye-desktop"), "--version"])
+        run("installed-runtime", [str(install / "helios-desktop"), "--check-runtime"])
+        run("installed-version", [str(install / "helios-desktop"), "--version"])
         if shutil.which("desktop-file-validate"):
-            run("desktop-entry", ["desktop-file-validate", str(desktop / "io.godeye.desktop.desktop")])
+            run("desktop-entry", ["desktop-file-validate", str(desktop / "io.helios.desktop.desktop")])
         refused = subprocess.run(installer, cwd=root, env=environment, capture_output=True)
         if refused.returncode == 0:
             raise ValueError("The installer overwrote an existing installation.")
@@ -110,7 +110,7 @@ def main() -> None:
         (install / "personal-note.txt").unlink()
         # Exercise removal from the installed directory as documented.
         run("user-uninstall", remove_command)
-        if install.exists() or (desktop / "io.godeye.desktop.desktop").exists():
+        if install.exists() or (desktop / "io.helios.desktop.desktop").exists():
             raise ValueError("The app or desktop entry survived removal.")
         if (independent_profile / "mission.json").read_text() != "preserve this user data\n":
             raise ValueError("An independent user profile changed during removal.")
@@ -119,7 +119,7 @@ def main() -> None:
         for kind, enabled, option in (("generated", args.gpu, "--validate"), ("live", args.live, "--validate-live")):
             if not enabled:
                 continue
-            command = [str(app / "godeye-desktop"), option, "--qa-output", str(output / kind)]
+            command = [str(app / "helios-desktop"), option, "--qa-output", str(output / kind)]
             if args.raster_python and kind == "generated":
                 command += ["--raster-python", str(args.raster_python.expanduser().absolute())]
             run(kind, command, graphical=True, timeout=240)
@@ -129,8 +129,8 @@ def main() -> None:
             gpu_results[kind] = {key: report[key] for key in ("gpu", "backend", "elapsedSeconds", "peakResidentBytes", "processCpuSeconds")}
             gpu_results[kind]["checkCount"] = len(report["checks"])
         result = {"passed": True, "checks": checks, "runtimeLocation": str(app),
-                  "packagedExecutableSha256": sha256(app / "bin/GodEyeDesktop"),
-                  "workerHostSha256": sha256(app / "bin/GodEyeWorkerHost"), "sourceSha256": manifest["sourceSha256"],
+                  "packagedExecutableSha256": sha256(app / "bin/HeliosDesktop"),
+                  "workerHostSha256": sha256(app / "bin/HeliosWorkerHost"), "sourceSha256": manifest["sourceSha256"],
                   "qtVersion": manifest["qtVersion"], "gpuResults": gpu_results}
         (output / "package-check.json").write_text(json.dumps(result, indent=2) + "\n")
         shutil.copy2(source / "package-manifest.json", output / "package-manifest.json")

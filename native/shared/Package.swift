@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-  name: "GodEyeShared",
-  products: [.library(name: "GodEyeSpatial", targets: ["GodEyeSpatial"])],
+  name: "HeliosShared",
+  products: [.library(name: "HeliosSpatial", targets: ["HeliosSpatial"])],
   targets: [
-    .target(name: "GodEyeSpatial", path: "Sources", publicHeadersPath: "include")
+    .target(name: "HeliosSpatial", path: "Sources", publicHeadersPath: "include")
   ],
   cxxLanguageStandard: .cxx20
 )

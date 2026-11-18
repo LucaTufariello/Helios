@@ -1,7 +1,7 @@
 #include "DomainHistory.h"
 #include <algorithm>
 #include <cmath>
-namespace godeye {
+namespace helios {
 void DomainHistory::ingest(const QVector<DomainRecord> &records, QDateTime now) {
   for (const auto &record : records) {
     if (!QStringList{"flights", "military", "vessels", "transit"}.contains(record.feed) ||
@@ -58,4 +58,4 @@ std::optional<DomainRecord> DomainHistory::delayed(const DomainRecord &record, Q
     }
   return {};
 }
-} // namespace godeye
+} // namespace helios

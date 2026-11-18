@@ -1,6 +1,6 @@
 # Current native application
 
-GodEye has a functional Swift macOS client and a C++20/Qt client for the
+Helios has a functional Swift macOS client and a C++20/Qt client for the
 macOS/Linux migration. The browser implementation is retired; neither client
 uses a local Node service, browser UI or QML runtime. Swift retains SwiftUI/AppKit,
 Metal and Foundation. Qt uses Widgets, native networking and RHI rendering, with

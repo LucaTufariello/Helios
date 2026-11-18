@@ -8,7 +8,7 @@ class QComboBox;
 class QLineEdit;
 class QPlainTextEdit;
 class QPushButton;
-namespace godeye {
+namespace helios {
 class MonitoringInboxPanel : public QWidget {
   Q_OBJECT
 public:
@@ -42,4 +42,4 @@ private:
   void review();
   void run(const std::function<void()> &fn);
 };
-} // namespace godeye
+} // namespace helios

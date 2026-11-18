@@ -13,7 +13,7 @@
 #include <QTest>
 #include <QtEndian>
 #include <bit>
-using namespace godeye;
+using namespace helios;
 namespace {
 QByteArray varint(quint64 n) {
   QByteArray out;
@@ -242,7 +242,7 @@ private slots:
     QVERIFY(!snapshot.records[0].observedAt.isValid());
   }
   void referencesBundledCountsAndDateline() {
-    const QString root = GODEYE_DOMAIN_SOURCE_DIR;
+    const QString root = HELIOS_DOMAIN_SOURCE_DIR;
     const auto datacenters = DomainParsers::reference("datacenters", root),
                dams = DomainParsers::reference("dams", root),
                cables = DomainParsers::reference("cables", root);
@@ -266,7 +266,7 @@ private slots:
   }
   void transitWireZeroAndStaleAdmission() {
     const auto providers =
-        transitProviders(QString(GODEYE_DOMAIN_SOURCE_DIR) + "/transit-feeds.json");
+        transitProviders(QString(HELIOS_DOMAIN_SOURCE_DIR) + "/transit-feeds.json");
     QCOMPARE(providers.size(), 7);
     const auto now = QDateTime::fromSecsSinceEpoch(1700000001, QTimeZone::UTC);
     auto snapshot = DomainParsers::transit(transitFix(1700000001), providers[0], now);
@@ -332,7 +332,7 @@ private slots:
     QCOMPARE(client.size(), 8);
   }
   void sgp4ExistingValladoReferenceVectors() {
-    QFile file(QString(GODEYE_DOMAIN_FIXTURE_DIR) + "/sgp4-reference.json");
+    QFile file(QString(HELIOS_DOMAIN_FIXTURE_DIR) + "/sgp4-reference.json");
     QVERIFY(file.open(QIODevice::ReadOnly));
     const auto rows = QJsonDocument::fromJson(file.readAll()).array();
     QCOMPARE(rows.size(), 16);

@@ -11,7 +11,7 @@
 #include <QtConcurrent>
 #include <algorithm>
 #include <limits>
-namespace godeye {
+namespace helios {
 namespace {
 constexpr qsizetype maxBytes = 2 * 1024 * 1024;
 constexpr int maxTiles = 128, maxWanted = 224;
@@ -280,7 +280,7 @@ void DailyImageryCache::pump() {
       continue;
     }
     QNetworkRequest request(url(source_, date_, item.id));
-    request.setRawHeader("User-Agent", "GodEyeDesktop/0.1 (native GIS viewer)");
+    request.setRawHeader("User-Agent", "HeliosDesktop/0.1 (native GIS viewer)");
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::ManualRedirectPolicy);
     request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
@@ -381,4 +381,4 @@ std::shared_ptr<DailyTile> DailyImageryCache::image(TileID tile) {
     tile = ancestor(tile);
   }
 }
-} // namespace godeye
+} // namespace helios

@@ -6,7 +6,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
-using namespace godeye;
+using namespace helios;
 class InferenceTests : public QObject {
   Q_OBJECT
   QJsonObject generatedResult() {
@@ -112,22 +112,22 @@ private slots:
     QVERIFY(inferenceRequest(layer, "contract.json", evidence, mission, .5).isEmpty());
   }
   void realGeneratedCpuWorkerBoundary() {
-    const auto python = qEnvironmentVariable("GODEYE_INFERENCE_PYTHON");
+    const auto python = qEnvironmentVariable("HELIOS_INFERENCE_PYTHON");
     if (python.isEmpty())
-      QSKIP("Set GODEYE_INFERENCE_PYTHON to the optional inference environment for CPU worker "
+      QSKIP("Set HELIOS_INFERENCE_PYTHON to the optional inference environment for CPU worker "
             "integration.");
     QTemporaryDir root;
     QVERIFY(root.isValid());
     QProcess fixture;
-    fixture.start(python, {"-I", GODEYE_INFERENCE_FIXTURE, root.path() + "/fixture"});
+    fixture.start(python, {"-I", HELIOS_INFERENCE_FIXTURE, root.path() + "/fixture"});
     QVERIFY(fixture.waitForFinished(30000));
     QCOMPARE(fixture.exitCode(), 0);
     const auto request = WorkerJob::readRecord(root.path() + "/fixture/request.json");
     QVERIFY(!request.isEmpty());
     WorkerRequest args;
     args.python = python;
-    args.worker = GODEYE_INFERENCE_WORKER;
-    args.host = GODEYE_TEST_WORKER_HOST;
+    args.worker = HELIOS_INFERENCE_WORKER;
+    args.host = HELIOS_TEST_WORKER_HOST;
     args.operation = "render";
     args.optical = true;
     args.document = request;

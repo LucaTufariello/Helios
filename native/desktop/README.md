@@ -1,4 +1,4 @@
-# GodEye C++ / Qt desktop client
+# Helios C++ / Qt desktop client
 
 This compiled C++20/Qt client implements the macOS/Linux migration workflows.
 It is maintained alongside the functional Swift macOS reference while platform,
@@ -50,7 +50,7 @@ are recorded in [migration status](../../docs/MIGRATION-STATUS.md).
 - Saved infrastructure sites, compatible acquisition pairs, shared calibrated-power
   change review, analyst decisions/drafts, map previews and original scientific exports.
 - Place lookup, car/foot/bike directions, annotation drawing, workspace JSON and
-  `godeye://` view/workspace links, display styles and approximate solar terminator.
+  `helios://` view/workspace links, display styles and approximate solar terminator.
 - Dated NASA daily visualization layers with bounded caches and explicit source/date
   attribution; these are distinct from dated scientific acquisitions.
 - Optional local ONNX Runtime CPU assistance with explicit model contracts, retained
@@ -75,12 +75,12 @@ On macOS, install `qtbase` and `qtshadertools` using Homebrew, then:
 
 ```sh
 make test-desktop
-open output/desktop/build/bin/GodEyeDesktop.app
+open output/desktop/build/bin/HeliosDesktop.app
 ```
 
 The build script deploys Qt frameworks/plugins into this separate arm64
 bundle and verifies its local ad-hoc signature. It does not replace
-`output/native/GodEye.app`. Neither bundle is a notarized public release.
+`output/native/Helios.app`. Neither bundle is a notarized public release.
 
 On Omarchy, use the normal distribution update process and then install development
 dependencies, leaving the existing GPU driver unchanged:
@@ -89,7 +89,7 @@ dependencies, leaving the existing GPU driver unchanged:
 sudo pacman -S --needed base-devel cmake qt6-base qt6-shadertools qt6-wayland vulkan-tools
 ./native/desktop/diagnose-linux.sh
 make test-desktop
-./output/desktop/build/bin/GodEyeDesktop
+./output/desktop/build/bin/HeliosDesktop
 ```
 
 The Arch CI job compiles the Qt client and runs headless core tests. It does not
@@ -106,8 +106,8 @@ image and TLS plugins, plus FFmpeg and its libav/libsw libraries for native
 camera clips; graphics drivers and external scientific runtimes stay
 under the user's control. It targets the build host's Arch library generation.
 
-Extract the archive and run `./godeye-desktop --check-runtime`, then
-`./godeye-desktop`. Its optional `python3 install-user.py` installer adds a user
+Extract the archive and run `./helios-desktop --check-runtime`, then
+`./helios-desktop`. Its optional `python3 install-user.py` installer adds a user
 desktop entry without changing working profiles. See the
 [packaging instructions](PACKAGING.md) for installation, removal, dependencies,
 source/license records and isolated validation. CI is configured to retain Linux
@@ -150,8 +150,8 @@ saves its checkpoint into the mission library; disable automatic checks when
 inspecting a library without intending those updates.
 
 Existing macOS optical products live under
-`~/Library/Application Support/GodEye/Satellite/optical/`; SAR products live under
-`~/Library/Application Support/GodEye/SAR/jobs/`. A copied mission reference alone
+`~/Library/Application Support/Helios/Satellite/optical/`; SAR products live under
+`~/Library/Application Support/Helios/SAR/jobs/`. A copied mission reference alone
 does not transfer its external raster files. Library paths need reimporting on Linux.
 
 Drag to pan; right-drag or Option/Alt-drag to rotate/tilt. Scroll-wheel zoom and
@@ -165,7 +165,7 @@ actual compositor minimization and large-site stress remain outstanding; see
 
 ```sh
 make test-desktop
-./output/desktop/build/bin/GodEyeDesktop.app/Contents/MacOS/GodEyeDesktop \
+./output/desktop/build/bin/HeliosDesktop.app/Contents/MacOS/HeliosDesktop \
   --validate --qa-output output/qa/desktop
 ```
 
@@ -174,7 +174,7 @@ generated QA imagery and actual GPU framebuffer readback. Add `--product /path/t
 to inspect a real completed product without modifying its source files. Use
 `--validate-live` instead of `--validate` for opt-in real public basemap/terrain requests.
 Add `--raster-python /absolute/path/to/python3` for generated scientific-processing
-and infrastructure checks. Set `GODEYE_INFERENCE_PYTHON` to an explicitly prepared
+and infrastructure checks. Set `HELIOS_INFERENCE_PYTHON` to an explicitly prepared
 CPU inference environment for generated model/proposal checks. Fixtures are bundled
 so installed-package validation does not depend on a source checkout.
 

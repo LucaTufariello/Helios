@@ -1,7 +1,7 @@
 """Create an explicitly labeled isolated native UI validation profile.
 
 No downloaded/real product is modified. Run with --output <new-directory>, then
-launch GodEyeMac with GODEYE_VALIDATION_ROOT set to that directory. Never used
+launch HeliosMac with HELIOS_VALIDATION_ROOT set to that directory. Never used
 automatically by the production app. Does not simulate SNAP scientific validity.
 """
 import argparse
@@ -20,7 +20,7 @@ from rasterio.transform import from_origin
 
 def create(root):
     root.mkdir(parents=True, exist_ok=False)
-    worker_path = Path(__file__).parents[1]/'Sources/GodEyeMac/Resources/SAR/sentinel1.py'
+    worker_path = Path(__file__).parents[1]/'Sources/HeliosMac/Resources/SAR/sentinel1.py'
     spec = importlib.util.spec_from_file_location('sentinel1_fixture', worker_path)
     worker = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(worker)

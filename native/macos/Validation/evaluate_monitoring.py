@@ -24,7 +24,7 @@ def discover(case):
         query="Collection/Name eq 'SENTINEL-1' and startswith(Name,'S1A_IW_GRDH_1SDV_') and not contains(Name,'_COG') and "
         query+=f"ContentDate/Start ge {window['start']}T00:00:00Z and ContentDate/Start lt {window['endExclusive']}T00:00:00Z and OData.CSC.Intersects(area=geography'SRID=4326;{wkt}')"
         url='https://catalogue.dataspace.copernicus.eu/odata/v1/Products?'+urllib.parse.urlencode({'$filter':query,'$orderby':'ContentDate/Start asc,Id','$top':'100','$expand':'Attributes'})
-        req=urllib.request.Request(url,headers={'User-Agent':'GodEye-Evaluation/1.0 (metadata-only)'})
+        req=urllib.request.Request(url,headers={'User-Agent':'Helios-Evaluation/1.0 (metadata-only)'})
         with urllib.request.urlopen(req,timeout=30) as response:
             data=response.read(8*1024*1024+1)
         if len(data)>8*1024*1024: raise ValueError('Catalogue response exceeds metadata budget.')

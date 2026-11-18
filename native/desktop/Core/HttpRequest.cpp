@@ -2,7 +2,7 @@
 #include <QNetworkReply>
 #include <QTimer>
 #include <memory>
-namespace godeye {
+namespace helios {
 HttpRequest::HttpRequest(QObject *parent, QNetworkAccessManager *network)
     : QObject(parent), network_(network ? network : new QNetworkAccessManager(this)) {}
 HttpRequest::~HttpRequest() {
@@ -27,7 +27,7 @@ void HttpRequest::start(const QUrl &url, qsizetype maximum, const QByteArray &fo
     return;
   }
   QNetworkRequest request(url);
-  request.setRawHeader("User-Agent", "GodEyeNative/1.0");
+  request.setRawHeader("User-Agent", "HeliosNative/1.0");
   request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                        QNetworkRequest::ManualRedirectPolicy);
   request.setAttribute(QNetworkRequest::CookieLoadControlAttribute, QNetworkRequest::Manual);
@@ -82,4 +82,4 @@ void HttpRequest::start(const QUrl &url, qsizetype maximum, const QByteArray &fo
   });
   emit changed();
 }
-} // namespace godeye
+} // namespace helios

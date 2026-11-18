@@ -16,7 +16,7 @@
 #include <QVBoxLayout>
 #include <QtConcurrent>
 #include <csignal>
-namespace godeye {
+namespace helios {
 CameraViewer::Clip::~Clip() {
   if (!path.isEmpty())
     QFile::remove(path);
@@ -233,7 +233,7 @@ void CameraViewer::load() {
       clip->error = "Operator response is outside the supported MP4 clip contract.";
       return clip;
     }
-    QTemporaryFile file(QDir::tempPath() + "/godeye-camera-XXXXXX.mp4");
+    QTemporaryFile file(QDir::tempPath() + "/helios-camera-XXXXXX.mp4");
     if (!file.open()) {
       clip->error = "Could not create an owned temporary clip file.";
       return clip;
@@ -367,4 +367,4 @@ void CameraViewer::readFrames() {
   if (decoder_.bytesAvailable() > 0 || (consumed == 2 && !frameBuffer_.isEmpty()))
     QTimer::singleShot(1, this, &CameraViewer::readFrames);
 }
-} // namespace godeye
+} // namespace helios

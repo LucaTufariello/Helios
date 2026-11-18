@@ -6,7 +6,7 @@
 #include <QJsonArray>
 #include <QUrl>
 #include <memory>
-namespace godeye {
+namespace helios {
 struct PlaceMatch {
   QString label;
   Coordinate coordinate;
@@ -99,4 +99,4 @@ struct SolarState {
   double elevation(Coordinate point) const;
   QVector<Coordinate> terminator() const;
 };
-} // namespace godeye
+} // namespace helios

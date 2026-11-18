@@ -1,4 +1,4 @@
-#include "GodEyeSpatial.h"
+#include "HeliosSpatial.h"
 
 // Compile and link the public header as C, not only as C++. Swift uses this ABI.
 int ge_test_c_header(void) {

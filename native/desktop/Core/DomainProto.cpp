@@ -8,7 +8,7 @@
 #include <bit>
 #include <cmath>
 #include <numbers>
-namespace godeye {
+namespace helios {
 namespace DomainProto {
 namespace {
 std::optional<quint64> varint(const QByteArray &bytes, qsizetype &offset) {
@@ -373,4 +373,4 @@ DomainSnapshot traffic(const QByteArray &bytes, TileID tile, QDateTime now) {
   return out;
 }
 } // namespace DomainParsers
-} // namespace godeye
+} // namespace helios

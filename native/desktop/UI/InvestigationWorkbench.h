@@ -11,7 +11,7 @@ class QLineEdit;
 class QListWidget;
 class QTextBrowser;
 class QSpinBox;
-namespace godeye {
+namespace helios {
 class InvestigationWorkbench : public QObject {
   Q_OBJECT
 public:
@@ -40,7 +40,7 @@ public:
     captureProvider_ = std::move(provider);
   }
 signals:
-  void focusRequested(godeye::Bounds bounds);
+  void focusRequested(helios::Bounds bounds);
   void dossierRequested(QString areaID);
   void findingsRequested();
   void evidenceRequested(QJsonObject evidence);
@@ -74,4 +74,4 @@ private:
   void inspectFinding();
   void briefing();
 };
-} // namespace godeye
+} // namespace helios

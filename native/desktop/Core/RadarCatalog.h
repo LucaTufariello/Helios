@@ -5,7 +5,7 @@
 #include <QDateTime>
 #include <QMap>
 #include <functional>
-namespace godeye {
+namespace helios {
 struct RadarQuery {
   Bounds region;
   QDate start, end;
@@ -42,7 +42,7 @@ public:
   static RadarPage parse(const QByteArray &bytes);
 signals:
   void changed();
-  void results(godeye::RadarPage page);
+  void results(helios::RadarPage page);
   void failed(QString error);
 
 private:
@@ -75,5 +75,5 @@ private:
   std::function<void(QString, QString)> pending_;
   void exchange(const QMap<QString, QString> &form);
 };
-} // namespace godeye
-Q_DECLARE_METATYPE(godeye::RadarPage)
+} // namespace helios
+Q_DECLARE_METATYPE(helios::RadarPage)

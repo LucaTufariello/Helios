@@ -1,7 +1,7 @@
 #pragma once
 #include "Core/DailyImagery.h"
 #include "Core/Products.h"
-#include "GodEyeScene.h"
+#include "HeliosScene.h"
 #include "TileCache.h"
 #include <QColor>
 #include <QPointer>
@@ -18,7 +18,7 @@ class QRhiTexture;
 class QRhiBuffer;
 class QRhiShaderResourceBindings;
 class QRhiResourceUpdateBatch;
-namespace godeye {
+namespace helios {
 struct SurfaceHit {
   Coordinate coordinate;
   double height = 0;
@@ -120,8 +120,8 @@ signals:
   void viewportChanged();
   void markerSelected(QString id);
   void statusChanged();
-  void pointSelected(godeye::Coordinate point, double height, bool terrain, bool scene);
-  void regionSelected(godeye::Bounds bounds, QObject *owner);
+  void pointSelected(helios::Coordinate point, double height, bool terrain, bool scene);
+  void regionSelected(helios::Bounds bounds, QObject *owner);
   void selectionChanged(bool active);
 
 protected:
@@ -218,4 +218,4 @@ private:
   void drawMesh(const QString &key, CpuMesh mesh, quint64 revision, QRhiCommandBuffer *cb,
                 QRhiResourceUpdateBatch *updates);
 };
-} // namespace godeye
+} // namespace helios

@@ -44,9 +44,9 @@ imagery date is present it must be a canonical UTC date from 2000 through today,
 before any UI/library mutation. `loadWorkspace/saveWorkspace` perform bounded
 validated import/export without replacing corrupt existing documents.
 
-`cameraShareURL/cameraFromShareURL` retain `godeye://view` latitude, longitude,
+`cameraShareURL/cameraFromShareURL` retain `helios://view` latitude, longitude,
 altitude, heading and tilt. `workspaceShareURL/workspaceFromShareURL` retain Swift's
-base64 JSON `godeye://workspace?state=…` contract. Links reject duplicate or malformed
+base64 JSON `helios://workspace?state=…` contract. Links reject duplicate or malformed
 fields and size overruns. Shared workspaces exclude annotations and unknown root
 or camera fields; provider credentials are never read or inserted. Incoming shared
 links with annotation content are rejected. Imported local unknown fields stay
@@ -64,8 +64,8 @@ privacy/legacy fields/date admission, duplicate share fields and solar geometry.
 The default suite passes nine checks and skips two opt-in public service checks:
 
 ```sh
-GODEYE_MAPTOOLS_LIVE=1 GODEYE_MAPTOOLS_QA=/absolute/path/to/qa \
-  ./output/desktop/build/native/desktop/GodEyeMapToolsTests
+HELIOS_MAPTOOLS_LIVE=1 HELIOS_MAPTOOLS_QA=/absolute/path/to/qa \
+  ./output/desktop/build/native/desktop/HeliosMapToolsTests
 ```
 
 On 2026-10-15, the actual walking route between (45.4641,9.1919) and

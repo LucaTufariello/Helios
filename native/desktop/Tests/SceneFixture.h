@@ -10,7 +10,7 @@
 #include <bit>
 #include <stdexcept>
 
-namespace godeye::qa {
+namespace helios::qa {
 // Isolated generated fixture matching the Swift scene regression geometry.
 inline QString sceneFixture(const QString &directory, const QString &content = "roof.glb",
                             int mode = 4, const QString &alphaMode = "OPAQUE", double alpha = 1,
@@ -33,7 +33,7 @@ inline QString sceneFixture(const QString &directory, const QString &content = "
   QJsonObject attributes{{"POSITION", 0}};
   QJsonObject pbr{{"baseColorFactor", QJsonArray{0.2, 0.6, 0.9, alpha}}};
   QJsonObject model{
-      {"asset", QJsonObject{{"version", "2.0"}, {"copyright", "GodEye automated test geometry"}}}};
+      {"asset", QJsonObject{{"version", "2.0"}, {"copyright", "Helios automated test geometry"}}}};
   if (textured) {
     for (float value : {0.f, 0.f, 1.f, 0.f, 0.5f, 1.f})
       integer(binary, std::bit_cast<quint32>(value));
@@ -104,4 +104,4 @@ inline QString sceneFixture(const QString &directory, const QString &content = "
     throw std::runtime_error("Scene QA tileset write failed");
   return file.fileName();
 }
-} // namespace godeye::qa
+} // namespace helios::qa

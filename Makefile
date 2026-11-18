@@ -4,7 +4,7 @@ build:
 	./native/macos/build-app.sh
 
 run: build
-	open output/native/GodEye.app
+	open output/native/Helios.app
 
 build-shared:
 	cmake -S . -B output/shared/build -DCMAKE_BUILD_TYPE=Release

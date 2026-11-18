@@ -2,7 +2,7 @@
 #include "Missions.h"
 #include "Products.h"
 #include <QDateTime>
-namespace godeye {
+namespace helios {
 struct DossierEvidence {
   QString key;
   QJsonObject item;
@@ -23,4 +23,4 @@ DossierView dossierView(const QJsonObject &plan, const QString &areaID,
                         const QVector<ProductLayer> &library);
 bool evidenceOverlaps(const QJsonObject &item, Bounds area);
 bool sameAcquisition(const QJsonObject &item, const ProductLayer &product);
-} // namespace godeye
+} // namespace helios

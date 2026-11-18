@@ -10,7 +10,7 @@
 #include <QUrlQuery>
 #include <QtConcurrent>
 #include <algorithm>
-namespace godeye {
+namespace helios {
 DomainHttpResult domainFetch(const QUrl &initial, qsizetype maximum,
                              const std::shared_ptr<std::atomic_bool> &cancel,
                              const QMap<QByteArray, QByteArray> &headers, const QByteArray &form,
@@ -33,7 +33,7 @@ DomainHttpResult domainFetch(const QUrl &initial, qsizetype maximum,
       return result;
     }
     QNetworkRequest request(url);
-    request.setRawHeader("User-Agent", "GodEyeNative/1.0 (native public-data client)");
+    request.setRawHeader("User-Agent", "HeliosNative/1.0 (native public-data client)");
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::ManualRedirectPolicy);
     request.setAttribute(QNetworkRequest::CookieLoadControlAttribute, QNetworkRequest::Manual);
@@ -318,7 +318,7 @@ DomainSnapshot request(QString feed, Bounds view, DomainConfiguration config,
                    : "https://tie.digitraffic.fi/api/weathercam/v1/stations");
     maximum = 8 * 1024 * 1024;
     redirects = false;
-    headers = {{"Accept", "application/json"}, {"Digitraffic-User", "GodEyeNative/1.0"}};
+    headers = {{"Accept", "application/json"}, {"Digitraffic-User", "HeliosNative/1.0"}};
   } else if (feed == "sentinel") {
     if (!QStringList{"SENTINEL-1", "SENTINEL-2"}.contains(config.sentinelKind))
       return failure("Choose Sentinel-1 or Sentinel-2.");
@@ -597,4 +597,4 @@ void DomainNetwork::start(const QString &feed) {
         return request(feed, view, config, cancel);
       }));
 }
-} // namespace godeye
+} // namespace helios

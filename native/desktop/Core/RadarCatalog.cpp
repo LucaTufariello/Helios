@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 constexpr qint64 maximumArchive = 40ll * 1024 * 1024 * 1024;
 QVector<QVector<Coordinate>> footprint(const QJsonObject &geometry) {
@@ -348,4 +348,4 @@ void CopernicusAccount::access(std::function<void(QString, QString)> completion)
   exchange(
       {{"client_id", "cdse-public"}, {"grant_type", "refresh_token"}, {"refresh_token", refresh_}});
 }
-} // namespace godeye
+} // namespace helios

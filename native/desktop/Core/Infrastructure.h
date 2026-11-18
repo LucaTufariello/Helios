@@ -2,7 +2,7 @@
 #include "JsonFile.h"
 #include "Products.h"
 #include <QJsonArray>
-namespace godeye {
+namespace helios {
 void validateSites(const QJsonDocument &document);
 void validateChangeReview(const QJsonObject &result);
 QString changeCompatibility(const QJsonObject &before, const QJsonObject &after,
@@ -44,4 +44,4 @@ private:
   QJsonObject notes_;
   QString id_;
 };
-} // namespace godeye
+} // namespace helios

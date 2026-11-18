@@ -1,6 +1,6 @@
-# GodEye
+# Helios
 
-GodEye is a native desktop workspace for geographic analysis,
+Helios is a native desktop workspace for geographic analysis,
 satellite imagery, infrastructure review and mission planning. The map remains
 the main view; floating tools and a separate Mission Control window share the
 same areas, imagery and evidence.
@@ -36,7 +36,7 @@ sudo pacman -S --needed base-devel git cmake ninja python pkgconf curl zip unzip
   qt6-base qt6-shadertools qt6-wayland vulkan-icd-loader vulkan-tools
 ./native/desktop/diagnose-linux.sh
 make test-desktop
-./output/desktop/build/bin/GodEyeDesktop
+./output/desktop/build/bin/HeliosDesktop
 ```
 
 `make test-desktop` builds the Qt application and runs its regression suites.
@@ -55,16 +55,16 @@ sudo pacman -S --needed ffmpeg libsecret
 To use a separate profile or inspect local data offline:
 
 ```sh
-./output/desktop/build/bin/GodEyeDesktop --profile "$HOME/.local/share/GodEye-test"
-./output/desktop/build/bin/GodEyeDesktop --profile "$HOME/.local/share/GodEye-test" --offline
+./output/desktop/build/bin/HeliosDesktop --profile "$HOME/.local/share/Helios-test"
+./output/desktop/build/bin/HeliosDesktop --profile "$HOME/.local/share/Helios-test" --offline
 ```
 
-If you have a Linux package archive, extract it, enter its `godeye-desktop/`
+If you have a Linux package archive, extract it, enter its `helios-desktop/`
 directory, and run:
 
 ```sh
-./godeye-desktop --check-runtime
-./godeye-desktop
+./helios-desktop --check-runtime
+./helios-desktop
 ```
 
 `python3 install-user.py` in that directory optionally adds a desktop launcher.
@@ -87,7 +87,7 @@ Install the build tools with Homebrew, then build and open the separate Qt app:
 ```sh
 brew install cmake pkgconf qtbase qtshadertools
 make test-desktop
-open output/desktop/build/bin/GodEyeDesktop.app
+open output/desktop/build/bin/HeliosDesktop.app
 ```
 
 Fresh Mac validation of the expanded Qt client is still required.
@@ -105,7 +105,7 @@ From the repository root:
 ```sh
 brew install cmake pkgconf
 make build
-open output/native/GodEye.app
+open output/native/Helios.app
 ```
 
 The build produces an arm64 app and verifies a local ad-hoc signature. It is not
@@ -139,7 +139,7 @@ keyboard access and the relationship to the Swift reference.
   acquisitions, reviews, notes and follow-up tasks in a [site dossier](docs/SITE-DOSSIERS.md).
   **Site monitoring** adds stable controls, verified relative translation, local SAR
   analysis and a persistent review inbox. See the [monitoring guide](docs/SITE-MONITORING.md).
-  Automations run while GodEye is open.
+  Automations run while Helios is open.
 
 Provider data can be delayed, incomplete or unavailable. Propagated orbits are
 estimates; basemap mosaics do not establish an acquisition date. Raster blending
@@ -158,7 +158,7 @@ Use an installed Python 3.12 interpreter to create an isolated environment:
 ```sh
 /absolute/path/to/python3.12 -m venv .venv
 .venv/bin/python -m pip install \
-  -r native/macos/Sources/GodEyeMac/Resources/SAR/requirements.txt
+  -r native/macos/Sources/HeliosMac/Resources/SAR/requirements.txt
 ```
 
 In **Processing Center → Engine and jobs**, set **Raster Python** to the environment's
@@ -167,7 +167,7 @@ raster imports**. This selection is saved for that profile. The default system
 Python may not contain these packages. On Linux you can also select it at launch:
 
 ```sh
-./output/desktop/build/bin/GodEyeDesktop --raster-python "$PWD/.venv/bin/python"
+./output/desktop/build/bin/HeliosDesktop --raster-python "$PWD/.venv/bin/python"
 ```
 
 The workers remain under `native/macos/` in the source tree and are shared by both
@@ -208,7 +208,7 @@ With the scientific environment above prepared, run the shared raster fixtures
 on either platform:
 
 ```sh
-GODEYE_SAR_PYTHON="$PWD/.venv/bin/python" make test-raster
+HELIOS_SAR_PYTHON="$PWD/.venv/bin/python" make test-raster
 ```
 
 The Swift/Xcode commands below are macOS-only:
@@ -225,16 +225,16 @@ environment above.
 
 `make format` formats native Swift sources. Individual scripts remain available
 under `native/macos/`. Opt-in public-provider checks use
-`GODEYE_LIVE_CHECKS=1 native/macos/test.sh --filter Live`. Real SNAP processing,
+`HELIOS_LIVE_CHECKS=1 native/macos/test.sh --filter Live`. Real SNAP processing,
 independent image registration/radiometric validation, aerial detector accuracy,
 optional GPU inference and complete manual UI coverage remain separate acceptance
 checks. A trained CPU model execution is recorded in migration status.
 
 ## Project layout
 
-- `native/macos/Sources/GodEyeMac/`: SwiftUI/AppKit workspace, Metal renderer and
+- `native/macos/Sources/HeliosMac/`: SwiftUI/AppKit workspace, Metal renderer and
   optional local satellite workers.
-- `native/macos/Sources/GodEyeCore/`: validated models, data sources, storage,
+- `native/macos/Sources/HeliosCore/`: validated models, data sources, storage,
   processing orchestration and canonical bundled reference datasets.
 - `native/scene/`: shared C++ scene adapter and pinned Cesium Native build;
   `native/macos/Sources/CScene/` retains the Swift bridge/transport integration.
@@ -273,7 +273,7 @@ checks. A trained CPU model execution is recorded in migration status.
 ## Storage and licensing
 
 Mission documents, annotations, satellite downloads and processed images live
-under `~/Library/Application Support/GodEye/` for the Swift app. Qt uses its own
+under `~/Library/Application Support/Helios/` for the Swift app. Qt uses its own
 platform application-data directory, or an explicit `--profile DIRECTORY`; it
 does not automatically replace or import the Swift library. Provider credentials
 use macOS Keychain or optional Linux Secret Service. Copernicus account sessions

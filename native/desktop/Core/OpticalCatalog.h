@@ -6,7 +6,7 @@
 #include <QUrl>
 
 class QNetworkReply;
-namespace godeye {
+namespace helios {
 struct OpticalQuery {
   Bounds region;
   QDate start, end;
@@ -38,4 +38,4 @@ private:
   quint64 generation_ = 0;
   bool busy_ = false;
 };
-} // namespace godeye
+} // namespace helios

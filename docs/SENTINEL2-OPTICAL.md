@@ -2,7 +2,7 @@
 
 Satellite → Reference imagery now requests dated Sentinel-2 Collection-1 Level-2A true-colour images. Catalogue discovery uses [Earth Search](https://element84.com/earth-search/examples/), and image blocks come from the public [Sentinel-2 COG archive](https://registry.opendata.aws/sentinel-2-l2a-cogs/) maintained by Element 84. No login, AWS account, paid Sentinel Hub API, browser view or SNAP invocation is required. Network access and the existing Python Rasterio/GDAL, NumPy and Pillow environment are required.
 
-This native workflow retrieves and displays actual georeferenced optical pixels inside GodEye, with dated acquisition metadata and local exports.
+This native workflow retrieves and displays actual georeferenced optical pixels inside Helios, with dated acquisition metadata and local exports.
 
 ## Request and view
 
@@ -25,14 +25,14 @@ Georeferencing comes from the source GeoTIFF's projected CRS and Rasterio/GDAL's
 
 ## Implementation and storage
 
-- `GodEyeCore/SentinelOptical.swift`: bounded query/catalogue parsing, scene admission, trusted asset validation and typed request/result metadata.
-- `GodEyeCore/SarProcessor.swift`: the existing isolated/cancellable command adapter exposes `renderOptical` without putting command syntax in the UI.
-- `GodEyeMac/OpticalWorkspace.swift`: native search/load state, saved images, interrupted-job recovery, preview controls and atomic exports.
-- `GodEyeMac/Resources/Optical/sentinel2.py`: request validation, bounded COG window rendering, alpha/nodata handling, geocoding and exports.
+- `HeliosCore/SentinelOptical.swift`: bounded query/catalogue parsing, scene admission, trusted asset validation and typed request/result metadata.
+- `HeliosCore/SarProcessor.swift`: the existing isolated/cancellable command adapter exposes `renderOptical` without putting command syntax in the UI.
+- `HeliosMac/OpticalWorkspace.swift`: native search/load state, saved images, interrupted-job recovery, preview controls and atomic exports.
+- `HeliosMac/Resources/Optical/sentinel2.py`: request validation, bounded COG window rendering, alpha/nodata handling, geocoding and exports.
 - Satellite views, shared region state and the existing Metal raster overlay are reused. SAR calibration/comparison algorithms are unchanged.
 
 ```text
-~/Library/Application Support/GodEye/Satellite/optical/<UUID>/
+~/Library/Application Support/Helios/Satellite/optical/<UUID>/
   result.json          acquisition, requested/actual bounds, date, platform,
                        cloud metadata, CRS, dimensions, coverage and limitations
   preview.png          bounded RGBA map preview
@@ -83,7 +83,7 @@ is available after a worker failure. The log keeps at most 16,000 characters,
 including retry failures when a later attempt succeeds.
 
 **Cancel optical request** first asks the worker to stop. If it remains blocked in
-native raster/network code, GodEye force-stops that optical worker after three
+native raster/network code, Helios force-stops that optical worker after three
 seconds and removes its known partial outputs. Existing saved imagery and source
 products are retained. This optical-only fallback does not change SNAP/GPT process
 group cancellation or SAR scientific processing.

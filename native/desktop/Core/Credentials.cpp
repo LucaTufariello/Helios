@@ -1,4 +1,4 @@
-#if defined(GODEYE_HAVE_LIBSECRET)
+#if defined(HELIOS_HAVE_LIBSECRET)
 #include <libsecret/secret.h>
 #endif
 #include "Credentials.h"
@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cstring>
 
-namespace godeye {
+namespace helios {
 #if defined(Q_OS_MACOS)
 CredentialResult macCredential(const QString &, const QString *, bool);
 #endif
@@ -20,7 +20,7 @@ CredentialResult unavailable() {
           "desktop keyring; no plaintext fallback is used.",
           "Unavailable"};
 }
-#if defined(GODEYE_HAVE_LIBSECRET)
+#if defined(HELIOS_HAVE_LIBSECRET)
 CredentialResult linuxCredential(const QString &account, const QString *value, bool remove) {
   QLibrary library("secret-1", 0);
   library.setLoadHints(QLibrary::PreventUnloadHint);
@@ -38,12 +38,12 @@ CredentialResult linuxCredential(const QString &account, const QString *value, b
   if (!lookup || !store || !clear || !release || !errorFree)
     return unavailable();
   SecretSchema schema{};
-  schema.name = "io.godeye.native.providers";
+  schema.name = "io.helios.native.providers";
   schema.flags = SECRET_SCHEMA_NONE;
   schema.attributes[0] = {"service", SECRET_SCHEMA_ATTRIBUTE_STRING};
   schema.attributes[1] = {"account", SECRET_SCHEMA_ATTRIBUTE_STRING};
   const auto name = account.toUtf8();
-  constexpr auto service = "io.godeye.native.providers";
+  constexpr auto service = "io.helios.native.providers";
   GError *error = nullptr;
   CredentialResult result{true, false, {}, {}, "Linux Secret Service"};
   if (remove) {
@@ -51,7 +51,7 @@ CredentialResult linuxCredential(const QString &account, const QString *value, b
           static_cast<const char *>(nullptr));
   } else if (value) {
     const auto secret = value->toUtf8();
-    result.ok = store(&schema, SECRET_COLLECTION_DEFAULT, "GodEye provider credential",
+    result.ok = store(&schema, SECRET_COLLECTION_DEFAULT, "Helios provider credential",
                       secret.constData(), nullptr, &error, "service", service, "account",
                       name.constData(), static_cast<const char *>(nullptr));
   } else {
@@ -82,7 +82,7 @@ CredentialResult operate(const QString &account, const QString *value, bool remo
     return {false, false, {}, "Invalid provider credential identifier.", "Unavailable"};
 #if defined(Q_OS_MACOS)
   return macCredential(account, value, remove);
-#elif defined(GODEYE_HAVE_LIBSECRET)
+#elif defined(HELIOS_HAVE_LIBSECRET)
   return linuxCredential(account, value, remove);
 #else
   Q_UNUSED(value);
@@ -112,4 +112,4 @@ CredentialResult Credentials::save(const QString &account, const QString &input)
 CredentialResult Credentials::erase(const QString &account) {
   return operate(account, nullptr, true);
 }
-} // namespace godeye
+} // namespace helios

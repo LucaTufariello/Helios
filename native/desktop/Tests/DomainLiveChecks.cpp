@@ -9,11 +9,11 @@
 #include <QSaveFile>
 #include <QTimer>
 #include <cstdio>
-using namespace godeye;
+using namespace helios;
 int main(int argc, char **argv) {
   QCoreApplication app(argc, argv);
-  if (app.arguments().size() < 2 || qEnvironmentVariable("GODEYE_LIVE_CHECKS") != "1") {
-    std::fprintf(stderr, "Explicit opt-in required: GODEYE_LIVE_CHECKS=1 DomainLiveChecks "
+  if (app.arguments().size() < 2 || qEnvironmentVariable("HELIOS_LIVE_CHECKS") != "1") {
+    std::fprintf(stderr, "Explicit opt-in required: HELIOS_LIVE_CHECKS=1 DomainLiveChecks "
                          "OUTPUT.json [feed IDs...]\n");
     return 2;
   }

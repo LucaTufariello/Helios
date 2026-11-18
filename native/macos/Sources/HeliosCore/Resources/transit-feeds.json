@@ -1,0 +1,88 @@
+[
+  {
+    "id": "mbta",
+    "name": "MBTA",
+    "url": "https://cdn.mbta.com/realtime/VehiclePositions.pb",
+    "attribution": "MBTA / MassDOT",
+    "license": "MassDOT Developers License Agreement",
+    "licenseUrl": "https://cdn.mbta.com/sites/default/files/2023-08/mbta-massdot-develop-license-agreement.pdf",
+    "headers": {},
+    "lat": 42.3601,
+    "lon": -71.0589,
+    "radius": 70
+  },
+  {
+    "id": "capmetro-austin",
+    "name": "CapMetro",
+    "url": "https://data.texas.gov/download/eiei-9rpf/application%2Foctet-stream",
+    "attribution": "Capital Metropolitan Transportation Authority — data.texas.gov",
+    "license": "CapMetro Developer Tools license",
+    "licenseUrl": "https://www.capmetro.org/developertools",
+    "headers": {},
+    "lat": 30.2672,
+    "lon": -97.7431,
+    "radius": 60
+  },
+  {
+    "id": "metrotransit-msp",
+    "name": "Metro Transit",
+    "url": "https://svc.metrotransit.org/mtgtfs/vehiclepositions.pb",
+    "attribution": "Metro Transit — Metropolitan Council",
+    "license": "Public Metro Transit vehicle position data",
+    "licenseUrl": "https://svc.metrotransit.org/",
+    "headers": {},
+    "lat": 44.9778,
+    "lon": -93.265,
+    "radius": 70
+  },
+  {
+    "id": "hsl-helsinki",
+    "name": "HSL",
+    "url": "https://realtime.hsl.fi/realtime/vehicle-positions/v2/hsl",
+    "attribution": "HSL (Helsinki Region Transport)",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://www.hsl.fi/en/hsl/open-data",
+    "headers": {},
+    "lat": 60.1699,
+    "lon": 24.9384,
+    "radius": 70
+  },
+  {
+    "id": "ovapi-nl",
+    "name": "OVapi",
+    "url": "https://gtfs.ovapi.nl/nl/vehiclePositions.pb",
+    "attribution": "OVapi / Stichting OpenGeo — Dutch integrated real-time transit data",
+    "license": "Free to use per the OVapi README (best effort, no SLA)",
+    "licenseUrl": "https://gtfs.ovapi.nl/README",
+    "headers": {},
+    "lat": 52.2,
+    "lon": 5.3,
+    "radius": 220
+  },
+  {
+    "id": "entur-norway",
+    "name": "Entur",
+    "url": "https://api.entur.io/realtime/v1/gtfs-rt/vehicle-positions",
+    "attribution": "Entur — data under NLOD",
+    "license": "Norwegian Licence for Open Government Data (NLOD)",
+    "licenseUrl": "https://developer.entur.org/pages-intro-authentication",
+    "headers": {
+      "ET-Client-Name": "helios-transit"
+    },
+    "lat": 64,
+    "lon": 11.5,
+    "radius": 720
+  },
+  {
+    "id": "translink-seq",
+    "name": "TransLink",
+    "url": "https://gtfsrt.api.translink.com.au/api/realtime/seq/VehiclePositions",
+    "attribution": "TransLink — Queensland Government (CC BY 4.0)",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://translink.com.au/about-translink/open-data",
+    "headers": {},
+    "lat": -27.4698,
+    "lon": 153.0251,
+    "radius": 150
+  }
+]

@@ -2,7 +2,7 @@
 #include "DomainFeeds.h"
 #include <QSslSocket>
 #include <QTimer>
-namespace godeye {
+namespace helios {
 // Minimal RFC 6455 client for the single fixed AIS endpoint. No compression/extensions.
 class DomainSocket : public QObject {
   Q_OBJECT
@@ -33,4 +33,4 @@ private:
   void read();
   void fail(const QString &error);
 };
-} // namespace godeye
+} // namespace helios

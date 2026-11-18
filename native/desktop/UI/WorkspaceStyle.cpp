@@ -7,7 +7,7 @@
 #include <QStyleFactory>
 #include <QToolButton>
 #include <QVBoxLayout>
-namespace godeye::design {
+namespace helios::design {
 void apply(QApplication &app) {
   app.setStyle(QStyleFactory::create("Fusion"));
   QFont font = app.font();
@@ -301,4 +301,4 @@ QIcon icon(Symbol symbol) {
   }
   return result;
 }
-} // namespace godeye::design
+} // namespace helios::design

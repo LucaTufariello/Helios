@@ -14,7 +14,7 @@
 #include <QSignalBlocker>
 #include <QSpinBox>
 #include <QVBoxLayout>
-namespace godeye {
+namespace helios {
 namespace {
 QJsonObject monitorRecord(const QJsonObject &plan, const QString &id) {
   for (const auto v : plan["brief"].toObject()["monitors"].toArray())
@@ -27,7 +27,7 @@ MonitorPanel::MonitorPanel(Missions &missions, MonitorRunner &runner, QWidget *p
     : QWidget(parent), missions_(missions), runner_(runner) {
   auto *layout = new QVBoxLayout(this);
   auto *info = new QLabel(
-      "Checks run while GodEye is open, with at most two active checks. Missed intervals after "
+      "Checks run while Helios is open, with at most two active checks. Missed intervals after "
       "sleep or relaunch produce one current check. Monitors retain identifiers and availability; "
       "they do not download large imagery or run as a system service.");
   info->setWordWrap(true);
@@ -225,4 +225,4 @@ void MonitorPanel::refresh() {
     setFields(drafts_.value(id + "/"));
   detail_->setPlainText(QString::fromUtf8(QJsonDocument(monitorRecord(plan, selected_)).toJson()));
 }
-} // namespace godeye
+} // namespace helios

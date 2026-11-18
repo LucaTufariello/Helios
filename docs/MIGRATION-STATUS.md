@@ -21,7 +21,7 @@ already installed. CMake was missing, so a local Python environment under ignore
 `output/tools/` supplies it; this is a development prerequisite, not an application
 runtime dependency. Use `PATH="$PWD/output/tools/bin:$PATH" make test-desktop`
 until system CMake is installed. The current binary is
-`output/desktop/build/bin/GodEyeDesktop`.
+`output/desktop/build/bin/HeliosDesktop`.
 
 Evidence root: `output/qa/linux-20261015T100735Z/` (ignored, local to this machine).
 
@@ -31,9 +31,9 @@ Evidence root: `output/qa/linux-20261015T100735Z/` (ignored, local to this machi
 | `make test-shared` with local CMake on PATH | Exit 0; 1,885 spatial checks | `shared.log` |
 | `make test-desktop` with local CMake on PATH | Exit 0; both CTest suites pass | `desktop.log` |
 | Qt core detail | 13 passed, 0 failed, 1 skipped: opt-in real mission library unavailable | `core-details.log` |
-| `GODEYE_SAR_PYTHON="$PWD/.venv/bin/python3" make test-raster` | Exit 0; 62 fixture tests pass | `raster.log`, `raster-versions.txt`, `raster-requirements.txt` |
-| `GodEyeDesktop --validate` | Exit 0; 29 checks, Vulkan / NVIDIA GeForce GTX 1070 | `generated/validation.json` |
-| `GodEyeDesktop --validate-live` | Exit 0; 15 checks, Vulkan / NVIDIA GeForce GTX 1070; public basemap and Terrarium terrain near Mont Blanc | `live/validation.json` |
+| `HELIOS_SAR_PYTHON="$PWD/.venv/bin/python3" make test-raster` | Exit 0; 62 fixture tests pass | `raster.log`, `raster-versions.txt`, `raster-requirements.txt` |
+| `HeliosDesktop --validate` | Exit 0; 29 checks, Vulkan / NVIDIA GeForce GTX 1070 | `generated/validation.json` |
+| `HeliosDesktop --validate-live` | Exit 0; 15 checks, Vulkan / NVIDIA GeForce GTX 1070; public basemap and Terrarium terrain near Mont Blanc | `live/validation.json` |
 | Visual inspection | Inspected generated raster orientation, Mission Control, satellite inspector and live terrain framebuffer images | `generated/generated-raster-overlay.png`, `generated/mission-control.png`, `generated/satellite-library.png`, `live/live-terrain.png` |
 
 The integration counts overlap. Generated products are QA fixtures. The live run

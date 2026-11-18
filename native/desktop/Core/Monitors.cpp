@@ -11,7 +11,7 @@
 #include <QtConcurrent>
 #include <algorithm>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 QJsonObject findPlan(const Missions &missions, const QString &id) {
   for (const auto value : missions.plans())
@@ -299,4 +299,4 @@ bool MonitorRunner::run(QString missionID, QString monitorID) {
     search_(monitor, *bounds, complete, context);
   return true;
 }
-} // namespace godeye
+} // namespace helios

@@ -15,7 +15,7 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Build with make build and open output/native/GodEye.app
+        1. Build with make build and open output/native/Helios.app
         2. Open Satellite, choose a source and region
         3. Describe the failing action
     validations:

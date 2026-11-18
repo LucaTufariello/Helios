@@ -37,7 +37,7 @@ Install the optional registration dependencies into the selected **raster Python
 not the application's inference environment or system Python:
 
 ```sh
-/path/to/raster/python -m pip install -r native/macos/Sources/GodEyeMac/Resources/SAR/requirements-monitoring.txt
+/path/to/raster/python -m pip install -r native/macos/Sources/HeliosMac/Resources/SAR/requirements-monitoring.txt
 ```
 
 This adds scikit-image 0.26.0 and its dependencies. The ordinary map, optical and
@@ -47,7 +47,7 @@ packages, change drivers or download a model automatically.
 
 ## What happens automatically
 
-Monitoring runs while GodEye is open. The associated catalogue monitor uses the
+Monitoring runs while Helios is open. The associated catalogue monitor uses the
 saved interval (1–168 hours), existing 14-day query and bounded result page.
 The first successful discovery check establishes its checkpoint; later newly
 seen catalogue identifiers create acquisition inbox entries. Their acquisition
@@ -168,7 +168,7 @@ manual priority, setup drafts, stale review dialogs and shared Swift/Qt fixtures
 With the optional environment installed, `native/macos/test-sar.sh` additionally
 checks fractional shifts, independent deformation rejection, ambiguous/invalid
 controls, original preservation, retained real change, source changes and labelled
-generated evaluation. Set `GODEYE_SAR_PYTHON` to that environment's interpreter.
+generated evaluation. Set `HELIOS_SAR_PYTHON` to that environment's interpreter.
 
 The native GPU validation exercises setup, controls, corrected analysis, blocked
 verification, deduplication, inbox/candidate handoff, save/reopen, missing reports,

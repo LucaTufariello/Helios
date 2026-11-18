@@ -11,7 +11,7 @@ import rasterio
 from rasterio.transform import from_origin
 from rasterio.warp import transform_bounds
 
-WORKER = Path(__file__).parents[2]/'Sources/GodEyeMac/Resources/Optical/sentinel2.py'
+WORKER = Path(__file__).parents[2]/'Sources/HeliosMac/Resources/Optical/sentinel2.py'
 spec = importlib.util.spec_from_file_location('optical',WORKER)
 optical = importlib.util.module_from_spec(spec);spec.loader.exec_module(optical)
 extra = optical.extra_sources()

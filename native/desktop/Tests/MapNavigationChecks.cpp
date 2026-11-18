@@ -21,7 +21,7 @@
 #if defined(Q_OS_UNIX)
 #include <sys/resource.h>
 #endif
-using namespace godeye;
+using namespace helios;
 namespace {
 QJsonObject distribution(QVector<double> samples) {
   if (samples.isEmpty())
@@ -171,10 +171,10 @@ bool nonBlank(const QImage &image) {
 } // namespace
 int main(int argc, char **argv) {
   QApplication app(argc, argv);
-  app.setApplicationName("GodEye generated navigation benchmark");
-  const auto output = qEnvironmentVariable("GODEYE_NAVIGATION_QA");
-  if (!qEnvironmentVariableIsSet("GODEYE_NAVIGATION_CHECK") || output.isEmpty()) {
-    qWarning("Opt-in: set GODEYE_NAVIGATION_CHECK=1 and GODEYE_NAVIGATION_QA to a QA directory.");
+  app.setApplicationName("Helios generated navigation benchmark");
+  const auto output = qEnvironmentVariable("HELIOS_NAVIGATION_QA");
+  if (!qEnvironmentVariableIsSet("HELIOS_NAVIGATION_CHECK") || output.isEmpty()) {
+    qWarning("Opt-in: set HELIOS_NAVIGATION_CHECK=1 and HELIOS_NAVIGATION_QA to a QA directory.");
     return 2;
   }
   if (!QDir().mkpath(output))
@@ -336,17 +336,17 @@ int main(int argc, char **argv) {
     report["wallSeconds"] = total.elapsed() / 1000.;
     report["cpuSeconds"] = cpuSeconds() - startCPU;
     report["executableSHA256"] = QString::fromLatin1(digest(QCoreApplication::applicationFilePath()));
-#ifdef GODEYE_SOURCE_ROOT
+#ifdef HELIOS_SOURCE_ROOT
     QJsonObject sources;
     for (const auto &name : {"native/desktop/Tests/MapNavigationChecks.cpp",
                             "native/desktop/Core/Geography.cpp", "native/desktop/Core/DailyImagery.cpp",
                             "native/desktop/shaders/globe.vert", "native/desktop/shaders/globe.frag"})
-      sources[name] = QString::fromLatin1(digest(QString(GODEYE_SOURCE_ROOT) + "/" + name));
-#ifdef GODEYE_NAVIGATION_GRAPHICS_ROOT
-    const QString graphicsRoot = GODEYE_NAVIGATION_GRAPHICS_ROOT;
+      sources[name] = QString::fromLatin1(digest(QString(HELIOS_SOURCE_ROOT) + "/" + name));
+#ifdef HELIOS_NAVIGATION_GRAPHICS_ROOT
+    const QString graphicsRoot = HELIOS_NAVIGATION_GRAPHICS_ROOT;
     report["frozenGraphicsBaseline"] = true;
 #else
-    const QString graphicsRoot = QString(GODEYE_SOURCE_ROOT) + "/native/desktop/Graphics";
+    const QString graphicsRoot = QString(HELIOS_SOURCE_ROOT) + "/native/desktop/Graphics";
     report["frozenGraphicsBaseline"] = false;
 #endif
     for (const auto &name : {"MapWidget.cpp", "MapWidget.h", "TileCache.cpp", "TileCache.h"})

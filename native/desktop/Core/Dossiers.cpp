@@ -3,7 +3,7 @@
 #include <QFileInfo>
 #include <QSet>
 #include <algorithm>
-namespace godeye {
+namespace helios {
 namespace {
 QString id(const QJsonValue &v) {
   return v.toString().toUpper();
@@ -172,4 +172,4 @@ DossierView dossierView(const QJsonObject &plan, const QString &areaID,
   }
   return result;
 }
-} // namespace godeye
+} // namespace helios

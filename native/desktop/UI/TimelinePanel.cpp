@@ -22,7 +22,7 @@
 #include <QTimeZone>
 #include <QVBoxLayout>
 #include <QtConcurrent>
-namespace godeye {
+namespace helios {
 TimelinePanel::TimelinePanel(Missions &missions, SatelliteWindow &satellite, MapWidget &map,
                              QWidget *parent)
     : QWidget(parent), missions_(missions), satellite_(satellite), map_(map) {
@@ -391,4 +391,4 @@ void TimelinePanel::exportEntries(bool csv) {
   else
     status_->setText("Filtered timeline exported with source identifiers and explicit time basis.");
 }
-} // namespace godeye
+} // namespace helios

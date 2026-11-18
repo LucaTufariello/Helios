@@ -3,7 +3,7 @@
 #include "Products.h"
 #include <QImage>
 #include <QMap>
-namespace godeye {
+namespace helios {
 struct FrozenBriefing {
   QJsonObject manifest;
   QString html;
@@ -15,4 +15,4 @@ FrozenBriefing prepareBriefing(const QJsonObject &plan, const QStringList &findi
                                const QJsonObject &capture = {});
 void validateBriefingManifest(const QJsonObject &manifest);
 QString exportBriefing(const FrozenBriefing &briefing, const QString &parentDirectory);
-} // namespace godeye
+} // namespace helios

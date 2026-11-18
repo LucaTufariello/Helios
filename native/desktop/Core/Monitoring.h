@@ -4,7 +4,7 @@
 #include "WorkerJob.h"
 #include <QJsonArray>
 #include <QSet>
-namespace godeye {
+namespace helios {
 QJsonObject monitoringDefaults();
 QJsonObject monitoringArea(const QJsonObject &plan, const QString &areaID);
 QString monitoringSignature(const QJsonObject &area);
@@ -23,4 +23,4 @@ struct MonitoringWork {
 QVector<MonitoringWork> monitoringWork(const QJsonObject &plan,
                                        const QVector<ProductLayer> &library,
                                        const QString &manualArea = {});
-} // namespace godeye
+} // namespace helios

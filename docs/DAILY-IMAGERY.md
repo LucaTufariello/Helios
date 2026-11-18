@@ -71,8 +71,8 @@ in-flight decode, HTTP errors/redirects/oversized replies, retry backoff, RAM ca
 cap and high-zoom reuse. Live tests are opt-in:
 
 ```sh
-GODEYE_DAILY_LIVE=1 GODEYE_DAILY_QA=/absolute/path/to/qa \
-  ./output/desktop/build/native/desktop/GodEyeDailyImageryTests
+HELIOS_DAILY_LIVE=1 HELIOS_DAILY_QA=/absolute/path/to/qa \
+  ./output/desktop/build/native/desktop/HeliosDailyImageryTests
 ```
 
 On 2026-10-15, an actual Terra request for UTC product date 2026-10-12 retrieved

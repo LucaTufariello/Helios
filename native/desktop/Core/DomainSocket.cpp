@@ -4,7 +4,7 @@
 #include <QJsonDocument>
 #include <QRandomGenerator>
 #include <QtEndian>
-namespace godeye {
+namespace helios {
 DomainSocket::DomainSocket(QObject *parent) : QObject(parent) {
   socket_.setReadBufferSize(512 * 1024);
   connect(&socket_, &QSslSocket::encrypted, this, [this] {
@@ -17,7 +17,7 @@ DomainSocket::DomainSocket(QObject *parent) : QObject(parent) {
                   .toBase64();
     socket_.write("GET /v0/stream HTTP/1.1\r\nHost: stream.aisstream.io\r\nUpgrade: "
                   "websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: " +
-                  key + "\r\nSec-WebSocket-Version: 13\r\nUser-Agent: GodEyeNative/1.0\r\n\r\n");
+                  key + "\r\nSec-WebSocket-Version: 13\r\nUser-Agent: HeliosNative/1.0\r\n\r\n");
   });
   connect(&socket_, &QSslSocket::readyRead, this, &DomainSocket::read);
   connect(&socket_, &QSslSocket::errorOccurred, this, [this] {
@@ -283,4 +283,4 @@ DomainSnapshot DomainSocket::snapshot() const {
     out.records.append(value.second);
   return out;
 }
-} // namespace godeye
+} // namespace helios

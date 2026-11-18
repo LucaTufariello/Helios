@@ -7,7 +7,7 @@
 #include <QJsonDocument>
 #include <QUuid>
 #include <QtConcurrent>
-namespace godeye {
+namespace helios {
 MonitoringRunner::MonitoringRunner(QString jobs, Missions &missions, ScientificQueue &queue,
                                    Products products, Submit submit, QObject *parent)
     : QObject(parent), jobs_(std::move(jobs)), missions_(missions), queue_(queue),
@@ -349,4 +349,4 @@ void MonitoringRunner::discovered(const QString &mission, const QString &monitor
     }
   }
 }
-} // namespace godeye
+} // namespace helios

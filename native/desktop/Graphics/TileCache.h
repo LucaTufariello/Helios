@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 
-namespace godeye {
+namespace helios {
 struct TileData {
   TileID id;
   QImage image;
@@ -66,4 +66,4 @@ private:
   void store(const QString &key, std::shared_ptr<TileData> data, bool terrain);
   void removeTerrain(const TileData &data);
 };
-} // namespace godeye
+} // namespace helios

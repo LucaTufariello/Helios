@@ -5,7 +5,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace godeye {
+namespace helios {
 namespace {
 constexpr double pi = std::numbers::pi;
 constexpr double radius = 6378137.0;
@@ -258,4 +258,4 @@ QMatrix4x4 viewProjection(const Camera &camera, double height, double aspect) {
                         -1, 0);
   return projection * view;
 }
-} // namespace godeye
+} // namespace helios

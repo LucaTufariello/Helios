@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Keep the Qt private RHI libraries and plugins with the binary that used them.
+set -euo pipefail
+helios_launcher="$(readlink -f -- "${BASH_SOURCE[0]}")"
+helios_package="$(cd -- "$(dirname -- "$helios_launcher")" && pwd)"
+if [[ "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ]]; then
+  printf 'This Helios package requires Linux x86_64.\n' >&2
+  exit 1
+fi
+export LD_LIBRARY_PATH="$helios_package/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export QT_PLUGIN_PATH="$helios_package/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="$helios_package/plugins/platforms"
+# Host desktop theme plugins can use a different Qt private ABI. Qt's built-in
+# style remains available, with the app's own light/dark palette.
+unset QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE
+if [[ "${1:-}" == --check-runtime ]]; then
+  helios_failed=0
+  while IFS= read -r -d '' helios_elf; do
+    helios_dependencies="$(ldd "$helios_elf" 2>&1)" || helios_failed=1
+    if [[ "$helios_dependencies" == *'not found'* ]]; then
+      printf '%s\n%s\n' "$helios_elf" "$helios_dependencies" >&2
+      helios_failed=1
+    fi
+    if [[ "$helios_dependencies" == *libQt6* ]]; then
+      while IFS= read -r helios_line; do
+        if [[ "$helios_line" == *libQt6* && "$helios_line" != *"$helios_package/lib/"* ]]; then
+          printf 'Qt library resolved outside this package: %s\n' "$helios_line" >&2
+          helios_failed=1
+        fi
+      done <<< "$helios_dependencies"
+    fi
+  done < <(find "$helios_package/bin" "$helios_package/plugins" -type f \( -name 'HeliosDesktop' -o -name 'ffmpeg' -o -name '*.so' \) -print0)
+  if [[ "$helios_failed" == 0 ]]; then
+    printf 'Helios runtime dependencies resolve; Qt libraries use %s/lib.\n' "$helios_package"
+    printf 'The host supplies Vulkan/OpenGL drivers, ICDs, fonts, certificates and its graphical session.\n'
+  fi
+  exit "$helios_failed"
+fi
+exec "$helios_package/bin/HeliosDesktop" "$@"

@@ -5,7 +5,7 @@
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QTest>
-using namespace godeye;
+using namespace helios;
 class InvestigationTests : public QObject {
   Q_OBJECT
   static Asset asset(QString name = "Generated civilian terminal") {
@@ -50,7 +50,7 @@ class InvestigationTests : public QObject {
 private slots:
   void portableFixturesRemainValid() {
     Missions m;
-    m.load(QString(GODEYE_TEST_FIXTURE_DIR) + "/cross-platform-investigation.json");
+    m.load(QString(HELIOS_TEST_FIXTURE_DIR) + "/cross-platform-investigation.json");
     QCOMPARE(investigation(m.selected())["snapshots"].toArray().size(), 3);
     QCOMPARE(investigation(m.selected())["findings"]
                  .toArray()[0]
@@ -58,7 +58,7 @@ private slots:
                  .toArray()
                  .size(),
              1);
-    AssetRegistry registry(QString(GODEYE_TEST_FIXTURE_DIR) + "/cross-platform-registry.json");
+    AssetRegistry registry(QString(HELIOS_TEST_FIXTURE_DIR) + "/cross-platform-registry.json");
     registry.load();
     QCOMPARE(registry.assets().size(), 2);
     QCOMPARE(registry.relationships().size(), 1);
@@ -280,7 +280,7 @@ private slots:
   void sarDraftRetainsOriginalReportSiteAndRejectsChangedContext() {
     QTemporaryDir directory;
     const auto bytes = JsonFile::read(
-        QString(GODEYE_TEST_FIXTURE_DIR) + "/change-review-result.json", 1024 * 1024);
+        QString(HELIOS_TEST_FIXTURE_DIR) + "/change-review-result.json", 1024 * 1024);
     auto report = QJsonDocument::fromJson(bytes).object();
     const auto reportID = newID();
     QDir(directory.path()).mkdir(reportID);
@@ -319,7 +319,7 @@ private slots:
   }
   void monitoringDraftPreservesEntryAndRejectsStaleReview() {
     Missions m;
-    m.load(QString(GODEYE_TEST_FIXTURE_DIR) + "/cross-platform-monitoring.json");
+    m.load(QString(HELIOS_TEST_FIXTURE_DIR) + "/cross-platform-monitoring.json");
     const auto mid = m.selectedID();
     const auto entry = m.selected()["brief"].toObject()["monitoringInbox"].toArray()[0].toObject();
     QJsonObject origin{
@@ -396,7 +396,7 @@ private slots:
   }
   void frozenPreviewsSurviveSourceDeletionAndFlagChangedProducts() {
     QTemporaryDir temp;
-    const auto configured = qEnvironmentVariable("GODEYE_INVESTIGATION_QA");
+    const auto configured = qEnvironmentVariable("HELIOS_INVESTIGATION_QA");
     const auto target = configured.isEmpty() ? temp.path() : configured;
     const auto directory = QDir(target).filePath(newID());
     QDir().mkpath(directory);
@@ -460,7 +460,7 @@ private slots:
   }
   void nativeBriefingMissingEvidenceLongTextAndConflicts() {
     QTemporaryDir temp;
-    const auto configured = qEnvironmentVariable("GODEYE_INVESTIGATION_QA");
+    const auto configured = qEnvironmentVariable("HELIOS_INVESTIGATION_QA");
     const auto target = configured.isEmpty() ? temp.path() : configured;
     QDir().mkpath(target);
     Missions m;

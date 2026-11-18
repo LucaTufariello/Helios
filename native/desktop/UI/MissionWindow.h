@@ -9,7 +9,7 @@ class QListWidget;
 class QLabel;
 class QTabWidget;
 class QStackedWidget;
-namespace godeye {
+namespace helios {
 class DossierPanel;
 class MissionWindow : public QMainWindow {
   Q_OBJECT
@@ -59,4 +59,4 @@ private:
   bool resolveReview();
   void remove(QListWidget *list, const QString &collection);
 };
-} // namespace godeye
+} // namespace helios

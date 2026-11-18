@@ -6,7 +6,7 @@
 #include <QUrl>
 #include <QVector>
 #include <optional>
-namespace godeye {
+namespace helios {
 struct FeedDescriptor {
   QString id, name, section, credit;
   int intervalSeconds;
@@ -66,6 +66,6 @@ std::optional<DomainRecord> ais(const QByteArray &bytes, QString *error = nullpt
 QUrl cameraURL(const QString &url);
 QString mappedQuery(const QString &feed, Bounds bounds, QString *error = nullptr);
 } // namespace DomainParsers
-} // namespace godeye
-Q_DECLARE_METATYPE(godeye::DomainRecord)
-Q_DECLARE_METATYPE(godeye::DomainSnapshot)
+} // namespace helios
+Q_DECLARE_METATYPE(helios::DomainRecord)
+Q_DECLARE_METATYPE(helios::DomainSnapshot)

@@ -7,7 +7,7 @@
 #include <QSet>
 #include <memory>
 class QNetworkReply;
-namespace godeye {
+namespace helios {
 enum class DailySource { Off, TrueColor, Terra, NightLights, Thermal };
 struct DailyTile {
   TileID id;
@@ -79,4 +79,4 @@ private:
   void pump();
   void evict();
 };
-} // namespace godeye
+} // namespace helios

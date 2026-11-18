@@ -3,7 +3,7 @@
 #import <LocalAuthentication/LocalAuthentication.h>
 #import <Security/Security.h>
 
-namespace godeye {
+namespace helios {
 CredentialResult macCredential(const QString &account, const QString *value, bool remove) {
   @autoreleasepool {
     const auto name = account.toUtf8();
@@ -12,7 +12,7 @@ CredentialResult macCredential(const QString &account, const QString *value, boo
                                                 encoding:NSUTF8StringEncoding];
     NSDictionary *query = @{
       (__bridge id)kSecClass : (__bridge id)kSecClassGenericPassword,
-      (__bridge id)kSecAttrService : @"io.godeye.native.providers",
+      (__bridge id)kSecAttrService : @"io.helios.native.providers",
       (__bridge id)kSecAttrAccount : identity
     };
     OSStatus status = errSecSuccess;
@@ -58,4 +58,4 @@ CredentialResult macCredential(const QString &account, const QString *value, boo
     return result;
   }
 }
-} // namespace godeye
+} // namespace helios

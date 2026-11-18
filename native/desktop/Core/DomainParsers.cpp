@@ -8,7 +8,7 @@
 #include <QUuid>
 #include <QXmlStreamReader>
 #include <cmath>
-namespace godeye::DomainParsers {
+namespace helios::DomainParsers {
 namespace {
 QJsonArray prefix(const QJsonArray &array, int limit) {
   QJsonArray out;
@@ -941,4 +941,4 @@ std::optional<DomainRecord> ais(const QByteArray &bytes, QString *error) {
     r.details["Course"] = QString::number(*course) + "°";
   return r;
 }
-} // namespace godeye::DomainParsers
+} // namespace helios::DomainParsers

@@ -46,12 +46,12 @@
 #include <QtConcurrent>
 #include <cmath>
 
-namespace godeye {
+namespace helios {
 MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
     : QMainWindow(parent), settings_(profile + "/desktop.ini", QSettings::IniFormat),
       missions_(this) {
   QDir().mkpath(profile);
-  setWindowTitle("GodEye — Geospatial intelligence");
+  setWindowTitle("Helios — Geospatial intelligence");
   resize(1440, 960);
   setMinimumSize(1080, 700);
   auto *header = new QWidget;
@@ -379,7 +379,7 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
         QJsonObject{{"capturedAt", foundationNow()},
                     {"camera", map_->camera().json()},
                     {"attribution",
-                     "Map context: GodEye display; basemap tiles © OpenStreetMap contributors and "
+                     "Map context: Helios display; basemap tiles © OpenStreetMap contributors and "
                      "Esri World Imagery as configured in the map. Satellite overlays retain "
                      "provider attribution per evidence source."}});
   });
@@ -513,7 +513,7 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
   headerLayout->addWidget(logo);
   auto *brand = new QVBoxLayout;
   brand->setSpacing(0);
-  brand->addWidget(design::label("GODEYE", "brand"));
+  brand->addWidget(design::label("HELIOS", "brand"));
   auto *tagline = design::label("GEOSPATIAL INTELLIGENCE", "kicker");
   tagline->setObjectName("workspaceTagline");
   brand->addWidget(tagline);
@@ -602,7 +602,7 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
   missionAction->setShortcut(QKeySequence("Ctrl+6"));
   auto *surfaceAction = new QAction("3D Surface", this);
   auto *surface = new QDialog(this);
-  surface->setWindowTitle("3D Surface — GodEye");
+  surface->setWindowTitle("3D Surface — Helios");
   surface->setAttribute(Qt::WA_QuitOnClose, false);
   surface->resize(620, 340);
   auto *surfaceLayout = new QVBoxLayout(surface);
@@ -871,7 +871,7 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
   auto *about = help->addAction("Desktop migration status");
   connect(about, &QAction::triggered, this, [this] {
     QMessageBox::information(
-        this, "GodEye desktop preview",
+        this, "Helios desktop preview",
         "C++20 / Qt desktop client with GPU map, terrain, saved satellite previews and mission "
         "documents, satellite acquisition/processing and infrastructure review.\n\n"
         "Native source feeds, map tools and CPU image assistance are available. "
@@ -1285,4 +1285,4 @@ void MainWindow::closeEvent(QCloseEvent *event) {
   monitors_->stop();
   event->accept();
 }
-} // namespace godeye
+} // namespace helios

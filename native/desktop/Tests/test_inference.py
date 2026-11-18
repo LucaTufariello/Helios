@@ -13,7 +13,7 @@ from PIL import Image
 from inference_fixture import make_fixture
 
 WORKER = Path(__file__).resolve().parents[1] / "Inference" / "infer.py"
-spec = importlib.util.spec_from_file_location("godeye_infer", WORKER)
+spec = importlib.util.spec_from_file_location("helios_infer", WORKER)
 infer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(infer)
 

@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include <sys/file.h>
 #include <unistd.h>
-namespace godeye {
+namespace helios {
 namespace {
 void require(bool ok, const char *message) {
   if (!ok)
@@ -60,4 +60,4 @@ QString trashOwnedProduct(const QString &jobsRoot, const ProductLayer &product, 
                                      "permanent-delete fallback was used.");
   return trashed;
 }
-} // namespace godeye
+} // namespace helios

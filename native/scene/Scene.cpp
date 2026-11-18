@@ -1,4 +1,4 @@
-#include "GodEyeScene.h"
+#include "HeliosScene.h"
 #include <Cesium3DTilesContent/registerAllTileContentTypes.h>
 #include <Cesium3DTilesSelection/BoundingVolume.h>
 #include <Cesium3DTilesSelection/IPrepareRendererResources.h>
@@ -268,9 +268,9 @@ public:
 } // namespace
 
 struct GEScene {
-  std::shared_ptr<CesiumAsync::ITaskProcessor> jobs = godeye::scene::makeJobs();
+  std::shared_ptr<CesiumAsync::ITaskProcessor> jobs = helios::scene::makeJobs();
   CesiumAsync::AsyncSystem async{jobs};
-  std::shared_ptr<godeye::scene::Assets> assets;
+  std::shared_ptr<helios::scene::Assets> assets;
   std::shared_ptr<Prepare> prepare = std::make_shared<Prepare>();
   std::shared_ptr<CesiumUtility::CreditSystem> credits =
       std::make_shared<CesiumUtility::CreditSystem>();
@@ -285,7 +285,7 @@ extern "C" GEScene *GE_scene_create(const char *urlString) {
   try {
     if (!urlString)
       return nullptr;
-    auto assets = godeye::scene::makeAssets(urlString);
+    auto assets = helios::scene::makeAssets(urlString);
     if (!assets)
       return nullptr;
     Cesium3DTilesContent::registerAllTileContentTypes();
@@ -294,7 +294,7 @@ extern "C" GEScene *GE_scene_create(const char *urlString) {
     Cesium3DTilesSelection::TilesetExternals externals{scene->assets, scene->prepare, scene->async,
                                                        scene->credits};
     externals.pLogger = std::make_shared<spdlog::logger>(
-        "GodEyeTiles", std::make_shared<spdlog::sinks::null_sink_mt>());
+        "HeliosTiles", std::make_shared<spdlog::sinks::null_sink_mt>());
     Cesium3DTilesSelection::TilesetOptions options;
     options.maximumCachedBytes = 128 * 1024 * 1024;
     options.maximumSimultaneousTileLoads = 4;

@@ -11,7 +11,7 @@
 #include <QUuid>
 #include <cmath>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 void require(bool ok, const char *message) {
   if (!ok)
@@ -283,4 +283,4 @@ void ChangeNotes::set(const QString &candidate, const QString &decision, const Q
   file_.save(QJsonDocument(next));
   notes_ = next;
 }
-} // namespace godeye
+} // namespace helios

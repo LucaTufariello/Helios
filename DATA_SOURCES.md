@@ -1,7 +1,7 @@
 # Native data sources and attribution
 
 The canonical provider names/credits are in
-`native/macos/Sources/GodEyeCore/Records.swift`. URLs, bounds and request policies
+`native/macos/Sources/HeliosCore/Records.swift`. URLs, bounds and request policies
 live with the native services. This table describes the maintained application;
 provider terms control data use independently of the project's MIT source license.
 Free access does not imply unrestricted redistribution or commercial use.
@@ -32,7 +32,7 @@ Free access does not imply unrestricted redistribution or commercial use.
 
 ## Canonical bundled resources
 
-`native/macos/Sources/GodEyeCore/Resources/` is the only maintained copy of the
+`native/macos/Sources/HeliosCore/Resources/` is the only maintained copy of the
 reference data. Its files are packaged directly by SwiftPM:
 
 - `datacenters/`: 4,351 OpenStreetMap-derived features, ODbL 1.0. Extraction date

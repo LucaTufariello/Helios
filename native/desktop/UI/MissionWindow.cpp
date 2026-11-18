@@ -29,7 +29,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 
-namespace godeye {
+namespace helios {
 namespace {
 QPushButton *button(const QString &text, QVBoxLayout *layout, const std::function<void()> &action) {
   auto *b = new QPushButton(text);
@@ -76,7 +76,7 @@ void choices(QComboBox *combo, const QJsonArray &array, const QString &key) {
 } // namespace
 MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent)
     : QMainWindow(parent), missions_(missions), map_(map) {
-  setWindowTitle("GodEye — Mission Control");
+  setWindowTitle("Helios — Mission Control");
   resize(1240, 860);
   setMinimumSize(1000, 700);
   setAttribute(Qt::WA_DeleteOnClose, false);
@@ -194,7 +194,7 @@ MissionWindow::MissionWindow(Missions &missions, MapWidget &map, QWidget *parent
   auto *local = design::label("LOCAL WORKSPACE", "kicker");
   side->addWidget(local);
   auto *note = design::label(
-      "Mission entries and evidence share the map. Automations run while GodEye is open.",
+      "Mission entries and evidence share the map. Automations run while Helios is open.",
       "secondary");
   note->setWordWrap(true);
   side->addWidget(note);
@@ -636,7 +636,7 @@ void MissionWindow::updateNavigation() {
       {"Tasks", "Tasks", "Track follow-up work and completion within this mission.",
        design::Symbol::Mission},
       {"Monitors", "Automations",
-       "Check acquisition and evidence availability while GodEye is open.", design::Symbol::Tools},
+       "Check acquisition and evidence availability while Helios is open.", design::Symbol::Tools},
       {"Activity", "Activity", "Inspect the history retained in this local mission library.",
        design::Symbol::Data}};
   for (const auto &section : sections)
@@ -838,7 +838,7 @@ bool MissionWindow::save(bool copy) {
     filename = QFileDialog::getSaveFileName(
         this, "Save mission library",
         QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-            "/GodEye-missions.json",
+            "/Helios-missions.json",
         "Mission library (*.json)");
   if (filename.isEmpty())
     return false;
@@ -881,4 +881,4 @@ void MissionWindow::remove(QListWidget *list, const QString &collection) {
                             QMessageBox::Yes | QMessageBox::Cancel) == QMessageBox::Yes)
     run([&] { missions_.removeEntry(collection, id); });
 }
-} // namespace godeye
+} // namespace helios

@@ -9,9 +9,9 @@ The current product is calibrated Sigma0, geometrically terrain-corrected with S
 From the repository root, with the existing configured SAR Python environment:
 
 ```sh
-"$HOME/Library/Application Support/GodEye/SAR/runtime/bin/python3" -B \
+"$HOME/Library/Application Support/Helios/SAR/runtime/bin/python3" -B \
   native/macos/Validation/sar_quality.py \
-  --job "$HOME/Library/Application Support/GodEye/SAR/jobs/<completed-job-UUID>" \
+  --job "$HOME/Library/Application Support/Helios/SAR/jobs/<completed-job-UUID>" \
   --report output/validation/quality.json \
   --gpt /Applications/esa-snap/bin/gpt
 native/macos/test-sar.sh
@@ -33,10 +33,10 @@ The completed job `D8E30D8D-23E7-4642-989C-52CED875CE17` was checked locally on 
 
 1. **Geographic alignment:** obtain independent reference data with recorded CRS, acquisition/source date and accuracy. Use identifiable stable ground features in several flat and mountainous areas. Record matched SAR/reference coordinates, residual east/north errors in metres, sample count, robust spread and outliers. Separate ground position from SAR layover and surface-height effects. The Esri display mosaic and a visual impression of alignment are not survey-grade ground control.
 2. **External processor comparison:** obtain independently processed data for the same acquisition, with compatible radiometry, noise handling, orbit, DEM, pixel grid, resampling and masks. Compare region statistics and residuals in dB on common valid pixels. Re-running the same SNAP graph through its GUI is a repeatability check, not an independent algorithmic reference.
-3. **Absolute radiometry:** use published calibration/reference measurements with known uncertainty. Sentinel-1 mission performance specifications are not a measured accuracy result for GodEye. A comparison against another processor alone cannot establish absolute sensor calibration.
+3. **Absolute radiometry:** use published calibration/reference measurements with known uncertainty. Sentinel-1 mission performance specifications are not a measured accuracy result for Helios. A comparison against another processor alone cannot establish absolute sensor calibration.
 4. **Coverage:** repeat checks across additional scenes, satellites, low-backscatter regions, coastlines and terrain types. Report nodata, negative noise-corrected power, and rejected pixels explicitly. Do not fill missing pixels merely to produce a complete-looking map.
 
-ASF's [independent RTC processing guide](https://hyp3-docs.asf.alaska.edu/guides/rtc_product_guide/) describes GAMMA-based processing, with terrain-area normalization and gamma0 by default. Those products cannot be assumed pixel-equivalent to GodEye's current unflattened Sigma0 just because both are georeferenced. Match the processing quantities and terrain normalization, or document and explain the expected differences. The provider's processing engine and access conditions are separate from GodEye's open-source application.
+ASF's [independent RTC processing guide](https://hyp3-docs.asf.alaska.edu/guides/rtc_product_guide/) describes GAMMA-based processing, with terrain-area normalization and gamma0 by default. Those products cannot be assumed pixel-equivalent to Helios's current unflattened Sigma0 just because both are georeferenced. Match the processing quantities and terrain normalization, or document and explain the expected differences. The provider's processing engine and access conditions are separate from Helios's open-source application.
 
 ## Recommended application: infrastructure and site change monitoring
 

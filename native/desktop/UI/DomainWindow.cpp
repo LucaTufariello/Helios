@@ -32,7 +32,7 @@
 #include <QVBoxLayout>
 #include <QtConcurrent>
 #include <algorithm>
-namespace godeye {
+namespace helios {
 DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool networking, bool workspace)
     : QDialog(parent), profile_(profile), network_(this, networking) {
   setWindowTitle("Sources & observations");
@@ -869,4 +869,4 @@ void DomainWindow::loadFrame() {
     return reader.read();
   }));
 }
-} // namespace godeye
+} // namespace helios

@@ -16,7 +16,7 @@
 #include <QSettings>
 #include <QVBoxLayout>
 #include <QtConcurrent>
-namespace godeye {
+namespace helios {
 InferenceWindow::InferenceWindow(const QString &profile, QWidget *parent)
     : QMainWindow(parent), profile_(profile) {
   setWindowTitle("Local object assistance");
@@ -301,4 +301,4 @@ void InferenceWindow::refresh() {
     preview_->setPixmap(QPixmap::fromImage(image));
   }
 }
-} // namespace godeye
+} // namespace helios

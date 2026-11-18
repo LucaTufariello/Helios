@@ -8,11 +8,11 @@
 #include <fcntl.h>
 #include <sys/file.h>
 #include <unistd.h>
-using namespace godeye;
+using namespace helios;
 class InfrastructureTests : public QObject {
   Q_OBJECT
   QJsonObject result() {
-    QFile file(QString(GODEYE_FIXTURE_DIR) + "/change-review-result.json");
+    QFile file(QString(HELIOS_FIXTURE_DIR) + "/change-review-result.json");
     if (!file.open(QIODevice::ReadOnly))
       qFatal("Missing reference fixture");
     return QJsonDocument::fromJson(file.readAll()).object();

@@ -14,7 +14,7 @@
 #include <QSpinBox>
 #include <QTemporaryDir>
 #include <QTest>
-using namespace godeye;
+using namespace helios;
 class MonitoringUITests : public QObject {
   Q_OBJECT
 private slots:

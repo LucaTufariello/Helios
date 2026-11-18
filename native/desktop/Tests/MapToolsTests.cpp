@@ -7,8 +7,8 @@
 #include <QUrlQuery>
 #include <QtTest>
 #include <cmath>
-using namespace godeye;
-using namespace godeye::qa;
+using namespace helios;
+using namespace helios::qa;
 namespace {
 QByteArray places(const QString &name = "Milan") {
   QJsonObject point{{"type", "Point"}, {"coordinates", QJsonArray{9.19, 45.46}}};
@@ -211,7 +211,7 @@ private slots:
     QVERIFY(!validatedWorkspace(invalid).isEmpty());
     auto malicious = value;
     malicious["annotations"] = QJsonArray{newAnnotation("Hidden", {{45, 9}}, false)};
-    QUrl bad("godeye://workspace");
+    QUrl bad("helios://workspace");
     QUrlQuery query;
     query.addQueryItem(
         "state",
@@ -219,7 +219,7 @@ private slots:
     bad.setQuery(query);
     QVERIFY(!workspaceFromShareURL(bad));
     QVERIFY(!workspaceFromShareURL(QUrl(link.toString() + "&state=bad")));
-    QVERIFY(!workspaceFromShareURL(QUrl("godeye://workspace?state=@@@")));
+    QVERIFY(!workspaceFromShareURL(QUrl("helios://workspace?state=@@@")));
     QFile corrupt(root.path() + "/corrupt.json");
     QVERIFY(corrupt.open(QIODevice::WriteOnly));
     corrupt.write("{");
@@ -234,8 +234,8 @@ private slots:
     QVERIFY(parsed);
     QCOMPARE(parsed->json(), camera.json());
     QVERIFY(!cameraFromShareURL(QUrl(url.toString() + "&lat=10")));
-    QVERIFY(!cameraFromShareURL(QUrl("godeye://view?lat=45&lon=9&alt=1")));
-    QVERIFY(!cameraFromShareURL(QUrl("godeye://view?lat=45&lon=9&alt=30000&heading=360")));
+    QVERIFY(!cameraFromShareURL(QUrl("helios://view?lat=45&lon=9&alt=1")));
+    QVERIFY(!cameraFromShareURL(QUrl("helios://view?lat=45&lon=9&alt=30000&heading=360")));
     QVERIFY(workspaceFromShareURL(url));
     SolarState solar(QDateTime::fromString("2026-06-21T12:00:00Z", Qt::ISODate));
     QVERIFY(solar.subsolar.latitude > 23 && solar.subsolar.latitude < 24);
@@ -249,14 +249,14 @@ private slots:
     }
   }
   void publicLookupOptIn() {
-    if (!qEnvironmentVariableIsSet("GODEYE_MAPTOOLS_LIVE"))
-      QSKIP("Set GODEYE_MAPTOOLS_LIVE for Photon and public OSRM checks.");
+    if (!qEnvironmentVariableIsSet("HELIOS_MAPTOOLS_LIVE"))
+      QSKIP("Set HELIOS_MAPTOOLS_LIVE for Photon and public OSRM checks.");
     MapLookup search;
     QVERIFY(search.search("Milano Italia"));
     QTRY_VERIFY_WITH_TIMEOUT(!search.busy(), 45000);
     QVERIFY2(search.error().isEmpty(), qPrintable(search.error()));
     QVERIFY(!search.places().isEmpty());
-    const auto qa = qEnvironmentVariable("GODEYE_MAPTOOLS_QA");
+    const auto qa = qEnvironmentVariable("HELIOS_MAPTOOLS_QA");
     if (!qa.isEmpty()) {
       QVERIFY(QDir().mkpath(qa));
       QFile file(qa + "/photon-live.json");
@@ -272,14 +272,14 @@ private slots:
     }
   }
   void publicRouteOptIn() {
-    if (!qEnvironmentVariableIsSet("GODEYE_MAPTOOLS_LIVE"))
-      QSKIP("Set GODEYE_MAPTOOLS_LIVE for the public OSRM route check.");
+    if (!qEnvironmentVariableIsSet("HELIOS_MAPTOOLS_LIVE"))
+      QSKIP("Set HELIOS_MAPTOOLS_LIVE for the public OSRM route check.");
     MapLookup directions;
     QVERIFY(directions.route({45.4641, 9.1919}, {45.4700, 9.2000}, "foot"));
     QTRY_VERIFY_WITH_TIMEOUT(!directions.busy(), 45000);
     QVERIFY2(directions.error().isEmpty(), qPrintable(directions.error()));
     QVERIFY(directions.result().points.size() >= 2);
-    const auto qa = qEnvironmentVariable("GODEYE_MAPTOOLS_QA");
+    const auto qa = qEnvironmentVariable("HELIOS_MAPTOOLS_QA");
     if (!qa.isEmpty()) {
       QVERIFY(QDir().mkpath(qa));
       QFile file(qa + "/osrm-live.json");

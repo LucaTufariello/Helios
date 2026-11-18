@@ -1,4 +1,4 @@
-# GodEye: instructions for completing the native macOS/Linux migration
+# Helios: instructions for completing the native macOS/Linux migration
 
 Prepared 15 October 2026. Read this file before editing the project. It is a
 repository handoff for a coding model running through an API; no previous chat,
@@ -125,19 +125,19 @@ evidence, and record limitations rather than copying unsupported claims.
 | Build and CI | `CMakeLists.txt`, `Makefile`, `native/desktop/CMakeLists.txt`, `native/desktop/build.sh`, `.github/workflows/ci.yml` |
 | Shared geometry | `native/shared/Sources/Spatial.cpp`, its public C header and tests; Swift adapters in `Geography.swift` and `SceneGeometry.swift` |
 | Qt renderer | `native/desktop/Graphics/MapWidget.*`, `TileCache.*`, `Core/Geography.*`, `shaders/` |
-| Full scene engine | `native/macos/engine/`, `Sources/CScene/`, `Sources/GodEyeCore/NativeTileset.swift`, `Terrain.swift`, `SceneGeometry.swift`, `Sources/GodEyeMac/GlobeRenderer.swift` |
+| Full scene engine | `native/macos/engine/`, `Sources/CScene/`, `Sources/HeliosCore/NativeTileset.swift`, `Terrain.swift`, `SceneGeometry.swift`, `Sources/HeliosMac/GlobeRenderer.swift` |
 | Qt mission/product storage | `native/desktop/Core/Missions.*`, `Products.*`, `UI/MissionWindow.*`, `UI/SatelliteWindow.*` |
-| Full mission behavior | `native/macos/Sources/GodEyeCore/MissionPlan.swift`, `MissionOperations.swift`, `MissionTimeline.swift`; `GodEyeMac/Mission*Workspace.swift`, `MissionControlView.swift`, `MissionTimelineView.swift` |
-| Sentinel-1 acquisition/processing | `GodEyeCore/SentinelCatalog.swift`, `SarProcessor.swift`; `GodEyeMac/SarAcquisitionWorkspace.swift`, `SarWorkspace.swift`, `SatelliteViews.swift` |
-| Optical acquisition | `GodEyeCore/SentinelOptical.swift`; `GodEyeMac/OpticalWorkspace.swift`, `SatelliteWorkspace.swift` |
-| Scientific workers | `native/macos/Sources/GodEyeMac/Resources/SAR/{sentinel1.py,change_review.py}` and `Resources/Optical/{sentinel2.py,optical_sources.py}` |
-| Sites/change review | `GodEyeCore/InfrastructureReview.swift`, `MappedSites.swift`; satellite workspace and Python change-review worker |
-| Sources and map tools | `GodEyeCore/NativeSources.swift`, `Transport.swift`, `ProviderParsers.swift`, `Records.swift`, `ReferenceLayers.swift`, domain-specific files, `AnnotationDocument.swift`, `Directions.swift`, `WorkspaceState.swift`; `GodEyeMac/WorkspaceModel.swift`, `WorkspaceTools.swift` |
-| Credentials/storage | `native/macos/Sources/GodEyeMac/LocalStorage.swift`, mission/satellite storage implementations; Qt `main.cpp` and settings/profile handling |
-| Local detection | `native/macos/Sources/GodEyeMac/MissionDetection.swift`, mission object/provenance models; [detector limits](docs/LOCAL-OBJECT-DETECTION.md) |
-| Tests | `native/shared/Tests/`, `native/desktop/Tests/CoreTests.cpp`, `native/desktop/Validation.cpp`, `native/macos/Tests/GodEyeCoreTests/`, `native/macos/Tests/SAR/`, `native/macos/Validation/` |
+| Full mission behavior | `native/macos/Sources/HeliosCore/MissionPlan.swift`, `MissionOperations.swift`, `MissionTimeline.swift`; `HeliosMac/Mission*Workspace.swift`, `MissionControlView.swift`, `MissionTimelineView.swift` |
+| Sentinel-1 acquisition/processing | `HeliosCore/SentinelCatalog.swift`, `SarProcessor.swift`; `HeliosMac/SarAcquisitionWorkspace.swift`, `SarWorkspace.swift`, `SatelliteViews.swift` |
+| Optical acquisition | `HeliosCore/SentinelOptical.swift`; `HeliosMac/OpticalWorkspace.swift`, `SatelliteWorkspace.swift` |
+| Scientific workers | `native/macos/Sources/HeliosMac/Resources/SAR/{sentinel1.py,change_review.py}` and `Resources/Optical/{sentinel2.py,optical_sources.py}` |
+| Sites/change review | `HeliosCore/InfrastructureReview.swift`, `MappedSites.swift`; satellite workspace and Python change-review worker |
+| Sources and map tools | `HeliosCore/NativeSources.swift`, `Transport.swift`, `ProviderParsers.swift`, `Records.swift`, `ReferenceLayers.swift`, domain-specific files, `AnnotationDocument.swift`, `Directions.swift`, `WorkspaceState.swift`; `HeliosMac/WorkspaceModel.swift`, `WorkspaceTools.swift` |
+| Credentials/storage | `native/macos/Sources/HeliosMac/LocalStorage.swift`, mission/satellite storage implementations; Qt `main.cpp` and settings/profile handling |
+| Local detection | `native/macos/Sources/HeliosMac/MissionDetection.swift`, mission object/provenance models; [detector limits](docs/LOCAL-OBJECT-DETECTION.md) |
+| Tests | `native/shared/Tests/`, `native/desktop/Tests/CoreTests.cpp`, `native/desktop/Validation.cpp`, `native/macos/Tests/HeliosCoreTests/`, `native/macos/Tests/SAR/`, `native/macos/Validation/` |
 
-In rows using `GodEyeCore/` or `GodEyeMac/`, those directories are under
+In rows using `HeliosCore/` or `HeliosMac/`, those directories are under
 `native/macos/Sources/`. Reuse existing native components where practical; the
 Objective-C++ scene bridge itself still needs a portable boundary. Do not rebuild
 complex 3D Tiles/SAR algorithms from scratch merely to eliminate a wrapper.
@@ -166,19 +166,19 @@ make test-desktop
 
 `make build`, `make test` and `make setup-raster` currently target the full **Mac**
 client. Do not run them blindly on Linux or weaken them to report success there.
-The Qt executable on Linux is `output/desktop/build/bin/GodEyeDesktop`.
+The Qt executable on Linux is `output/desktop/build/bin/HeliosDesktop`.
 
 Run GPU checks inside the real graphical session, retaining each run's logs and
 reports in a new QA directory. For example:
 
 ```sh
-godeye_run="output/qa/linux-$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p "$godeye_run"
-./native/desktop/diagnose-linux.sh > "$godeye_run/environment.txt" 2>&1
-./output/desktop/build/bin/GodEyeDesktop --validate \
-  --qa-output "$godeye_run/generated" > "$godeye_run/generated.log" 2>&1
-./output/desktop/build/bin/GodEyeDesktop --validate-live \
-  --qa-output "$godeye_run/live" > "$godeye_run/live.log" 2>&1
+helios_run="output/qa/linux-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "$helios_run"
+./native/desktop/diagnose-linux.sh > "$helios_run/environment.txt" 2>&1
+./output/desktop/build/bin/HeliosDesktop --validate \
+  --qa-output "$helios_run/generated" > "$helios_run/generated.log" 2>&1
+./output/desktop/build/bin/HeliosDesktop --validate-live \
+  --qa-output "$helios_run/live" > "$helios_run/live.log" 2>&1
 ```
 
 Check each command's exit status, `validation.json`, backend/GPU identity and
@@ -194,8 +194,8 @@ create a Linux environment instead of removing that guard:
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python3 -m pip install -r native/macos/Sources/GodEyeMac/Resources/SAR/requirements.txt
-GODEYE_SAR_PYTHON="$PWD/.venv/bin/python3" make test-raster
+.venv/bin/python3 -m pip install -r native/macos/Sources/HeliosMac/Resources/SAR/requirements.txt
+HELIOS_SAR_PYTHON="$PWD/.venv/bin/python3" make test-raster
 ```
 
 Record actual Python/GDAL/Rasterio versions and dependency installation failures.
@@ -321,7 +321,7 @@ Never use a disabled button or preserved JSON field as proof of workflow parity.
 ## Data compatibility and required regression cases
 
 Original user data lives outside Git on macOS under
-`~/Library/Application Support/GodEye/`. In particular:
+`~/Library/Application Support/Helios/`. In particular:
 
 - `Missions/plans.json`: mission library.
 - `Satellite/optical/`: optical job folders.
@@ -355,7 +355,7 @@ Required compatibility checks include:
 For a copied real product on Linux, the existing Qt harness supports:
 
 ```sh
-./output/desktop/build/bin/GodEyeDesktop --validate \
+./output/desktop/build/bin/HeliosDesktop --validate \
   --product /absolute/path/to/copied-job/result.json \
   --qa-output output/qa/linux-product-check
 ```
@@ -363,8 +363,8 @@ For a copied real product on Linux, the existing Qt harness supports:
 For the opt-in mission core check, use a disposable copy:
 
 ```sh
-GODEYE_MISSION_CHECK=/absolute/path/to/copied-plans.json \
-  ./output/desktop/build/native/desktop/GodEyeDesktopTests existingMissionLibraryReadOnlyCheck
+HELIOS_MISSION_CHECK=/absolute/path/to/copied-plans.json \
+  ./output/desktop/build/native/desktop/HeliosDesktopTests existingMissionLibraryReadOnlyCheck
 ```
 
 As new workflows migrate, extend the native integration harness and run ordinary

@@ -2,7 +2,7 @@
 #include <QJsonDocument>
 #include <QString>
 #include <functional>
-namespace godeye {
+namespace helios {
 // Small user documents: validated load, conflict detection, last-good backup
 // and atomic publication. Call load before editing an existing document.
 class JsonFile {
@@ -23,4 +23,4 @@ private:
   QByteArray hash_;
   bool loaded_ = false, existed_ = false;
 };
-} // namespace godeye
+} // namespace helios

@@ -1,4 +1,4 @@
-#include "GodEyeScene.h"
+#include "HeliosScene.h"
 #include "SceneFixture.h"
 #include <QElapsedTimer>
 #include <QTemporaryDir>
@@ -28,7 +28,7 @@ class SceneTests : public QObject {
 private slots:
   void geometryMaterialPickingAndRelease() {
     QTemporaryDir directory;
-    auto scene = open(godeye::qa::sceneFixture(directory.path()));
+    auto scene = open(helios::qa::sceneFixture(directory.path()));
     QVERIFY(scene);
     QCOMPARE(load(scene.get()), 1);
     GEMesh mesh{};
@@ -43,7 +43,7 @@ private slots:
     QVERIFY(GE_scene_pick(scene.get(), {6378737, 0, 0}, {-1, 0, 0}, &hit));
     QCOMPARE(hit.x, 6378237.0);
     QVERIFY(QString::fromUtf8(GE_scene_credits(scene.get()))
-                .contains("GodEye automated test geometry"));
+                .contains("Helios automated test geometry"));
     GE_scene_rendered_meshes(scene.get(), nullptr, 0);
     QVERIFY(!GE_scene_pick(scene.get(), {6378737, 0, 0}, {-1, 0, 0}, &hit));
     GE_scene_rendered_meshes(scene.get(), &mesh.id, 1);
@@ -65,7 +65,7 @@ private slots:
     QFETCH(QString, content);
     QFETCH(int, mode);
     QTemporaryDir directory;
-    auto scene = open(godeye::qa::sceneFixture(directory.path(), content, mode));
+    auto scene = open(helios::qa::sceneFixture(directory.path(), content, mode));
     QVERIFY(scene);
     QCOMPARE(load(scene.get(), true), 0);
     QVERIFY(GE_scene_failures(scene.get()) > 0);
@@ -82,7 +82,7 @@ private slots:
     QFETCH(QString, mode);
     QFETCH(bool, textured);
     QTemporaryDir directory;
-    auto scene = open(godeye::qa::sceneFixture(directory.path(), "roof.glb", 4, mode, 0, textured));
+    auto scene = open(helios::qa::sceneFixture(directory.path(), "roof.glb", 4, mode, 0, textured));
     QVERIFY(scene);
     QCOMPARE(load(scene.get()), 1);
     GEPoint hit{};
@@ -97,7 +97,7 @@ private slots:
   }
   void cancellationAndAdmission() {
     QTemporaryDir directory;
-    const auto path = godeye::qa::sceneFixture(directory.path());
+    const auto path = helios::qa::sceneFixture(directory.path());
     QElapsedTimer timer;
     timer.start();
     for (int i = 0; i < 10; ++i) {

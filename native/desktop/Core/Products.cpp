@@ -14,7 +14,7 @@
 #include <QUuid>
 #include <stdexcept>
 
-namespace godeye {
+namespace helios {
 namespace {
 void require(bool value, const char *message) {
   if (!value)
@@ -210,4 +210,4 @@ void exportProductFile(const QString &source, const QString &destination,
   require(!cancelled || !cancelled->load(), "Export cancelled. The destination was not replaced.");
   require(output.commit(), "The exported product could not be committed atomically.");
 }
-} // namespace godeye
+} // namespace helios

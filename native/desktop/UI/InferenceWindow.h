@@ -10,7 +10,7 @@ class QLineEdit;
 class QPushButton;
 class QDoubleSpinBox;
 class QListWidget;
-namespace godeye {
+namespace helios {
 class InferenceWindow : public QMainWindow {
   Q_OBJECT
 public:
@@ -46,4 +46,4 @@ private:
   void start();
   void refresh();
 };
-} // namespace godeye
+} // namespace helios

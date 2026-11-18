@@ -20,7 +20,7 @@ python3 native/desktop/package-linux.py --native
 The script snapshots an existing completed build. It never installs packages,
 changes the graphics driver or replaces an existing package output. Artifacts
 appear in a new `output/packages/linux-UTC/` directory: a relocatable `.tar.zst`,
-an optional native `.pkg.tar.zst`, matching GodEye and FFmpeg source snapshots,
+an optional native `.pkg.tar.zst`, matching Helios and FFmpeg source snapshots,
 the FFmpeg distribution recipe/patch, and checksums.
 The native package declares its external Arch dependencies. Retain all artifacts
 together. This is a migration build; platform acceptance is recorded separately.
@@ -28,15 +28,15 @@ The distribution's `ffmpeg` package must be installed explicitly before
 packaging. The script fetches matching FFmpeg source and the Arch recipe into
 `output/vendor` for the source artifact; it never installs runtime packages.
 
-After extracting the relocatable archive, change into `godeye-desktop/`:
+After extracting the relocatable archive, change into `helios-desktop/`:
 
 ```sh
-./godeye-desktop --check-runtime
-./godeye-desktop
+./helios-desktop --check-runtime
+./helios-desktop
 ```
 
 Optional user installation adds a desktop entry and copies the app to
-`$XDG_DATA_HOME/godeye-desktop` (normally `~/.local/share/godeye-desktop`):
+`$XDG_DATA_HOME/helios-desktop` (normally `~/.local/share/helios-desktop`):
 
 ```sh
 python3 install-user.py
@@ -48,15 +48,15 @@ package or installed directory; custom `--prefix`/`--desktop-dir` options must
 match the original installation. Working profiles, imagery, missions, jobs and
 settings are stored separately and are preserved. Installing the native package
 with the distribution package manager instead places the app under `/opt` and
-adds `godeye-desktop` to the executable search path.
-Both desktop entries register support for `godeye://` view links and pass one
+adds `helios-desktop` to the executable search path.
+Both desktop entries register support for `helios://` view links and pass one
 URI directly to the app. They do not force the system's default association.
 
 For isolated checks, use a new profile:
 
 ```sh
-./godeye-desktop --profile /absolute/path/to/disposable-profile --offline
-./godeye-desktop --validate --qa-output /absolute/path/to/new-qa-output
+./helios-desktop --profile /absolute/path/to/disposable-profile --offline
+./helios-desktop --validate --qa-output /absolute/path/to/new-qa-output
 ```
 
 `--check-runtime` checks ELF dependencies and Qt library resolution. It does not
@@ -72,7 +72,7 @@ checks in a graphical session:
 
 ```sh
 python3 native/desktop/packaging/check-package.py \
-  --package output/packages/linux-UTC/godeye-desktop \
+  --package output/packages/linux-UTC/helios-desktop \
   --output output/qa/package-UTC --gpu --live
 ```
 
@@ -90,14 +90,14 @@ Processing Center. Ordinary map startup does not install or invoke them. No
 CUDA runtime or detector model is downloaded by packaging or startup.
 
 Project, Qt and static scene component licenses are retained under
-`share/godeye/licenses/`; `SOURCES.md` records source locations and replacement
+`share/helios/licenses/`; `SOURCES.md` records source locations and replacement
 instructions. Before public binary redistribution, retain corresponding third
 party sources/distributor patches and review dataset terms. Local packaging and
 an ad-hoc Mac signature are not a notarized or audited public release.
 
 # macOS bundle
 
-`native/desktop/build.sh` creates `GodEyeDesktop.app` on Apple Silicon, deploys
+`native/desktop/build.sh` creates `HeliosDesktop.app` on Apple Silicon, deploys
 its matching Homebrew Qt frameworks/plugins, copies the worker host, workers and
 licenses, and verifies an ad-hoc signature. The CI Qt job builds and checks that
 bundle on an arm64 runner. Its notice collector retains installed Homebrew Qt

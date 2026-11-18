@@ -2,7 +2,7 @@
 #include "WorkerJob.h"
 #include <QPointer>
 #include <QVector>
-namespace godeye {
+namespace helios {
 class ScientificQueue : public QObject {
   Q_OBJECT
 public:
@@ -37,4 +37,4 @@ private:
   bool completing_ = false;
   void drain();
 };
-} // namespace godeye
+} // namespace helios

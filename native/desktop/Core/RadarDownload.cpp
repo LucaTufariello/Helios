@@ -19,7 +19,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
-namespace godeye {
+namespace helios {
 namespace {
 struct Lease {
   int fd = -1;
@@ -175,7 +175,7 @@ bool RadarDownload::start(const RadarScene &scene, const RadarQuery &query, cons
       }
       QNetworkRequest request(url);
       request.setRawHeader("Authorization", "Bearer " + token.toUtf8());
-      request.setRawHeader("User-Agent", "GodEyeNative/1.0");
+      request.setRawHeader("User-Agent", "HeliosNative/1.0");
       request.setRawHeader("Accept-Encoding", "identity");
       request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                            QNetworkRequest::ManualRedirectPolicy);
@@ -287,4 +287,4 @@ bool RadarDownload::start(const RadarScene &scene, const RadarQuery &query, cons
   emit changed();
   return true;
 }
-} // namespace godeye
+} // namespace helios

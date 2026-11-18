@@ -14,7 +14,7 @@ class QPushButton;
 class QTabWidget;
 class QTableWidget;
 class QTextEdit;
-namespace godeye {
+namespace helios {
 class DomainWindow : public QDialog {
   Q_OBJECT
 public:
@@ -43,12 +43,12 @@ public:
   }
 signals:
   void liveSelectionRequested();
-  void feedsChanged(QVector<godeye::DomainRecord> records);
-  void recordSelected(godeye::DomainRecord record);
+  void feedsChanged(QVector<helios::DomainRecord> records);
+  void recordSelected(helios::DomainRecord record);
   void evidenceRequested(QJsonObject record);
-  void focusRequested(godeye::Coordinate coordinate, double range);
-  void followPositionChanged(godeye::Coordinate coordinate);
-  void geometrySelected(QVector<QVector<godeye::Coordinate>> paths, QVector<double> altitudes);
+  void focusRequested(helios::Coordinate coordinate, double range);
+  void followPositionChanged(helios::Coordinate coordinate);
+  void geometrySelected(QVector<QVector<helios::Coordinate>> paths, QVector<double> altitudes);
 
 private:
   QString profile_, section_ = "All", selectedID_, mediaRecordID_, followedID_;
@@ -81,4 +81,4 @@ private:
   std::optional<DomainRecord> selected() const;
   QVector<DomainRecord> displayRecords(const QVector<DomainRecord> &records) const;
 };
-} // namespace godeye
+} // namespace helios

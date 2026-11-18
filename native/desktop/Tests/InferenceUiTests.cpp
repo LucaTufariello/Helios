@@ -11,22 +11,22 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
-using namespace godeye;
+using namespace helios;
 class InferenceUiTests : public QObject {
   Q_OBJECT
 private slots:
   void generatedCpuReviewAndFrozenContext() {
-    const auto python = qEnvironmentVariable("GODEYE_INFERENCE_PYTHON");
+    const auto python = qEnvironmentVariable("HELIOS_INFERENCE_PYTHON");
     if (python.isEmpty())
-      QSKIP("Set GODEYE_INFERENCE_PYTHON for native local-assistance GUI integration.");
+      QSKIP("Set HELIOS_INFERENCE_PYTHON for native local-assistance GUI integration.");
     QTemporaryDir root;
     QVERIFY(root.isValid());
-    QCoreApplication::setOrganizationName("GodEyeGeneratedQA");
+    QCoreApplication::setOrganizationName("HeliosGeneratedQA");
     QCoreApplication::setApplicationName("InferenceUI");
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, root.path() + "/settings");
     QProcess fixture;
-    fixture.start(python, {"-I", GODEYE_INFERENCE_FIXTURE, root.path() + "/fixture"});
+    fixture.start(python, {"-I", HELIOS_INFERENCE_FIXTURE, root.path() + "/fixture"});
     QVERIFY(fixture.waitForFinished(30000));
     QCOMPARE(fixture.exitCode(), 0);
     auto request = WorkerJob::readRecord(root.path() + "/fixture/request.json");
@@ -60,7 +60,7 @@ private slots:
     QVERIFY(!accept->isEnabled());
     window.setEvidence(layer, evidence, mission);
     QVERIFY(accept->isEnabled());
-    const auto qa = qEnvironmentVariable("GODEYE_INFERENCE_QA");
+    const auto qa = qEnvironmentVariable("HELIOS_INFERENCE_QA");
     if (!qa.isEmpty()) {
       QVERIFY(QDir().mkpath(qa));
       QVERIFY(window.grab().save(qa + "/generated-assistance.png"));

@@ -19,7 +19,7 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QVBoxLayout>
-namespace godeye {
+namespace helios {
 SiteMonitoringPanel::SiteMonitoringPanel(Missions &missions, MonitoringRunner &runner,
                                          QWidget *parent)
     : QWidget(parent), missions_(missions), runner_(runner) {
@@ -396,4 +396,4 @@ void SiteMonitoringPanel::run(const std::function<void()> &fn) {
     status_->setText(QString::fromUtf8(e.what()));
   }
 }
-} // namespace godeye
+} // namespace helios
