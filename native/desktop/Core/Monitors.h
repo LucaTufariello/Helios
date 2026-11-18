@@ -4,7 +4,7 @@
 #include <QDateTime>
 #include <QPointer>
 #include <QTimer>
-namespace godeye {
+namespace helios {
 bool monitorDue(const QJsonObject &monitor, const QDateTime &now);
 QJsonObject receiveMonitor(QJsonObject monitor, QStringList identifiers, const QDateTime &now,
                            bool limited, int *newCount = nullptr);
@@ -48,4 +48,4 @@ private:
   bool networking_ = true;
   QMap<QString, QPointer<QObject>> work_;
 };
-} // namespace godeye
+} // namespace helios

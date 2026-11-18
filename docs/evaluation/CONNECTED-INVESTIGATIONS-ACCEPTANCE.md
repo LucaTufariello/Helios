@@ -28,7 +28,7 @@ Evidence directory: `output/qa/investigations-20261020/`.
 
 The validated package and matching source snapshot are under
 `output/packages/linux-investigations-20261020-complete/`. The source bundle is
-`godeye-source.tar.zst`; its SHA-256 is recorded in the sibling `SHA256SUMS` file.
+`helios-source.tar.zst`; its SHA-256 is recorded in the sibling `SHA256SUMS` file.
 The compiled build ID matches the packaged executable.
 
 Generated civilian airport/road records demonstrate the connected workflow. They

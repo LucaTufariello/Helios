@@ -45,14 +45,14 @@
 #include <numbers>
 #include <sys/resource.h>
 
-namespace godeye {
+namespace helios {
 int runValidation(QApplication &app, const QString &output, bool live, const QString &actualProduct,
                   const QString &actualTileset, const QString &python, bool retrieveOptical,
                   bool searchRadar) {
   QElapsedTimer elapsed;
   elapsed.start();
   const auto cpuStart = std::clock();
-  QTemporaryDir profile(QDir::tempPath() + "/godeye-desktop-validation-XXXXXX");
+  QTemporaryDir profile(QDir::tempPath() + "/helios-desktop-validation-XXXXXX");
   if (!profile.isValid() || output.isEmpty()) {
     qWarning("Validation requires --qa-output DIRECTORY");
     return 2;
@@ -488,7 +488,7 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
         QTest::qWait(50);
         window.processingWindow().grab().save(output + "/processing-window.png");
         window.processingWindow().hide();
-        QFile reviewFixture(":/godeye/Tests/review_fixture.py");
+        QFile reviewFixture(":/helios/Tests/review_fixture.py");
         require(reviewFixture.open(QIODevice::ReadOnly),
                 "Generated review fixture resource available outside the source tree");
         const auto sources = profile.path() + "/generated-review-sources";
@@ -739,9 +739,9 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
                   "Startup camera restore preserves pending source following");
         }
         window.domainWindow().stopFollowing();
-        const auto inferencePython = qEnvironmentVariable("GODEYE_INFERENCE_PYTHON");
+        const auto inferencePython = qEnvironmentVariable("HELIOS_INFERENCE_PYTHON");
         if (!inferencePython.isEmpty()) {
-          QFile script(":/godeye/Tests/inference_fixture.py");
+          QFile script(":/helios/Tests/inference_fixture.py");
           require(script.open(QIODevice::ReadOnly),
                   "Generated inference fixture is bundled for source-independent QA");
           const auto modelDirectory = profile.path() + "/generated-inference";
@@ -1256,7 +1256,7 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
         const bool optionalReady = optional.waitForFinished(10000);
         if (optionalReady && optional.exitStatus() == QProcess::NormalExit &&
             optional.exitCode() == 0) {
-          QFile fixture(":/godeye/Tests/monitoring_fixture.py");
+          QFile fixture(":/helios/Tests/monitoring_fixture.py");
           require(fixture.open(QIODevice::ReadOnly), "Monitoring QA fixture resource is available");
           const auto script = profile.path() + "/monitoring-fixture.py";
           QFile saved(script);
@@ -1530,7 +1530,7 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
             {{"capturedAt", foundationNow()},
              {"camera", window.map().camera().json()},
              {"attribution",
-              "Generated offline map context; no provider requests. Map rendering: GodEye."}});
+              "Generated offline map context; no provider requests. Map rendering: Helios."}});
         const auto exportDirectory = exportBriefing(frozen, output);
         validateBriefingManifest(frozen.manifest);
         require(QFile::exists(exportDirectory + "/briefing.pdf") &&
@@ -1614,4 +1614,4 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
   });
   return app.exec();
 }
-} // namespace godeye
+} // namespace helios

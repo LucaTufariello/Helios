@@ -9,7 +9,7 @@
 #include <QSettings>
 class QLabel;
 class QLineEdit;
-namespace godeye {
+namespace helios {
 class MonitorRunner;
 class MonitoringRunner;
 class DomainWindow;
@@ -95,4 +95,4 @@ private:
   void showLayers(const QVector<ProductLayer> &layers, bool focus);
   void synchronizeMission();
 };
-} // namespace godeye
+} // namespace helios

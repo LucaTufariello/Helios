@@ -1,6 +1,6 @@
 # Satellite analysis and infrastructure change review
 
-GodEye's **Satellite** section contains **Library**, **SAR**, **Optical** and **Site review**. Copernicus search/download, SAFE import, SNAP processing, saved SAR results, engine setup and exports live in SAR. The map is the shared SwiftUI/AppKit/Metal globe, with Mission Control available in a separate native window.
+Helios's **Satellite** section contains **Library**, **SAR**, **Optical** and **Site review**. Copernicus search/download, SAFE import, SNAP processing, saved SAR results, engine setup and exports live in SAR. The map is the shared SwiftUI/AppKit/Metal globe, with Mission Control available in a separate native window.
 
 This is an initial **human review workflow for site-scale radar changes**. It does not classify construction, materials, vehicles, structural damage or operating status, and it does not certify radiometric/geographic accuracy. These limits remain visible in the interface and exported evidence.
 
@@ -19,10 +19,10 @@ This is an initial **human review workflow for site-scale radar changes**. It do
 
 ## Processing architecture
 
-- `Sources/GodEyeCore/InfrastructureReview.swift`: site, options, result, provenance, candidate decisions, pair compatibility and bounded atomic JSON storage.
-- `Sources/GodEyeCore/SarProcessor.swift`: the existing cancellation/progress-safe process adapter now exposes `compare(request:destination:progress:)`. Command syntax stays behind this boundary; arguments are never shell interpolated.
-- `Sources/GodEyeMac/SatelliteWorkspace.swift`: native saved-site/review state, background tasks, recovery, notes and exports.
-- `Sources/GodEyeMac/SatelliteViews.swift`: satellite navigation and infrastructure review controls using the existing native UI style.
+- `Sources/HeliosCore/InfrastructureReview.swift`: site, options, result, provenance, candidate decisions, pair compatibility and bounded atomic JSON storage.
+- `Sources/HeliosCore/SarProcessor.swift`: the existing cancellation/progress-safe process adapter now exposes `compare(request:destination:progress:)`. Command syntax stays behind this boundary; arguments are never shell interpolated.
+- `Sources/HeliosMac/SatelliteWorkspace.swift`: native saved-site/review state, background tasks, recovery, notes and exports.
+- `Sources/HeliosMac/SatelliteViews.swift`: satellite navigation and infrastructure review controls using the existing native UI style.
 - `Resources/SAR/change_review.py`: modular pair admission, grid admission, local-power averaging, log-ratio calculation, connected-patch extraction and exports. The existing isolated `sentinel1.py` worker dispatches the new `compare` operation.
 - Existing workspace navigation/tools and the Metal overlay wrapper are adjusted to host the dedicated section. All original SAR processing jobs/downloads stay in their existing locations.
 
@@ -37,7 +37,7 @@ External dependencies are unchanged: **ESA SNAP GPT / Microwave Toolbox** for cr
 5. **Average:** on the common validity mask, take a valid-only square local mean in linear power (3, 5 or 7 pixels). Require at least 80% valid neighborhood support and a valid central sample in both dates. Both dates use the same support. This explicit spatial averaging reduces local variability and detail; it is not an added Refined Lee filter or improved sensor resolution. Site-edge neighborhoods with insufficient support are transparent.
 6. **Calculate:** `delta_dB = 10 log10(mean_after) − 10 log10(mean_before)`. Both means must be finite and positive. The result is a log ratio in dB: +3 dB is approximately twice the averaged radar power; it is not twice the amount of infrastructure. Require at least **50% common valid coverage** after support masking; report the actual fraction.
 7. **Candidates:** threshold increases/decreases independently, keep eight-connected same-sign patches meeting the minimum pixel count, and cap at **500 candidates**. Rasterio/GDAL sieve/polygonization operate only on the bounded site. Save mean ΔdB, peak absolute ΔdB, pixel count, bounds and approximate spherical ground area (latitude-dependent), sorted by area. Original sign/classes are preserved after sieving. Candidate bounding rectangles may include unchanged pixels or holes.
-8. **Render/export:** before/after use shared 2nd–98th percentiles of the site's valid averaged dB values, with a minimum 1 dB span. Change colors use a fixed symmetric display range of ±2 × the selected candidate threshold. Saturated colors are display clipping, not confidence. Scientific ΔdB remains Float32 with `-9999` nodata. PNGs are capped at 2048 pixels and obtain georeferencing from saved review metadata in GodEye.
+8. **Render/export:** before/after use shared 2nd–98th percentiles of the site's valid averaged dB values, with a minimum 1 dB span. Change colors use a fixed symmetric display range of ±2 × the selected candidate threshold. Saturated colors are display clipping, not confidence. Scientific ΔdB remains Float32 with `-9999` nodata. PNGs are capped at 2048 pixels and obtain georeferencing from saved review metadata in Helios.
 
 The [ASF change-over-time guide](https://hyp3-docs.asf.alaska.edu/guides/rtc_product_guide/#quantifying-change-over-time) explains log-ratio change measurement and seasonal effects. Its terrain-normalized products are not equivalent to this workflow's unflattened Sigma0. [Rasterio reprojection documentation](https://rasterio.readthedocs.io/en/stable/topics/reproject.html) describes the GDAL-based grid transformation used here. Review thresholds/support sizes are engineering defaults and remain uncalibrated against an infrastructure evaluation dataset.
 
@@ -46,7 +46,7 @@ The [ASF change-over-time guide](https://hyp3-docs.asf.alaska.edu/guides/rtc_pro
 Normal local storage:
 
 ```text
-~/Library/Application Support/GodEye/
+~/Library/Application Support/Helios/
   SAR/downloads/<acquisition UUID>/          existing downloads
   SAR/jobs/<processing UUID>/               existing scientific input products
   Satellite/sites.json                     saved named boundaries
@@ -74,10 +74,10 @@ Validation on 2026-10-04: 119 native tests passed with 9 optional checks skipped
 For an isolated native UI profile, run:
 
 ```sh
-"$HOME/Library/Application Support/GodEye/SAR/runtime/bin/python3" -B \
-  native/macos/Validation/create_change_review_fixture.py --output /tmp/godeye-review-qa
-GODEYE_VALIDATION_ROOT=/tmp/godeye-review-qa \
-  output/native/GodEye.app/Contents/MacOS/GodEyeMac
+"$HOME/Library/Application Support/Helios/SAR/runtime/bin/python3" -B \
+  native/macos/Validation/create_change_review_fixture.py --output /tmp/helios-review-qa
+HELIOS_VALIDATION_ROOT=/tmp/helios-review-qa \
+  output/native/Helios.app/Contents/MacOS/HeliosMac
 ```
 
 The output directory must be new. The satellite sidebar explicitly identifies the developer profile/generated QA data. Fixture jobs never enter the user's normal library. This flag is only an explicit developer override; the application does not automatically load example acquisitions or findings. Stop the validation instance and remove its temporary profile after testing.

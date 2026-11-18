@@ -128,7 +128,7 @@ remain unsupported. The original
 and upstream ONNX documentation state MIT; the migrated
 [Hugging Face card](https://huggingface.co/onnxmodelzoo/tinyyolov2-8) tags Apache-2.0.
 This source discrepancy is recorded rather than silently relicensing weights.
-No weights are bundled with GodEye. Review the original model/conversion/data
+No weights are bundled with Helios. Review the original model/conversion/data
 licenses before any redistribution.
 
 ## Evidence and limits
@@ -155,8 +155,8 @@ The Qt core test also exercises the owned worker boundary, frozen references,
 proposal admission and cancellation when the optional environment is supplied:
 
 ```sh
-GODEYE_INFERENCE_PYTHON=/absolute/path/to/inference-env/bin/python \
-  ./output/desktop/build/native/desktop/GodEyeInferenceTests
+HELIOS_INFERENCE_PYTHON=/absolute/path/to/inference-env/bin/python \
+  ./output/desktop/build/native/desktop/HeliosInferenceTests
 /absolute/path/to/inference-env/bin/python -m unittest discover \
   -s native/desktop/Tests -p test_inference.py -v
 ```

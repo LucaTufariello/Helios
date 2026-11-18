@@ -15,7 +15,7 @@ from PIL import Image
 import rasterio
 from rasterio.transform import from_origin
 
-WORKER = Path(__file__).parents[2]/'Sources/GodEyeMac/Resources/SAR/sentinel1.py'
+WORKER = Path(__file__).parents[2]/'Sources/HeliosMac/Resources/SAR/sentinel1.py'
 spec = importlib.util.spec_from_file_location('change_review', WORKER.with_name('change_review.py'))
 review = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(review)

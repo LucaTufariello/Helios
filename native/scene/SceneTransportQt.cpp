@@ -14,7 +14,7 @@
 #include <cstring>
 #include <stdexcept>
 
-namespace godeye::scene {
+namespace helios::scene {
 namespace {
 constexpr qint64 maximumBody = 32 * 1024 * 1024;
 class Jobs final : public CesiumAsync::ITaskProcessor {
@@ -113,7 +113,7 @@ public:
             request.setAttribute(QNetworkRequest::CookieSaveControlAttribute,
                                  QNetworkRequest::Manual);
             request.setTransferTimeout(30000);
-            request.setRawHeader("User-Agent", "GodEyeNative/1.0 (3D Tiles)");
+            request.setRawHeader("User-Agent", "HeliosNative/1.0 (3D Tiles)");
             for (const auto &[key, value] : headers)
               request.setRawHeader(QByteArray::fromStdString(key),
                                    QByteArray::fromStdString(value));
@@ -213,4 +213,4 @@ std::shared_ptr<Assets> makeAssets(const char *address) {
     return {};
   return std::make_shared<QtAssets>(std::move(url));
 }
-} // namespace godeye::scene
+} // namespace helios::scene

@@ -13,7 +13,7 @@
 #include <QPlainTextEdit>
 #include <QTimeZone>
 #include <QVBoxLayout>
-namespace godeye {
+namespace helios {
 bool editMissionEntry(QWidget *parent, Missions &missions, const QString &collection,
                       const QString &id, const std::function<void()> &validateContext) {
   const auto missionID = missions.selectedID();
@@ -190,4 +190,4 @@ bool editMissionEntry(QWidget *parent, Missions &missions, const QString &collec
   });
   return dialog.exec() == QDialog::Accepted;
 }
-} // namespace godeye
+} // namespace helios

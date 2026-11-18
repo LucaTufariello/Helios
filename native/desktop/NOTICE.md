@@ -1,6 +1,6 @@
 # Desktop preview notices
 
-GodEye's new desktop source follows the repository MIT license and preserves the
+Helios's new desktop source follows the repository MIT license and preserves the
 existing project author notices. The Qt client is compiled C++/Qt Widgets; it
 does not bundle WebEngine, Qt Quick/QML or an Electron runtime.
 
@@ -20,7 +20,7 @@ includes the distribution FFmpeg executable and libav/libsw shared libraries,
 their license texts and build configuration. This build enables GPL components
 and reports GPL version 3 or later. Its matching upstream source plus Arch recipe
 and patch archive accompany the application artifact. Other codec libraries are
-explicit host dependencies. FFmpeg is not linked into GodEye's executable; its
+explicit host dependencies. FFmpeg is not linked into Helios's executable; its
 frames are displayed by Qt Widgets. No Qt Quick/QML or browser media interface
 is used. On macOS, FFmpeg is an explicit external clip-playback dependency.
 

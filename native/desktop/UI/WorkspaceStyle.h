@@ -5,7 +5,7 @@ class QApplication;
 class QLabel;
 class QVBoxLayout;
 class QWidget;
-namespace godeye::design {
+namespace helios::design {
 enum class Symbol {
   Globe,
   Satellite,
@@ -32,4 +32,4 @@ QLabel *label(const QString &text, const char *role, QWidget *parent = nullptr);
 void heading(QVBoxLayout *layout, const QString &eyebrow, const QString &title,
              const QString &description = {});
 void disclosure(QVBoxLayout *layout, QWidget *content, const QString &title);
-} // namespace godeye::design
+} // namespace helios::design

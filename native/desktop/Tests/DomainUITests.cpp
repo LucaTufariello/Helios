@@ -16,7 +16,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTextEdit>
-using namespace godeye;
+using namespace helios;
 class DomainUITests : public QObject {
   Q_OBJECT
 private slots:
@@ -49,7 +49,7 @@ private slots:
     auto *dialog = window.findChild<QDialog *>("savedRecordInspector");
     QVERIFY(dialog);
     QVERIFY(QTest::qWaitForWindowExposed(dialog));
-    const auto snapshotQA = qEnvironmentVariable("GODEYE_DOMAIN_QA");
+    const auto snapshotQA = qEnvironmentVariable("HELIOS_DOMAIN_QA");
     if (!snapshotQA.isEmpty()) {
       QVERIFY(QDir().mkpath(snapshotQA));
       QVERIFY(dialog->grab().save(snapshotQA + "/generated-saved-snapshot-ui.png"));
@@ -190,10 +190,10 @@ private slots:
     QVERIFY(!settings.value("enabled/annotations", true).toBool());
   }
   void realOperatorStillAndNativeClip() {
-    if (qEnvironmentVariable("GODEYE_LIVE_CHECKS") != "1")
-      QSKIP("Set GODEYE_LIVE_CHECKS=1 for actual public camera media checks.");
-    const QString qa = qEnvironmentVariable("GODEYE_DOMAIN_QA");
-    QVERIFY2(!qa.isEmpty(), "Set GODEYE_DOMAIN_QA to retain actual camera evidence");
+    if (qEnvironmentVariable("HELIOS_LIVE_CHECKS") != "1")
+      QSKIP("Set HELIOS_LIVE_CHECKS=1 for actual public camera media checks.");
+    const QString qa = qEnvironmentVariable("HELIOS_DOMAIN_QA");
+    QVERIFY2(!qa.isEmpty(), "Set HELIOS_DOMAIN_QA to retain actual camera evidence");
     QVERIFY(QDir().mkpath(qa));
     QTemporaryDir profile;
     DomainWindow window(profile.path());

@@ -1,6 +1,6 @@
 #pragma once
 #include <QString>
-namespace godeye {
+namespace helios {
 struct CredentialResult {
   bool ok = false, found = false;
   QString value, error, backend;
@@ -13,4 +13,4 @@ public:
   static CredentialResult erase(const QString &account);
   static bool validAccount(const QString &account);
 };
-} // namespace godeye
+} // namespace helios

@@ -11,13 +11,13 @@ persistence and cleanup support.
 Copy these files from the Linux workspace to the Mac:
 
 ```text
-output/packages/linux-investigations-20261020-complete/godeye-source.tar.zst
+output/packages/linux-investigations-20261020-complete/helios-source.tar.zst
 output/packages/linux-investigations-20261020-complete/SHA256SUMS
 ```
 
 It includes the uncommitted implementation and the pre-existing source baseline;
-GitHub does not need to be updated first. The archive contains a `GodEye/` folder
-and no Linux build caches. Its SHA-256 is recorded on the `godeye-source.tar.zst`
+GitHub does not need to be updated first. The archive contains a `Helios/` folder
+and no Linux build caches. Its SHA-256 is recorded on the `helios-source.tar.zst`
 line of `SHA256SUMS`. This handoff is also included inside the source archive.
 
 ## Build and run
@@ -26,12 +26,12 @@ Assuming the archive was copied to Downloads, extract into a new directory:
 
 ```sh
 brew install cmake pkgconf qtbase qtshadertools zstd
-shasum -a 256 "$HOME/Downloads/godeye-source.tar.zst"
-mkdir "$HOME/GodEye-investigations-check"
-zstd -dc "$HOME/Downloads/godeye-source.tar.zst" | tar -x -C "$HOME/GodEye-investigations-check"
-cd "$HOME/GodEye-investigations-check/GodEye"
+shasum -a 256 "$HOME/Downloads/helios-source.tar.zst"
+mkdir "$HOME/Helios-investigations-check"
+zstd -dc "$HOME/Downloads/helios-source.tar.zst" | tar -x -C "$HOME/Helios-investigations-check"
+cd "$HOME/Helios-investigations-check/Helios"
 make test-desktop
-open output/desktop/build/bin/GodEyeDesktop.app
+open output/desktop/build/bin/HeliosDesktop.app
 ```
 
 Compare the checksum before extracting. Choose another new directory if that name
@@ -55,7 +55,7 @@ terminal output if a check fails.
 From the extracted repository, with the desktop session unlocked:
 
 ```sh
-./output/desktop/build/bin/GodEyeDesktop.app/Contents/MacOS/GodEyeDesktop \
+./output/desktop/build/bin/HeliosDesktop.app/Contents/MacOS/HeliosDesktop \
   --validate --qa-output output/qa/investigations-mac
 ```
 
@@ -68,8 +68,8 @@ If scientific Python or CPU inference checks are skipped, record those skips.
 For a fuller regression run, use the existing configured environments:
 
 ```sh
-GODEYE_INFERENCE_PYTHON=/absolute/path/to/inference/bin/python \
-./output/desktop/build/bin/GodEyeDesktop.app/Contents/MacOS/GodEyeDesktop \
+HELIOS_INFERENCE_PYTHON=/absolute/path/to/inference/bin/python \
+./output/desktop/build/bin/HeliosDesktop.app/Contents/MacOS/HeliosDesktop \
   --validate --raster-python /absolute/path/to/raster/bin/python3 \
   --qa-output output/qa/investigations-mac-full
 ```
@@ -83,7 +83,7 @@ commands. Native PDF generation requires neither environment. An optional
 Use disposable library copies and distinct test profiles; keep actual working
 libraries separate while the Qt and Swift clients are open.
 
-1. Open `native/macos/Tests/GodEyeCoreTests/Fixtures/cross-platform-investigation.json`
+1. Open `native/macos/Tests/HeliosCoreTests/Fixtures/cross-platform-investigation.json`
    in Qt Mission Control and save a separate working copy. Its synthetic finding
    should retain its prior decision, citations and dependent tasks. Raster files
    are intentionally unavailable.

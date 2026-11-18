@@ -5,7 +5,7 @@
 #include <QTimer>
 #include <cstring>
 
-namespace godeye::qa {
+namespace helios::qa {
 struct ReplySpec {
   QByteArray body;
   int status = 200;
@@ -81,4 +81,4 @@ protected:
                          responses.isEmpty() ? ReplySpec{{}, 500} : responses.dequeue(), this);
   }
 };
-} // namespace godeye::qa
+} // namespace helios::qa

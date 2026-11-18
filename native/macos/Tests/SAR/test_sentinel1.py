@@ -16,7 +16,7 @@ import numpy as np
 import rasterio as rio
 from rasterio.transform import from_origin
 
-WORKER = Path(__file__).parents[2] / 'Sources/GodEyeMac/Resources/SAR/sentinel1.py'
+WORKER = Path(__file__).parents[2] / 'Sources/HeliosMac/Resources/SAR/sentinel1.py'
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location('sar', WORKER)
 sar = importlib.util.module_from_spec(spec)

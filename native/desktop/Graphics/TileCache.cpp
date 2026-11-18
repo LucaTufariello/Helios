@@ -14,7 +14,7 @@
 #include <numbers>
 #include <stdexcept>
 
-namespace godeye {
+namespace helios {
 namespace {
 QString key(TileID id, bool streets, bool terrain) {
   return (terrain ? "t:" : streets ? "s:" : "b:") + id.key();
@@ -122,7 +122,7 @@ void TileCache::pump() {
                              ? r.id.key() + ".png"
                              : QString("%1/%2/%3").arg(r.id.zoom).arg(r.id.y).arg(r.id.x);
     QNetworkRequest request{QUrl(base + tail)};
-    request.setRawHeader("User-Agent", "GodEyeDesktop/0.1 (native GIS viewer)");
+    request.setRawHeader("User-Agent", "HeliosDesktop/0.1 (native GIS viewer)");
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::SameOriginRedirectPolicy);
     request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
@@ -290,4 +290,4 @@ void TileCache::injectImage(TileID tile, const QImage &image, bool streets) {
   evict();
   emit changed();
 }
-} // namespace godeye
+} // namespace helios

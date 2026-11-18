@@ -6,9 +6,9 @@ The production application is `native/macos`: Swift 6, macOS 14+, arm64, SwiftUI
 
 The existing native application uses `NSOpenPanel` / `NSSavePanel`, Swift tasks, Codable JSON documents, and local Application Support files. It has no general durable job queue or database. SAR follows these conventions:
 
-- `GodEyeCore/SarProcessor.swift`: typed product/options/result/output/progress models, asynchronous worker abstraction, safe process arguments, cancellation and interrupted-job recovery.
-- `GodEyeMac/SarWorkspace.swift`: native import, configuration, status, result browser, preview, export and job storage controller.
-- `GodEyeMac/Resources/SAR/sentinel1.py`: local worker with discrete admission, inspection, graph construction, processing, raster conversion and output stages.
+- `HeliosCore/SarProcessor.swift`: typed product/options/result/output/progress models, asynchronous worker abstraction, safe process arguments, cancellation and interrupted-job recovery.
+- `HeliosMac/SarWorkspace.swift`: native import, configuration, status, result browser, preview, export and job storage controller.
+- `HeliosMac/Resources/SAR/sentinel1.py`: local worker with discrete admission, inspection, graph construction, processing, raster conversion and output stages.
 - `GlobeRenderer.swift`: a bounded georeferenced PNG display overlay in the existing Metal scene. It uses the **terrain-corrected output's actual EPSG:4326 bounds**, not the raw SAFE measurement footprint.
 
 The pipeline currently supports Sentinel-1 A/B/C/D Level-1 **GRD** SAFE products, IW/EW/SM acquisition modes, one measurement per available VV/VH polarization. Mission parsing accepts C/D identifiers, but compatibility with actual C/D acquisitions still depends on the installed Microwave Toolbox and needs real-product validation. HH/HV-only products, SLC, OCN, InSAR and advanced classification are explicitly outside this implementation.
@@ -25,7 +25,7 @@ Requirements:
 
 1. An arm64 Python interpreter; Python 3.11+ is recommended. The local validation environment used Python 3.9, NumPy 2.0.2, Rasterio 1.4.3 / GDAL 3.9.3 and Pillow 11.3.0.
 2. Rasterio, NumPy and Pillow, installed in a dedicated virtual environment. Their tested versions are recorded in `Resources/SAR/requirements-tested.txt`; the setup script uses the maintained compatible version ranges in `requirements.txt`.
-3. SNAP 14+ with the Microwave Toolbox and an accessible `bin/gpt`. SNAP's installer supplies its Java runtime; no SNAP GUI is embedded or launched by GodEye.
+3. SNAP 14+ with the Microwave Toolbox and an accessible `bin/gpt`. SNAP's installer supplies its Java runtime; no SNAP GUI is embedded or launched by Helios.
 4. Sufficient disk space for input extraction when zipped, SNAP intermediates and floating-point outputs. Processing may need many gigabytes and substantial CPU time.
 5. Network access for precise orbit and Copernicus DEM downloads, unless SNAP already has the required auxiliary data cached. Download availability/access conditions are controlled by SNAP and the data providers.
 
@@ -35,11 +35,11 @@ Install the raster environment from the repository:
 native/macos/setup-sar.sh
 ```
 
-Optional environment variables: `GODEYE_SAR_PYTHON` chooses the interpreter for creating the environment; `GODEYE_SAR_RUNTIME` chooses its location. The default runtime is `~/Library/Application Support/GodEye/SAR/runtime`. These dependencies are installed explicitly by the setup script; importing a dataset does not install software.
+Optional environment variables: `HELIOS_SAR_PYTHON` chooses the interpreter for creating the environment; `HELIOS_SAR_RUNTIME` chooses its location. The default runtime is `~/Library/Application Support/Helios/SAR/runtime`. These dependencies are installed explicitly by the setup script; importing a dataset does not install software.
 
-Install SNAP separately from ESA, then open **SAR → Processing engine setup** and choose the environment's `bin/python3` and SNAP's `bin/gpt`. GodEye saves these non-secret configuration paths locally. External tools are not bundled into `GodEye.app`; distributing SNAP/GDAL/Python alongside the app would require separate packaging, licensing and signing work. SNAP has its own GPL licensing; the project's MIT license does not replace dependency or data licenses.
+Install SNAP separately from ESA, then open **SAR → Processing engine setup** and choose the environment's `bin/python3` and SNAP's `bin/gpt`. Helios saves these non-secret configuration paths locally. External tools are not bundled into `Helios.app`; distributing SNAP/GDAL/Python alongside the app would require separate packaging, licensing and signing work. SNAP has its own GPL licensing; the project's MIT license does not replace dependency or data licenses.
 
-## Search and download inside GodEye
+## Search and download inside Helios
 
 The SAR panel has two native workflows: **Find & download** and **Process & results**. No browser renderer, web server, additional download dependency or paid API is used.
 
@@ -51,15 +51,15 @@ The SAR panel has two native workflows: **Find & download** and **Process & resu
 
 Region selection finds complete intersecting acquisitions: it does **not** crop products, change radar georeferencing, or request a server-side SAR processing job. Downloading a scene can require several gigabytes even for a small search rectangle. An unavailable scene cannot be downloaded. Product name filtering intentionally excludes SLC, newer COG-packaged variants and HH/HV-only products that the existing processor does not support.
 
-`GodEyeCore/SentinelCatalog.swift` owns typed region/query/scene models, catalogue requests, an actor-isolated account session, streaming download delegate and provenance records. `GodEyeMac/SarAcquisitionWorkspace.swift` owns native search/login/download UI state and handoff to `SarWorkspace.inspect()`. Region picking reuses `WorkspaceModel.mapClick`, `GeoBounds.viewport`, existing `ScenePath` rendering and the native Metal surface picker.
+`HeliosCore/SentinelCatalog.swift` owns typed region/query/scene models, catalogue requests, an actor-isolated account session, streaming download delegate and provenance records. `HeliosMac/SarAcquisitionWorkspace.swift` owns native search/login/download UI state and handoff to `SarWorkspace.inspect()`. Region picking reuses `WorkspaceModel.mapClick`, `GeoBounds.viewport`, existing `ScenePath` rendering and the native Metal surface picker.
 
 Authentication follows [Copernicus's documented token flow](https://documentation.dataspace.copernicus.eu/APIs/Token.html): HTTPS form-encoded `cdse-public` password grant with optional `totp`, followed by refresh-token renewal when necessary. Password fields are cleared after submission. Passwords, access tokens and refresh tokens stay in memory and never enter UserDefaults, workspace exports, job records, logs or downloaded-product metadata. Sign out clears the session; restarting requires sign-in again. Server authentication bodies are never presented to users. Generation checks prevent an interrupted sign-in from restoring a signed-out session.
 
 Downloads use the documented `download.dataspace.copernicus.eu/odata/v1/Products(<UUID>)/$value` endpoint. The regular endpoint supplies a zipped SAFE without relying on the separate native-compressed `$zip` endpoint's limited retention. A serial URLSession delegate writes incoming chunks directly to a unique partial file, with a 40 GiB cap, initial disk-capacity check, HTTP status/length validation and ZIP header/end-record checks. Only exact HTTPS download/catalogue service hosts may receive a forwarded Authorization header during redirects; unexpected hosts are rejected. Cancel/failure removes partial files; complete files are published by a filesystem move and never silently overwritten. Interrupted partials are removed on restart only when their recorded owner process is confirmed gone. A lost connection currently requires restarting the download; byte-range resume is not implemented. Downloads run while the application is open, not as an OS background transfer after quitting.
 
-Completed downloads live at `~/Library/Application Support/GodEye/SAR/downloads/<catalogue-UUID>/product.zip`, with `download.json` containing the source scene, selected search query and completion timestamp. Stored paths derive from a validated UUID rather than a remote filename. Authentication is not included. The full existing SAFE inspector performs ZIP CRC, path, XML, product and measurement admission before processing. Transport completion/ZIP framing alone is not scientific validation; catalogue checksums are not assumed to describe the dynamically packaged download bytes.
+Completed downloads live at `~/Library/Application Support/Helios/SAR/downloads/<catalogue-UUID>/product.zip`, with `download.json` containing the source scene, selected search query and completion timestamp. Stored paths derive from a validated UUID rather than a remote filename. Authentication is not included. The full existing SAFE inspector performs ZIP CRC, path, XML, product and measurement admission before processing. Transport completion/ZIP framing alone is not scientific validation; catalogue checksums are not assumed to describe the dynamically packaged download bytes.
 
-Tests use generated ZIP bytes and mocked HTTP responses for query construction, metadata/polarization admission, login encoding, token refresh, credential-safe errors, redirect policy, streamed transfers, unknown/known size limits, truncated archives, response length mismatch, cancellation and failure cleanup. `GODEYE_LIVE_CHECKS=1 native/macos/test.sh --filter SentinelCatalogTests/testLiveCopernicusCatalogue` checks the real public catalogue. Authenticated acquisition download and real SAR scientific acceptance still require an account and a representative actual product.
+Tests use generated ZIP bytes and mocked HTTP responses for query construction, metadata/polarization admission, login encoding, token refresh, credential-safe errors, redirect policy, streamed transfers, unknown/known size limits, truncated archives, response length mismatch, cancellation and failure cleanup. `HELIOS_LIVE_CHECKS=1 native/macos/test.sh --filter SentinelCatalogTests/testLiveCopernicusCatalogue` checks the real public catalogue. Authenticated acquisition download and real SAR scientific acceptance still require an account and a representative actual product.
 
 ## Scientific pipeline
 
@@ -97,7 +97,7 @@ The globe uses a bounded display preview, not the full scientific raster, with E
 
 ## Jobs, security and cleanup
 
-Local job directory: `~/Library/Application Support/GodEye/SAR/jobs/<UUID>/`.
+Local job directory: `~/Library/Application Support/Helios/SAR/jobs/<UUID>/`.
 
 The Swift process adapter passes a fixed operation and argument array to an isolated Python interpreter (`-I`); Python passes an argument array to GPT. Neither constructs a shell command from product names/options. Workspace state links and exported workspace documents do not include SAR paths, datasets or processing results; results are separately persisted local jobs.
 
@@ -131,7 +131,7 @@ native/macos/test-sar.sh
 native/macos/build-app.sh
 ```
 
-`GODEYE_SAR_PYTHON=/absolute/path/to/python3 native/macos/test-sar.sh` selects a test environment. Generated fixtures are temporary and no satellite-sized acquisition is committed.
+`HELIOS_SAR_PYTHON=/absolute/path/to/python3 native/macos/test-sar.sh` selects a test environment. Generated fixtures are temporary and no satellite-sized acquisition is committed.
 
 For a real-product acceptance run: install updated SNAP 14+, import an official VV/VH IW GRD acquisition, keep precise orbit on, process with and without Refined Lee, compare Float32 pixel samples/CRS/geographic alignment to an independently processed SNAP reference, verify nodata and water behavior, export/open results in a GIS, then exercise cancellation and an unavailable DEM/orbit case. Record the product identifier, exact engine/toolbox version, graph/options and evidence before claiming scientific validation.
 

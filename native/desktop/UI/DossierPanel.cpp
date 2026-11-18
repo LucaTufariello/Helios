@@ -26,7 +26,7 @@
 #include <QVBoxLayout>
 #include <QtConcurrent>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 QString selection(QListWidget *list) {
   return list->currentItem() ? list->currentItem()->data(Qt::UserRole).toString() : QString{};
@@ -747,4 +747,4 @@ void DossierPanel::reviewObservation() {
   });
   dialog.exec();
 }
-} // namespace godeye
+} // namespace helios

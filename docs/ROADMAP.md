@@ -1,4 +1,4 @@
-# GodEye roadmap: defensive intelligence and infrastructure protection
+# Helios roadmap: defensive intelligence and infrastructure protection
 
 Updated October 13, 2026. This is the proposed implementation order, grounded in
 the current native application. Items below are planned unless explicitly marked
@@ -7,7 +7,7 @@ scheduled automations.
 
 ## Product goal
 
-Make GodEye a free, open-source, native macOS and Linux workspace that helps an
+Make Helios a free, open-source, native macOS and Linux workspace that helps an
 analyst understand an area, monitor important infrastructure, investigate changes,
 coordinate a response and explain every conclusion with dated evidence.
 
@@ -22,7 +22,7 @@ The central workflow is:
 
 Public Palantir documentation describes linked operational objects and mission
 plans connected to tasks, entities and resources. The architectural lesson for
-GodEye is to connect evidence and actions through persistent records. This
+Helios is to connect evidence and actions through persistent records. This
 roadmap is an independent product proposal, not a claim to reproduce Maven's
 complete capabilities or access to its data. See the primary references below.
 

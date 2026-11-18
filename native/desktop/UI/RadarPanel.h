@@ -11,7 +11,7 @@ class QLineEdit;
 class QListWidget;
 class QPushButton;
 class QProgressBar;
-namespace godeye {
+namespace helios {
 class RadarPanel : public QWidget {
   Q_OBJECT
 public:
@@ -50,4 +50,4 @@ private:
   void refresh();
   void selected();
 };
-} // namespace godeye
+} // namespace helios

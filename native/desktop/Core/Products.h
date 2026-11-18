@@ -5,7 +5,7 @@
 #include <atomic>
 #include <memory>
 
-namespace godeye {
+namespace helios {
 struct ProductLayer {
   QString id, jobID, kind, label, band, acquisition, sourceID, sensor;
   QString manifest, preview, geotiff, scientific;
@@ -22,4 +22,4 @@ QVector<ProductLayer> readProducts(const QString &manifest, bool decodeImages = 
 QString safeProductFile(const QString &directory, const QString &name, bool required = true);
 void exportProductFile(const QString &source, const QString &destination,
                        std::shared_ptr<std::atomic_bool> cancelled = {});
-} // namespace godeye
+} // namespace helios

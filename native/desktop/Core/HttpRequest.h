@@ -3,7 +3,7 @@
 #include <QPointer>
 #include <QUrl>
 class QNetworkReply;
-namespace godeye {
+namespace helios {
 class HttpRequest : public QObject {
   Q_OBJECT
 public:
@@ -24,4 +24,4 @@ private:
   quint64 generation_ = 0;
   bool busy_ = false;
 };
-} // namespace godeye
+} // namespace helios

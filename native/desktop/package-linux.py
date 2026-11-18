@@ -61,7 +61,7 @@ def write_tar(path: Path, entries: list[tuple[Path, str]]) -> None:
 
 def source_snapshot(destination: Path) -> tuple[Path, dict[str, str]]:
     files = command("git", "-C", str(ROOT), "ls-files", "--cached", "--others", "--exclude-standard", "-z").split("\0")
-    path = destination / "godeye-source.tar.zst"
+    path = destination / "helios-source.tar.zst"
     hashes = {}
     with tempfile.TemporaryDirectory(prefix="source-snapshot-", dir=destination) as temporary:
         staging = Path(temporary)
@@ -77,7 +77,7 @@ def source_snapshot(destination: Path) -> tuple[Path, dict[str, str]]:
             if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
                 raise ValueError("A source changed while packaging. Wait for edits to finish: " + name)
             hashes[name] = digest(staging / name)
-        write_tar(path, [(staging / name, "GodEye/" + name) for name in hashes])
+        write_tar(path, [(staging / name, "Helios/" + name) for name in hashes])
     return path, hashes
 
 
@@ -145,26 +145,26 @@ def soname_requirements(libraries: dict[str, Path]) -> list[str]:
 
 def native_package(application: Path, destination: Path, version: str, runtime: dict[str, str], sonames: list[str]) -> Path:
     staging = destination / "arch-root"
-    shutil.copytree(application, staging / "opt/godeye-desktop", symlinks=True)
+    shutil.copytree(application, staging / "opt/helios-desktop", symlinks=True)
     (staging / "usr/bin").mkdir(parents=True)
-    (staging / "usr/bin/godeye-desktop").symlink_to("../../opt/godeye-desktop/godeye-desktop")
-    desktop = staging / "usr/share/applications/io.godeye.desktop.desktop"
+    (staging / "usr/bin/helios-desktop").symlink_to("../../opt/helios-desktop/helios-desktop")
+    desktop = staging / "usr/share/applications/io.helios.desktop.desktop"
     desktop.parent.mkdir(parents=True)
-    desktop.write_text("\n".join(("[Desktop Entry]", "Type=Application", "Name=GodEye Desktop",
+    desktop.write_text("\n".join(("[Desktop Entry]", "Type=Application", "Name=Helios Desktop",
                                  "Comment=Native imagery, infrastructure and mission workspace",
-                                 "Exec=/opt/godeye-desktop/godeye-desktop %u",
-                                 "Icon=/opt/godeye-desktop/share/godeye/godeye.svg", "Terminal=false",
+                                 "Exec=/opt/helios-desktop/helios-desktop %u",
+                                 "Icon=/opt/helios-desktop/share/helios/helios.svg", "Terminal=false",
                                  "Categories=Science;Geography;", "StartupNotify=true",
-                                 "MimeType=x-scheme-handler/godeye;", "")))
+                                 "MimeType=x-scheme-handler/helios;", "")))
     # The package manager supplies the host libraries, fonts, trust store and GPU
     # loader; its installed driver/ICDs remain entirely under the user's control.
     requirements = sorted(set(runtime) | {"vulkan-icd-loader", "ca-certificates", "ttf-dejavu"})
     strict_minimum = {name + ">=" + runtime[name] for name in ("glibc", "libstdc++", "libgcc") if name in runtime}
     requirements = [name for name in requirements if name not in ("glibc", "libstdc++", "libgcc")] + sorted(strict_minimum) + sonames
     contents_size = sum(file.stat().st_size for file in staging.rglob("*") if file.is_file() and not file.is_symlink())
-    metadata = ["pkgname = godeye-desktop", "pkgbase = godeye-desktop", "pkgver = " + version + "-1",
-                "pkgdesc = Native GodEye Qt desktop (migration build)",
-                "builddate = " + str(int(time.time())), "packager = GodEye local build",
+    metadata = ["pkgname = helios-desktop", "pkgbase = helios-desktop", "pkgver = " + version + "-1",
+                "pkgdesc = Native Helios Qt desktop (migration build)",
+                "builddate = " + str(int(time.time())), "packager = Helios local build",
                 "size = " + str(contents_size), "arch = x86_64", "license = MIT", "license = LGPL-3.0-only",
                 "license = Apache-2.0", "license = ODbL-1.0", "license = CC-BY-NC-SA-3.0", "license = GPL-3.0-or-later"]
     metadata += ["depend = " + name for name in requirements]
@@ -176,7 +176,7 @@ def native_package(application: Path, destination: Path, version: str, runtime: 
                                     "--uid", "0", "--gid", "0", "-C", str(staging), ".PKGINFO", "opt", "usr"])
     with gzip.open(staging / ".MTREE", "wb") as output:
         output.write(mtree)
-    path = destination / f"godeye-desktop-{version}-1-x86_64.pkg.tar.zst"
+    path = destination / f"helios-desktop-{version}-1-x86_64.pkg.tar.zst"
     write_tar(path, [(staging / name, name) for name in (".PKGINFO", ".MTREE", "opt", "usr")])
     command("pacman", "-Qip", str(path))
     return path
@@ -197,8 +197,8 @@ def main() -> None:
     if args.native and not shutil.which("bsdtar"):
         raise ValueError("bsdtar is required for the native pacman package.")
     build = args.build.resolve()
-    if not (build / "bin/GodEyeDesktop").is_file() or not (build / "bin/GodEyeWorkerHost").is_file():
-        raise ValueError("Build GodEyeDesktop and its worker host before packaging.")
+    if not (build / "bin/HeliosDesktop").is_file() or not (build / "bin/HeliosWorkerHost").is_file():
+        raise ValueError("Build HeliosDesktop and its worker host before packaging.")
     ffmpeg = args.ffmpeg.resolve()
     if not ffmpeg.is_file():
         raise ValueError("Install the distribution FFmpeg package explicitly before creating a media-enabled Linux artifact.")
@@ -206,18 +206,18 @@ def main() -> None:
     if destination.exists():
         raise ValueError("Choose a new output directory; packaging never replaces an existing artifact.")
     destination.mkdir(parents=True)
-    application = destination / "godeye-desktop"
-    before = digest(build / "bin/GodEyeDesktop")
+    application = destination / "helios-desktop"
+    before = digest(build / "bin/HeliosDesktop")
     # Do not run the upstream scene libraries' install rules: some use absolute
     # development export paths. The application runtime has this bounded layout.
-    for name in ("GodEyeDesktop", "GodEyeWorkerHost"):
+    for name in ("HeliosDesktop", "HeliosWorkerHost"):
         copy_file(build / "bin" / name, application / "bin" / name)
     copy_file(ffmpeg, application / "bin/ffmpeg")
     # Worker tests may generate interpreter caches beside these read-only
     # sources. Ship the portable sources, not machine-specific bytecode.
-    shutil.copytree(build / "share/godeye", application / "share/godeye",
+    shutil.copytree(build / "share/helios", application / "share/helios",
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
-    if before != digest(application / "bin/GodEyeDesktop") or before != digest(build / "bin/GodEyeDesktop"):
+    if before != digest(application / "bin/HeliosDesktop") or before != digest(build / "bin/HeliosDesktop"):
         raise ValueError("The executable changed while packaging. Wait for the build and choose a new output directory.")
     qt_version = command("qmake6", "-query", "QT_VERSION")
     qt_plugins = Path(command("qmake6", "-query", "QT_INSTALL_PLUGINS"))
@@ -237,7 +237,7 @@ def main() -> None:
     qt_libraries: dict[str, Path] = {}
     media_libraries: dict[str, Path] = {}
     host_libraries: dict[str, Path] = {}
-    for file in [build / "bin/GodEyeDesktop", ffmpeg] + [qt_plugins / name for name in selected]:
+    for file in [build / "bin/HeliosDesktop", ffmpeg] + [qt_plugins / name for name in selected]:
         for name, source in dependencies(file).items():
             if name.startswith("libQt6"):
                 if any(module in name for module in ("Qml", "Quick", "WebEngine", "WebChannel")):
@@ -263,13 +263,13 @@ def main() -> None:
         (application / "lib" / name).symlink_to(source.name)
     runtime_packages = dict(package_owner(source) for source in host_libraries.values())
     runtime_sonames = soname_requirements(host_libraries)
-    licensing = application / "share/godeye/licenses"
+    licensing = application / "share/helios/licenses"
     for source, name in ((ROOT / "LICENSE", "PROJECT-LICENSE.txt"), (ROOT / "NOTICE.md", "PROJECT-NOTICE.md"),
                          (ROOT / "native/desktop/NOTICE.md", "DESKTOP-NOTICE.md"),
                          (ROOT / "DATA_SOURCES.md", "DATA-SOURCES.md"),
                          (build / "SCENE-NOTICES.txt", "SCENE-NOTICES.txt")):
         copy_file(source, licensing / name)
-    resources = ROOT / "native/macos/Sources/GodEyeCore/Resources"
+    resources = ROOT / "native/macos/Sources/HeliosCore/Resources"
     copy_file(resources / "SGP4-LICENSE.txt", licensing / "SGP4-LICENSE.txt")
     for source in resources.glob("*/README.md"):
         copy_file(source, licensing / "datasets" / source.parent.name / source.name)
@@ -285,19 +285,19 @@ def main() -> None:
     shutil.copytree(media_recipe_directory, licensing / "ffmpeg/arch-packaging", ignore=shutil.ignore_patterns(".git"))
     (licensing / "ffmpeg/build-configuration.txt").write_text(media["versionOutput"] + "\n\n" + media["licenseOutput"] + "\n")
     (application / "bin/qt.conf").write_text("[Paths]\nPrefix=..\nLibraries=lib\nPlugins=plugins\nTranslations=translations\n")
-    for name in ("godeye-desktop", "install-user.py"):
+    for name in ("helios-desktop", "install-user.py"):
         copy_file(PACKAGING / name, application / name)
         (application / name).chmod(0o755)
-    copy_file(PACKAGING / "godeye.svg", application / "share/godeye/godeye.svg")
+    copy_file(PACKAGING / "helios.svg", application / "share/helios/helios.svg")
     copy_file(ROOT / "native/desktop/PACKAGING.md", application / "README.md")
-    for executable in ("GodEyeDesktop", "GodEyeWorkerHost", "ffmpeg"):
+    for executable in ("HeliosDesktop", "HeliosWorkerHost", "ffmpeg"):
         subprocess.run(["strip", "--strip-unneeded", str(application / "bin" / executable)], check=True)
     snapshot, source_hashes = source_snapshot(destination)
     revision = command("git", "-C", str(ROOT), "rev-parse", "HEAD")
     source_identity = hashlib.sha256(json.dumps(source_hashes, sort_keys=True).encode()).hexdigest()
     version = "0.1.0.r" + revision[:8] + "." + source_identity[:8]
     manifest = {
-        "schemaVersion": 1, "application": "io.godeye.desktop", "version": version,
+        "schemaVersion": 1, "application": "io.helios.desktop", "version": version,
         "packagedAtUTC": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "platform": "linux-x86_64",
         "qtVersion": qt_version, "qtPackages": qt_packages, "hostPackages": runtime_packages,
         "hostSonameDependencies": runtime_sonames,
@@ -313,11 +313,11 @@ def main() -> None:
     }
     (application / "package-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     sources = ["# Bundled runtime sources and replacement", "",
-               "GodEye is dynamically linked to the Qt files under lib/ and plugins/. You may replace them",
-               "with compatible rebuilt libraries. The private RHI ABI requires rebuilding GodEye when",
-               "using a different Qt build. The matching GodEye source snapshot accompanies this package:",
+               "Helios is dynamically linked to the Qt files under lib/ and plugins/. You may replace them",
+               "with compatible rebuilt libraries. The private RHI ABI requires rebuilding Helios when",
+               "using a different Qt build. The matching Helios source snapshot accompanies this package:",
                "`" + snapshot.name + "` (SHA-256 `" + digest(snapshot) + "`).", "",
-               "Qt license texts are under share/godeye/licenses/. The original Qt source is available at:",
+               "Qt license texts are under share/helios/licenses/. The original Qt source is available at:",
                f"https://download.qt.io/archive/qt/{'.'.join(qt_version.split('.')[:2])}/{qt_version}/submodules/", "",
                "Arch packaging recipes and distributor patches corresponding to the bundled binaries:"]
     for name, version in sorted(qt_packages.items()):
@@ -328,7 +328,7 @@ def main() -> None:
                 "The package also contains the distribution's FFmpeg executable and libav/libsw runtime",
                 "libraries for isolated native clip playback. Their matching upstream source and Arch",
                 "recipe/patch archive accompanies this package as `" + media_source.name + "` (SHA-256 `" + digest(media_source) + "`).",
-                "Its configure options and GPL3-or-later notice are under share/godeye/licenses/ffmpeg/.",
+                "Its configure options and GPL3-or-later notice are under share/helios/licenses/ffmpeg/.",
                 "Python, SNAP, GPU drivers and models are external and are not included in this package.", "",
                 "This is a local migration artifact. Before external binary redistribution, retain the",
                 "matching source archives/distributor patches required by each dependency license and",
@@ -336,10 +336,10 @@ def main() -> None:
     (application / "SOURCES.md").write_text("\n".join(sources))
     inventory = {str(file.relative_to(application)): digest(file) for file in sorted(application.rglob("*")) if file.is_file()}
     (application / "SHA256SUMS").write_text("".join(f"{checksum}  {name}\n" for name, checksum in inventory.items()))
-    subprocess.run([str(application / "godeye-desktop"), "--check-runtime"], check=True)
+    subprocess.run([str(application / "helios-desktop"), "--check-runtime"], check=True)
     artifacts = [snapshot, media_source]
-    portable = destination / f"godeye-desktop-{manifest['version']}-linux-x86_64.tar.zst"
-    write_tar(portable, [(application, "godeye-desktop")])
+    portable = destination / f"helios-desktop-{manifest['version']}-linux-x86_64.tar.zst"
+    write_tar(portable, [(application, "helios-desktop")])
     artifacts.append(portable)
     if args.native:
         artifacts.append(native_package(application, destination, manifest["version"], runtime_packages, runtime_sonames))

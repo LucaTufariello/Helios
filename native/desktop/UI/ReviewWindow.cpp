@@ -23,7 +23,7 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <QtConcurrent>
-namespace godeye {
+namespace helios {
 namespace {
 QJsonObject findSite(SiteLibrary *library, const QString &id) {
   if (library)
@@ -38,7 +38,7 @@ ReviewWindow::ReviewWindow(const QString &profile, MapWidget &map, Missions &mis
                            QWidget *parent)
     : QDialog(parent, Qt::Tool), map_(map), missions_(missions), satellite_(satellite),
       processing_(processing), settings_(profile + "/desktop.ini", QSettings::IniFormat) {
-  setWindowTitle("GodEye — Infrastructure review");
+  setWindowTitle("Helios — Infrastructure review");
   setAttribute(Qt::WA_QuitOnClose, false);
   resize(900, 940);
   auto *outer = new QVBoxLayout(this);
@@ -602,4 +602,4 @@ void ReviewWindow::closeEvent(QCloseEvent *event) {
   else
     QDialog::closeEvent(event);
 }
-} // namespace godeye
+} // namespace helios

@@ -27,7 +27,7 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 
-namespace godeye {
+namespace helios {
 ProcessingWindow::ProcessingWindow(const QString &profile, MapWidget &map, QWidget *parent,
                                    bool networking)
     : QDialog(parent, Qt::Tool), profile_(profile), networking_(networking), map_(map),
@@ -65,7 +65,7 @@ ProcessingWindow::ProcessingWindow(const QString &profile, MapWidget &map, QWidg
             refresh();
           });
   connect(queue_, &ScientificQueue::changed, this, [this] { refresh(); });
-  setWindowTitle("GodEye — Satellite acquisition and processing");
+  setWindowTitle("Helios — Satellite acquisition and processing");
   setAttribute(Qt::WA_QuitOnClose, false);
   resize(900, 940);
   setMinimumSize(640, 660);
@@ -712,4 +712,4 @@ void ProcessingWindow::checkPython() {
   });
   refresh();
 }
-} // namespace godeye
+} // namespace helios

@@ -9,7 +9,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
-using namespace godeye;
+using namespace helios;
 class MonitoringTests : public QObject {
   Q_OBJECT
   static QJsonObject area(Missions &m, const QString &id) {
@@ -285,9 +285,9 @@ private slots:
     quick.write("complete");
     quick.close();
     WorkerRequest r;
-    r.python = QStringLiteral(GODEYE_TEST_PYTHON);
-    r.worker = QStringLiteral(GODEYE_TEST_WORKER);
-    r.host = QStringLiteral(GODEYE_TEST_HOST);
+    r.python = QStringLiteral(HELIOS_TEST_PYTHON);
+    r.worker = QStringLiteral(HELIOS_TEST_WORKER);
+    r.host = QStringLiteral(HELIOS_TEST_HOST);
     r.operation = "render";
     r.optical = true;
     r.gpt = r.python;

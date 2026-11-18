@@ -12,7 +12,7 @@
 #include <QSignalSpy>
 #include <QTabWidget>
 #include <QTest>
-using namespace godeye;
+using namespace helios;
 class DossierUITests : public QObject {
   Q_OBJECT
   static QJsonObject raster() {

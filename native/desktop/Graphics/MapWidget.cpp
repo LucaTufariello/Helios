@@ -13,7 +13,7 @@
 #include <numbers>
 #include <rhi/qrhi.h>
 
-namespace godeye {
+namespace helios {
 struct MapWidget::GpuMesh {
   CpuMesh cpu;
   quint64 revision = 0;
@@ -670,8 +670,8 @@ void MapWidget::initialize(QRhiCommandBuffer *) {
     queueStatusChanged();
     return;
   }
-  const auto vertexShader = shader(":/godeye/shaders/globe.vert.qsb"),
-             fragmentShader = shader(":/godeye/shaders/globe.frag.qsb");
+  const auto vertexShader = shader(":/helios/shaders/globe.vert.qsb"),
+             fragmentShader = shader(":/helios/shaders/globe.frag.qsb");
   auto pipeline = [&](bool line, bool overlay, bool scene = false, bool doubleSided = true,
                       bool list = false) {
     auto p = std::unique_ptr<QRhiGraphicsPipeline>(rhi()->newGraphicsPipeline());
@@ -1250,4 +1250,4 @@ bool MapWidget::event(QEvent *event) {
   }
   return QRhiWidget::event(event);
 }
-} // namespace godeye
+} // namespace helios

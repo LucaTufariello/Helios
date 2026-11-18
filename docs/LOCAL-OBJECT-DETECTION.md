@@ -1,10 +1,10 @@
-# Choosing a local detector for GodEye
+# Choosing a local detector for Helios
 
 ## Recommendation
 
 For an **aerial object detection evaluation**, start with **YOLO11s-OBB**, rather
 than a generic camera-image detector. The small model is a reasonable first
-candidate to evaluate on Apple Silicon; GodEye has not benchmarked its latency,
+candidate to evaluate on Apple Silicon; Helios has not benchmarked its latency,
 memory or accuracy. The development Mac was verified as an Apple M2 with 8 GB RAM;
 start with the small variant and measure peak memory alongside the running map.
 This is a proposed next adapter, **not a model that the current
@@ -20,7 +20,7 @@ See the publisher's [YOLO11 model documentation](https://docs.ultralytics.com/mo
 
 YOLO11 weights/tooling are offered under the publisher's AGPL-3.0 or Enterprise
 terms. Review that distribution choice before bundling a model with this MIT-licensed
-project; this implementation neither changes GodEye's license nor bundles weights.
+project; this implementation neither changes Helios's license nor bundles weights.
 [Publisher licensing](https://www.ultralytics.com/license).
 If permissive detector tooling is required, [MMRotate](https://github.com/open-mmlab/mmrotate)
 is an Apache-2.0 alternative to investigate; individual checkpoints and training
@@ -44,7 +44,7 @@ The current adapter accepts `.mlmodel`, `.mlpackage` and `.mlmodelc` models whos
 Vision request returns `VNRecognizedObjectObservation` boxes. Classifiers and raw
 tensor outputs are rejected. A `.pt` download cannot be selected as a Core ML model.
 Apple's card describes a Core ML object detector, but actual inference with this
-trained model has **not yet been verified in GodEye**. No trained weights are installed
+trained model has **not yet been verified in Helios**. No trained weights are installed
 automatically. The app's disclosure explains these choices beside the model picker.
 
 ## Why the aerial model needs more work
@@ -69,7 +69,7 @@ full-resolution scientific raster, and resizes the entire image to model input.
 Large regions can therefore lose small objects even when the original data is sharp.
 
 Before depending on an aerial model, evaluate labeled images from the actual sources
-and viewing conditions used in GodEye. Measure precision/recall per class, missed
+and viewing conditions used in Helios. Measure precision/recall per class, missed
 objects, duplicate boxes, geolocation error, latency and memory on the target Mac.
 Keep a held-out test set and include empty scenes. Construction/damage/change
 claims need independent dated evidence and a separate validation protocol. The

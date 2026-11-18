@@ -1,7 +1,7 @@
 # Satellite analysis plan
 
 Updated October 12, 2026. This detailed scientific backlog supports milestones 1–2
-of the [GodEye product roadmap](ROADMAP.md). It is planned validation work, not a
+of the [Helios product roadmap](ROADMAP.md). It is planned validation work, not a
 scheduled automation or a claim that the checks are implemented.
 
 The Qt [monitoring workbench](SITE-MONITORING.md) now implements translation-only

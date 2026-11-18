@@ -6,13 +6,13 @@
 #include <QUuid>
 #include <algorithm>
 #include <cmath>
-namespace godeye {
+namespace helios {
 QString inferenceWorkerPath() {
   const QDir app(QCoreApplication::applicationDirPath());
 #if defined(Q_OS_MACOS)
   return app.absoluteFilePath("../Resources/workers/Inference/infer.py");
 #else
-  return app.absoluteFilePath("../share/godeye/workers/Inference/infer.py");
+  return app.absoluteFilePath("../share/helios/workers/Inference/infer.py");
 #endif
 }
 QJsonObject inferenceRequest(const ProductLayer &source, const QString &contract,
@@ -112,4 +112,4 @@ QJsonArray inferenceProposals(const QJsonObject &result, const QString &missionI
     error->clear();
   return proposals;
 }
-} // namespace godeye
+} // namespace helios

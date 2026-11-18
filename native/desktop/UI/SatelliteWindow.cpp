@@ -22,7 +22,7 @@
 #include <QVBoxLayout>
 #include <QtConcurrent>
 
-namespace godeye {
+namespace helios {
 namespace {
 using ReadResult = std::pair<QVector<ProductLayer>, QString>;
 ReadResult load(const QString &path, bool images) {
@@ -36,7 +36,7 @@ ReadResult load(const QString &path, bool images) {
 SatelliteWindow::SatelliteWindow(const QString &profile, QWidget *parent)
     : QDialog(parent, Qt::Tool), profile_(profile),
       settings_(profile + "/desktop.ini", QSettings::IniFormat) {
-  setWindowTitle("GodEye — Satellite library");
+  setWindowTitle("Helios — Satellite library");
   resize(820, 720);
   setMinimumSize(640, 540);
   auto *layout = new QVBoxLayout(this);
@@ -248,7 +248,7 @@ SatelliteWindow::SatelliteWindow(const QString &profile, QWidget *parent)
   connect(import, &QPushButton::clicked, this, [this] {
     const auto path = QFileDialog::getOpenFileName(
         this, "Import completed satellite product",
-        settings_.value("lastImport", QDir::homePath() + "/Library/Application Support/GodEye")
+        settings_.value("lastImport", QDir::homePath() + "/Library/Application Support/Helios")
             .toString(),
         "Product manifest (*.json)");
     if (!path.isEmpty()) {
@@ -571,4 +571,4 @@ void SatelliteWindow::exportSelected(const QString &kind) {
       return;
     }
 }
-} // namespace godeye
+} // namespace helios

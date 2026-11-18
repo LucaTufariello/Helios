@@ -4,7 +4,7 @@
 #include <QTimeZone>
 #include <cmath>
 #include <numbers>
-namespace godeye {
+namespace helios {
 namespace {
 constexpr double pi = std::numbers::pi;
 bool validLine(const QByteArray &line, char kind) {
@@ -202,4 +202,4 @@ bool DomainOrbit::orbit(const QString &id, QVector<Coordinate> &points, QVector<
     }
   return false;
 }
-} // namespace godeye
+} // namespace helios

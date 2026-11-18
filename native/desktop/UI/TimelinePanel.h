@@ -13,7 +13,7 @@ class QListWidget;
 class QPlainTextEdit;
 class QSlider;
 class QSpinBox;
-namespace godeye {
+namespace helios {
 class TimelinePanel : public QWidget {
   Q_OBJECT
 public:
@@ -26,7 +26,7 @@ public:
   }
 signals:
   void evidenceRequested(QJsonObject evidence);
-  void comparisonRequested(QVector<godeye::ProductLayer> layers, double blend);
+  void comparisonRequested(QVector<helios::ProductLayer> layers, double blend);
 
 private:
   Missions &missions_;
@@ -48,4 +48,4 @@ private:
   void compare();
   void exportEntries(bool csv);
 };
-} // namespace godeye
+} // namespace helios

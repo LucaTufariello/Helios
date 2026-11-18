@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        GodEye is a native macOS analysis workspace for public assets, infrastructure and systems. Review DATA_SOURCES.md for attribution and use restrictions before proposing a source; do not propose identification or tracking of individuals.
+        Helios is a native macOS analysis workspace for public assets, infrastructure and systems. Review DATA_SOURCES.md for attribution and use restrictions before proposing a source; do not propose identification or tracking of individuals.
   - type: textarea
     id: problem
     attributes:

@@ -6,7 +6,7 @@
 #include <QTimer>
 #include <optional>
 
-namespace godeye {
+namespace helios {
 struct WorkerRequest {
   QString python, worker, operation, input, gpt;
   QJsonObject options;
@@ -66,4 +66,4 @@ private:
   void releaseLock();
   void cleanupIncomplete();
 };
-} // namespace godeye
+} // namespace helios

@@ -22,7 +22,7 @@
 #include <QTextBrowser>
 #include <QTimer>
 #include <QVBoxLayout>
-using namespace godeye;
+using namespace helios;
 class InvestigationUITests : public QObject {
   Q_OBJECT
   static Asset sample() {
@@ -94,7 +94,7 @@ private slots:
                 ->text()
                 .contains("TRUNCATED"));
     QVERIFY(elapsed.elapsed() < 1500);
-    const auto root = qEnvironmentVariable("GODEYE_INVESTIGATION_QA");
+    const auto root = qEnvironmentVariable("HELIOS_INVESTIGATION_QA");
     if (!root.isEmpty()) {
       QDir().mkpath(root);
       QVERIFY(host.grab().save(QDir(root).filePath("investigation-bounded-graph.png")));
@@ -167,7 +167,7 @@ private slots:
     f.claim = "Generated evaluation: the terminal and access road share a documented connection.";
     f.assetSnapshotIDs = {sid};
     m.saveFinding(mid, f, 0);
-    const auto root = qEnvironmentVariable("GODEYE_INVESTIGATION_QA");
+    const auto root = qEnvironmentVariable("HELIOS_INVESTIGATION_QA");
     if (!root.isEmpty())
       QDir().mkpath(root);
     auto *layout = new QVBoxLayout(&host);

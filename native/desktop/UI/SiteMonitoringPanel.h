@@ -7,7 +7,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 class QTableWidget;
 class QLabel;
-namespace godeye {
+namespace helios {
 class MonitoringInboxPanel;
 class SiteMonitoringPanel : public QWidget {
   Q_OBJECT
@@ -19,7 +19,7 @@ public:
 signals:
   void drawControlRequested();
   void resumeAutomaticRequested();
-  void focusControlRequested(godeye::Bounds bounds);
+  void focusControlRequested(helios::Bounds bounds);
   void reviewRequested(QString manifest);
   void dossierRequested(QString areaID);
 
@@ -51,4 +51,4 @@ private:
   }
   void run(const std::function<void()> &fn);
 };
-} // namespace godeye
+} // namespace helios

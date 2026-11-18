@@ -34,7 +34,7 @@ class RadarTests : public QObject {
   }
 private slots:
   void queryModesPolarizationUtcAndPagination() {
-    godeye::RadarQuery query{{9, 45, 9.1, 45.1}, QDate(2026, 8, 1), QDate(2026, 8, 31), "VV", "SM"};
+    helios::RadarQuery query{{9, 45, 9.1, 45.1}, QDate(2026, 8, 1), QDate(2026, 8, 31), "VV", "SM"};
     const QUrlQuery url(query.url(20));
     const auto filter = url.queryItemValue("$filter");
     QVERIFY(filter.contains("_S6_GRD"));
@@ -46,7 +46,7 @@ private slots:
     QVERIFY(!query.valid());
   }
   void sceneAdmissionAndSourceBasedFilename() {
-    const auto parsed = godeye::RadarCatalog::parse(page({row(), row()}));
+    const auto parsed = helios::RadarCatalog::parse(page({row(), row()}));
     QCOMPARE(parsed.scenes.size(), 1);
     QCOMPARE(parsed.rejected, 1);
     const auto scene = parsed.scenes.first();
@@ -58,24 +58,24 @@ private slots:
     QCOMPARE(scene.downloadURL().host(), QString("download.dataspace.copernicus.eu"));
     auto bad = row();
     bad["Name"] = bad["Name"].toString().replace("GRDH", "SLC_");
-    QVERIFY(godeye::RadarCatalog::parse(page({bad})).scenes.isEmpty());
+    QVERIFY(helios::RadarCatalog::parse(page({bad})).scenes.isEmpty());
     bad = row();
     bad["ContentLength"] = true;
-    QVERIFY(godeye::RadarCatalog::parse(page({bad})).scenes.isEmpty());
+    QVERIFY(helios::RadarCatalog::parse(page({bad})).scenes.isEmpty());
     bad = row();
     bad["ContentLength"] = double(40ll * 1024 * 1024 * 1024 + 1);
-    QVERIFY(godeye::RadarCatalog::parse(page({bad})).scenes.isEmpty());
-    QVERIFY_EXCEPTION_THROWN(godeye::RadarCatalog::parse("{}"), std::runtime_error);
+    QVERIFY(helios::RadarCatalog::parse(page({bad})).scenes.isEmpty());
+    QVERIFY_EXCEPTION_THROWN(helios::RadarCatalog::parse("{}"), std::runtime_error);
     QJsonArray tooMany;
     for (int i = 0; i < 21; ++i)
       tooMany.append(row());
-    QVERIFY_EXCEPTION_THROWN(godeye::RadarCatalog::parse(page(tooMany)), std::runtime_error);
+    QVERIFY_EXCEPTION_THROWN(helios::RadarCatalog::parse(page(tooMany)), std::runtime_error);
   }
   void boundedHttpAndNoRedirectForwarding() {
-    godeye::qa::FakeNetwork network;
+    helios::qa::FakeNetwork network;
     network.responses.enqueue({QByteArray(1000, 'x'), 200, 1000});
-    godeye::HttpRequest request(nullptr, &network);
-    QSignalSpy done(&request, &godeye::HttpRequest::completed);
+    helios::HttpRequest request(nullptr, &network);
+    QSignalSpy done(&request, &helios::HttpRequest::completed);
     request.start(QUrl("https://catalogue.dataspace.copernicus.eu/test"), 100);
     QTRY_COMPARE(done.size(), 1);
     QVERIFY(!done.first()[2].toString().isEmpty());
@@ -88,10 +88,10 @@ private slots:
     QCOMPARE(network.requests.size(), 2);
   }
   void accountFormEncodingRefreshAndSignOut() {
-    godeye::qa::FakeNetwork network;
+    helios::qa::FakeNetwork network;
     network.responses.enqueue({token("FIRST", 1)});
     network.responses.enqueue({token("SECOND", 600)});
-    godeye::CopernicusAccount account(nullptr, &network);
+    helios::CopernicusAccount account(nullptr, &network);
     account.signIn("qa@example.test", "a+b&c=d e", "123456");
     QTRY_VERIFY(account.signedIn());
     QVERIFY(!account.busy());
@@ -109,9 +109,9 @@ private slots:
     QVERIFY(!account.signedIn());
   }
   void signOutAndMalformedTokensNeverReviveAnOldSession() {
-    godeye::qa::FakeNetwork network;
+    helios::qa::FakeNetwork network;
     network.responses.enqueue({token(), 200, -1, {}, true});
-    godeye::CopernicusAccount account(nullptr, &network);
+    helios::CopernicusAccount account(nullptr, &network);
     account.signIn("qa@example.test", "GENERATED_SECRET");
     QVERIFY(account.busy());
     account.signOut();
@@ -120,7 +120,7 @@ private slots:
     QVERIFY(!account.busy());
     network.responses.enqueue(
         {QJsonDocument(QJsonObject{{"error_description", "GENERATED_SECRET"}}).toJson(), 401});
-    QSignalSpy failed(&account, &godeye::CopernicusAccount::failed);
+    QSignalSpy failed(&account, &helios::CopernicusAccount::failed);
     account.signIn("qa@example.test", "GENERATED_SECRET");
     QTRY_COMPARE(failed.size(), 1);
     QVERIFY(!account.signedIn());

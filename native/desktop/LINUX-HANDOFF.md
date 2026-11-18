@@ -19,7 +19,7 @@ Package source snapshots record file hashes, the base Git revision and
 working-tree status.
 Retain their adjacent SHA-256 file when transferring them.
 
-The old `output/handoff/godeye-desktop-source-2026-10-13.tar.gz` contains only the
+The old `output/handoff/helios-desktop-source-2026-10-13.tar.gz` contains only the
 initial desktop slice. It is historical and does not contain the expanded
 workflows. Preserve the Git checkout and avoid overlaying old snapshots onto it.
 Build outputs, credentials, downloaded data and user profiles are separate from
@@ -36,7 +36,7 @@ project scripts do not install or change drivers or CUDA.
 sudo pacman -S --needed base-devel cmake qt6-base qt6-shadertools qt6-wayland vulkan-tools
 ./native/desktop/diagnose-linux.sh
 make test-desktop
-./output/desktop/build/bin/GodEyeDesktop
+./output/desktop/build/bin/HeliosDesktop
 ```
 
 Run GPU checks inside the graphical Hyprland session. Qt private RHI headers and
@@ -65,7 +65,7 @@ Optional provider keys require a working Linux Secret Service/libsecret store.
    and native camera playback. Keyed AIS/FIRMS/TomTom acceptance needs real keys.
    See [source behavior and limits](DOMAIN-SOURCES.md).
 4. Draw annotations, search/route, change daily visualization/display settings,
-   export/import a workspace and open a `godeye://` link. Public providers may be
+   export/import a workspace and open a `helios://` link. Public providers may be
    unavailable; preserve explicit failures. See [map tools](../../docs/MAP-TOOLS.md)
    and [daily visualization](../../docs/DAILY-IMAGERY.md).
 5. In a disposable mission library, edit areas, notes/citations, tasks/due dates,
@@ -77,12 +77,12 @@ Optional provider keys require a working Linux Secret Service/libsecret store.
 6. Run isolated GPU checks and inspect the reports and screenshots:
 
    ```sh
-   ./output/desktop/build/bin/GodEyeDesktop --validate --qa-output output/qa/linux-generated
-   ./output/desktop/build/bin/GodEyeDesktop --validate-live --qa-output output/qa/linux-live
+   ./output/desktop/build/bin/HeliosDesktop --validate --qa-output output/qa/linux-generated
+   ./output/desktop/build/bin/HeliosDesktop --validate-live --qa-output output/qa/linux-live
    ```
 
    Add `--raster-python /absolute/path/to/python3` to exercise generated PRISMA
-   and measured-change workers. Set `GODEYE_INFERENCE_PYTHON` to a prepared CPU
+   and measured-change workers. Set `HELIOS_INFERENCE_PYTHON` to a prepared CPU
    inference environment for generated model/proposal review. Generated results
    are QA fixtures; the live command requests public map/elevation data.
 7. Retrieve an identified optical acquisition and, where credentials/tools are

@@ -6,7 +6,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
-using namespace godeye;
+using namespace helios;
 class DownloadTests : public QObject {
   Q_OBJECT
   RadarScene scene() {

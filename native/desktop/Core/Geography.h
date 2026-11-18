@@ -1,5 +1,5 @@
 #pragma once
-#include "GodEyeSpatial.h"
+#include "HeliosSpatial.h"
 #include <QJsonObject>
 #include <QMatrix4x4>
 #include <QPointF>
@@ -7,7 +7,7 @@
 #include <QVector>
 #include <optional>
 
-namespace godeye {
+namespace helios {
 struct Coordinate {
   double latitude = 0, longitude = 0;
   bool valid() const;
@@ -50,4 +50,4 @@ GEVector3 scale(GEVector3 a, double s);
 double dot(GEVector3 a, GEVector3 b);
 QMatrix4x4 viewProjection(const Camera &camera, double height, double aspect);
 std::optional<Coordinate> ellipsoidPick(const Camera &camera, double x, double y, double aspect);
-} // namespace godeye
+} // namespace helios

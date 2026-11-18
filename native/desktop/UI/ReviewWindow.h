@@ -13,7 +13,7 @@ class QListWidget;
 class QPlainTextEdit;
 class QSpinBox;
 class QTabWidget;
-namespace godeye {
+namespace helios {
 class ReviewWindow : public QDialog {
   Q_OBJECT
 public:
@@ -31,7 +31,7 @@ public:
 signals:
   void dossierRequested(QString areaID);
   void findingRequested(QJsonObject origin);
-  void layersChanged(QVector<godeye::ProductLayer> layers, bool focus);
+  void layersChanged(QVector<helios::ProductLayer> layers, bool focus);
 
 protected:
   void closeEvent(QCloseEvent *event) override;
@@ -69,4 +69,4 @@ private:
   void showLayer();
   void exportFile();
 };
-} // namespace godeye
+} // namespace helios

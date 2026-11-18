@@ -16,7 +16,7 @@ class QListWidget;
 class QPlainTextEdit;
 class QProgressBar;
 class QPushButton;
-namespace godeye {
+namespace helios {
 class ProcessingWindow : public QDialog {
   Q_OBJECT
 public:
@@ -79,4 +79,4 @@ private:
   void reloadJobs();
   void checkPython();
 };
-} // namespace godeye
+} // namespace helios

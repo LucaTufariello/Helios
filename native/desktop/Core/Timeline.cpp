@@ -5,7 +5,7 @@
 #include <QTimeZone>
 #include <algorithm>
 #include <cmath>
-namespace godeye {
+namespace helios {
 namespace {
 bool overlap(Bounds a, Bounds b) {
   return a.west < b.east && a.east > b.west && a.south < b.north && a.north > b.south;
@@ -283,4 +283,4 @@ QByteArray timelineCSV(const QVector<TimelineEntry> &entries) {
   }
   return csv.toUtf8();
 }
-} // namespace godeye
+} // namespace helios

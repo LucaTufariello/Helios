@@ -6,7 +6,7 @@
 #include <QTimer>
 #include <atomic>
 #include <memory>
-namespace godeye {
+namespace helios {
 struct DomainHttpResult {
   QByteArray bytes;
   QString error;
@@ -65,4 +65,4 @@ private:
   void pump();
   void start(const QString &feed);
 };
-} // namespace godeye
+} // namespace helios

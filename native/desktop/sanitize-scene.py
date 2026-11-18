@@ -19,7 +19,7 @@ def main() -> None:
     args = parser.parse_args()
     build, output = args.build.resolve(), args.output.resolve()
     entries = json.loads((build / "compile_commands.json").read_text()) if (build / "compile_commands.json").is_file() else []
-    link_file = build / "native/desktop/CMakeFiles/GodEyeSceneTests.dir/link.txt"
+    link_file = build / "native/desktop/CMakeFiles/HeliosSceneTests.dir/link.txt"
     if not link_file.is_file():
         raise ValueError("Use a completed Unix Makefiles build.")
     if not any(Path(entry["file"]).resolve() == ROOT / "native/scene/Scene.cpp" for entry in entries):
@@ -30,11 +30,11 @@ def main() -> None:
             raise ValueError("Cannot identify the build's C++ compiler.")
         entries = []
         for target, directory, sources in (
-            ("GodEyeScene", build / "native/scene", [(ROOT / "native/scene/Scene.cpp", "Scene.cpp"),
+            ("HeliosScene", build / "native/scene", [(ROOT / "native/scene/Scene.cpp", "Scene.cpp"),
              (ROOT / "native/scene/SceneTransportQt.cpp", "SceneTransportQt.cpp"),
-             (build / "native/scene/GodEyeScene_autogen/mocs_compilation.cpp", "GodEyeScene_autogen/mocs_compilation.cpp")]),
-            ("GodEyeSceneTests", build / "native/desktop", [(ROOT / "native/desktop/Tests/SceneTests.cpp", "Tests/SceneTests.cpp"),
-             (build / "native/desktop/GodEyeSceneTests_autogen/mocs_compilation.cpp", "GodEyeSceneTests_autogen/mocs_compilation.cpp")]),
+             (build / "native/scene/HeliosScene_autogen/mocs_compilation.cpp", "HeliosScene_autogen/mocs_compilation.cpp")]),
+            ("HeliosSceneTests", build / "native/desktop", [(ROOT / "native/desktop/Tests/SceneTests.cpp", "Tests/SceneTests.cpp"),
+             (build / "native/desktop/HeliosSceneTests_autogen/mocs_compilation.cpp", "HeliosSceneTests_autogen/mocs_compilation.cpp")]),
         ):
             flags_text = (directory / "CMakeFiles" / (target + ".dir") / "flags.make").read_text()
             flags = []
@@ -51,8 +51,8 @@ def main() -> None:
     compiled: list[dict] = []
     for entry in entries:
         file = Path(entry["file"]).resolve()
-        scene = file.parent == ROOT / "native/scene" or "GodEyeScene_autogen" in file.parts
-        test = file == ROOT / "native/desktop/Tests/SceneTests.cpp" or "GodEyeSceneTests_autogen" in file.parts
+        scene = file.parent == ROOT / "native/scene" or "HeliosScene_autogen" in file.parts
+        test = file == ROOT / "native/desktop/Tests/SceneTests.cpp" or "HeliosSceneTests_autogen" in file.parts
         if not scene and not test:
             continue
         command = entry.get("arguments") or shlex.split(entry["command"])
@@ -79,11 +79,11 @@ def main() -> None:
         compiled.append({"source": str(file.relative_to(ROOT)), "command": clean})
     if len(scene_objects) < 2 or len(objects) < 3:
         raise ValueError("The build did not contain both owned scene sources and scene tests.")
-    archive = output / "libGodEyeSceneSanitized.a"
+    archive = output / "libHeliosSceneSanitized.a"
     if archive.exists():
         archive.unlink()
     subprocess.run(["ar", "rcs", str(archive), *map(str, scene_objects)], check=True)
-    executable = output / "GodEyeSceneTestsSanitized"
+    executable = output / "HeliosSceneTestsSanitized"
     original = shlex.split(link_file.read_text())
     link: list[str] = []
     index = 0
@@ -99,7 +99,7 @@ def main() -> None:
         resolved = (link_file.parents[2] / argument).resolve()
         if resolved in objects:
             argument = str(objects[resolved])
-        elif argument.endswith("/libGodEyeScene.a"):
+        elif argument.endswith("/libHeliosScene.a"):
             argument = str(archive)
         link.append(argument)
         index += 1

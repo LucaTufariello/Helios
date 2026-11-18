@@ -115,7 +115,7 @@ observation/epoch time (including Foundation dates) and frozen details, with a
 bounded saved-JSON view. The inspector performs no source retrieval and live
 updates do not replace its contents.
 
-Bundled data and notices are deployed under `share/godeye/sources` on Linux and
+Bundled data and notices are deployed under `share/helios/sources` on Linux and
 `Contents/Resources/sources` on macOS. The source snapshot contains 4,351
 datacenter rows, 704 dam rows and 712 cable-system / 1,917 landing-point rows.
 Duplicate admission produces 4,351 datacenter, 703 dam and 2,611 cable records.
@@ -134,9 +134,9 @@ covers actual selection/evidence controls, restored offline settings and bounded
 clip-frame parsing. Real camera media is explicitly opt-in:
 
 ```sh
-GODEYE_LIVE_CHECKS=1 GODEYE_DOMAIN_QA=/absolute/disposable/qa-directory \
-  /path/to/GodEyeDomainUITests realOperatorStillAndNativeClip
-GODEYE_LIVE_CHECKS=1 /path/to/GodEyeDomainLiveChecks /absolute/report.json
+HELIOS_LIVE_CHECKS=1 HELIOS_DOMAIN_QA=/absolute/disposable/qa-directory \
+  /path/to/HeliosDomainUITests realOperatorStillAndNativeClip
+HELIOS_LIVE_CHECKS=1 /path/to/HeliosDomainLiveChecks /absolute/report.json
 ```
 
 The live-source harness records actual source IDs, times, counts, errors and

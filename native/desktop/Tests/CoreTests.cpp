@@ -6,7 +6,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 
-using namespace godeye;
+using namespace helios;
 class CoreTests : public QObject {
   Q_OBJECT
 private slots:
@@ -342,7 +342,7 @@ private slots:
     validateMissions(m.plans());
   }
   void sharedSwiftQtFixture() {
-    const auto filename = QStringLiteral(GODEYE_FIXTURE_DIR) + "/cross-platform-mission.json";
+    const auto filename = QStringLiteral(HELIOS_FIXTURE_DIR) + "/cross-platform-mission.json";
     if (!QFileInfo::exists(filename))
       QSKIP("Cross-client fixture is generated after native GPU validation.");
     Missions m;
@@ -357,7 +357,7 @@ private slots:
   }
   void sharedDossierFixturePreservesPortableMetadata() {
     Missions m;
-    m.load(QStringLiteral(GODEYE_FIXTURE_DIR) + "/cross-platform-dossier.json");
+    m.load(QStringLiteral(HELIOS_FIXTURE_DIR) + "/cross-platform-dossier.json");
     const auto brief = m.selected()["brief"].toObject();
     const auto dossier = brief["areas"].toArray()[0].toObject()["dossier"].toObject();
     QCOMPARE(dossier["linkedEvidenceIDs"].toArray().size(), 2);
@@ -372,7 +372,7 @@ private slots:
   }
   void sharedMonitoringFixturePreservesConfigurationInboxAndTaskOrigin() {
     Missions m;
-    m.load(QStringLiteral(GODEYE_FIXTURE_DIR) + "/cross-platform-monitoring.json");
+    m.load(QStringLiteral(HELIOS_FIXTURE_DIR) + "/cross-platform-monitoring.json");
     auto b = m.selected()["brief"].toObject();
     QCOMPARE(b["monitoringInbox"].toArray().size(), 1);
     QCOMPARE(b["areas"]
@@ -390,7 +390,7 @@ private slots:
     QCOMPARE(copy.plans(), m.plans());
   }
   void existingMissionLibraryReadOnlyCheck() {
-    const auto filename = qEnvironmentVariable("GODEYE_MISSION_CHECK");
+    const auto filename = qEnvironmentVariable("HELIOS_MISSION_CHECK");
     if (filename.isEmpty())
       QSKIP("Opt-in check of an existing mission library.");
     QFile source(filename);

@@ -2,7 +2,7 @@
 #include <QByteArray>
 #include <QVector>
 #include <optional>
-namespace godeye {
+namespace helios {
 struct DomainProtoField {
   quint64 number = 0;
   QByteArray payload;
@@ -14,4 +14,4 @@ std::optional<QVector<DomainProtoField>> read(const QByteArray &bytes);
 std::optional<QVector<quint64>> packed(const QByteArray &bytes);
 const DomainProtoField *find(const QVector<DomainProtoField> &fields, quint64 number);
 } // namespace DomainProto
-} // namespace godeye
+} // namespace helios

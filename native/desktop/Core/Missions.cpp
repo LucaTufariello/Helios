@@ -18,7 +18,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace godeye {
+namespace helios {
 namespace {
 constexpr qint64 maximumBytes = 8 * 1024 * 1024;
 constexpr double foundationEpoch = 978307200.0;
@@ -1219,9 +1219,9 @@ QString Missions::addObservation(const QString &title, const QString &category,
   });
   return id;
 }
-} // namespace godeye
+} // namespace helios
 
-namespace godeye {
+namespace helios {
 void Missions::updateMission(const QString &missionID,
                              const std::function<void(QJsonObject &)> &mutation, bool persist) {
   auto next = plans_;
@@ -1417,9 +1417,9 @@ void Missions::removeMonitoringEvent(const QString &eventID) {
     p["brief"] = b;
   });
 }
-} // namespace godeye
+} // namespace helios
 
-namespace godeye {
+namespace helios {
 namespace {
 void changeInvestigation(QJsonObject &p, const std::function<void(QJsonObject &)> &mutate) {
   auto b = p["brief"].toObject(), i = investigation(p);
@@ -1733,4 +1733,4 @@ QString Missions::addFindingTask(const QString &missionID, const QString &findin
       false);
   return id;
 }
-} // namespace godeye
+} // namespace helios

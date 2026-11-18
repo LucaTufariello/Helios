@@ -12,7 +12,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace godeye {
+namespace helios {
 namespace {
 constexpr qsizetype maximumResponse = 8 * 1024 * 1024;
 std::optional<double> number(const QJsonValue &value) {
@@ -157,7 +157,7 @@ void OpticalCatalog::search(const OpticalQuery &query) {
   request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                        QNetworkRequest::ManualRedirectPolicy);
   request.setTransferTimeout(30000);
-  request.setRawHeader("User-Agent", "GodEyeNative/1.0");
+  request.setRawHeader("User-Agent", "HeliosNative/1.0");
   auto *reply = network_.get(request);
   reply_ = reply;
   reply->setReadBufferSize(128 * 1024);
@@ -227,4 +227,4 @@ void OpticalCatalog::search(const OpticalQuery &query) {
   });
   emit changed();
 }
-} // namespace godeye
+} // namespace helios

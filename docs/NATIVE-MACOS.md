@@ -1,6 +1,6 @@
 # Native macOS architecture
 
-GodEye is a native Apple Silicon macOS application. The browser implementation
+Helios is a native Apple Silicon macOS application. The browser implementation
 has been retired; historical code remains in Git. Current capabilities and limits
 are described in [CURRENT-STATE.md](CURRENT-STATE.md), with setup in the
 [root README](../README.md).
@@ -12,12 +12,12 @@ linked through a C ABI by SwiftPM; the same source builds independently with CMa
 
 ## Application boundaries
 
-- `GodEyeMac` owns SwiftUI/AppKit windows, shared observable workspace state,
+- `HeliosMac` owns SwiftUI/AppKit windows, shared observable workspace state,
   native media playback, platform storage integration and Metal rendering.
-- `GodEyeCore` owns validated documents, provider transports/parsers, orbital and
+- `HeliosCore` owns validated documents, provider transports/parsers, orbital and
   geographic models, canonical reference resources and scientific-worker orchestration.
 - `CScene` and the Objective-C++ engine bridge connect the Swift renderer to pinned
-  Cesium Native. Cesium selects/loads content; GodEye prepares and renders GPU resources.
+  Cesium Native. Cesium selects/loads content; Helios prepares and renders GPU resources.
 - `CSGP4` supplies compiled Vallado SGP4/SDP4 propagation. No Python/JavaScript is
   used for live orbital rendering.
 - Optional satellite Python workers run as cancellable local processes behind
@@ -31,7 +31,7 @@ Use `make build`, `make test`, `make test-raster` and `make format-check` on an
 arm64 Mac with full Xcode, CMake 3.24+, Python 3 and pkg-config. See [TESTING.md](../TESTING.md)
 for opt-in provider/window checks. No npm command or JavaScript packaging step is needed.
 
-SwiftPM packages resources directly from `Sources/GodEyeCore/Resources/`; these are
+SwiftPM packages resources directly from `Sources/HeliosCore/Resources/`; these are
 the canonical reference datasets and transit registry. Frozen independent orbital
 vectors remain in the test fixtures. Their provenance and refresh guidance are in
 [resource maintenance](../native/macos/scripts/README.md).
@@ -48,7 +48,7 @@ Open **3D Surface** in the native toolbar. Terrain is enabled by default and beg
 
 - **Keyless elevation:** [Mapzen terrain on AWS](https://registry.opendata.aws/terrain-tiles/), using the documented [Terrarium RGB encoding](https://github.com/tilezen/joerd/blob/master/docs/formats.md). ImageIO validates 256×256 images before decompression, and source channel values are read without color conversion. Fractional and negative values are retained; displayed ocean terrain is clamped to sea level. Full [source attribution](https://github.com/tilezen/joerd/blob/master/docs/attribution.md) is bundled and accessible in the native panel.
 - **Actual photogrammetry:** the public AGI headquarters tileset listed in [Cesium's 3D Tiles resources](https://github.com/CesiumGS/3d-tiles/blob/main/RESOURCES.md) is available directly from the panel. It loads captured textured buildings and ground geometry. The app also accepts georeferenced local and same-origin HTTPS 3D Tiles; it does not create mock buildings or simulated scenery. Public availability is not a blanket redistribution license.
-- **Native engine:** [Cesium Native v0.65.0](https://github.com/CesiumGS/cesium-native/tree/v0.65.0), pinned to `1bca8021711294cc83a5a032599ac72d9b3166c9`, provides hierarchical selection, screen-space-error refinement and native glTF decoding. GodEye supplies native background jobs, bounded NSURLSession access, double-precision georeferencing and the Metal renderer. The app has no embedded web engine or service process.
+- **Native engine:** [Cesium Native v0.65.0](https://github.com/CesiumGS/cesium-native/tree/v0.65.0), pinned to `1bca8021711294cc83a5a032599ac72d9b3166c9`, provides hierarchical selection, screen-space-error refinement and native glTF decoding. Helios supplies native background jobs, bounded NSURLSession access, double-precision georeferencing and the Metal renderer. The app has no embedded web engine or service process.
 - **Depth and precision:** an infinite-far reverse-Z projection uses one double-precision camera basis for rendering and picking. Terrain/mesh vertex buffers have local origins and receive camera-relative offsets. This avoids globe-coordinate precision loss in close views. Fine raster regions replace their parents in both depth rendering and picking; terrain boundary vertices conform to their loaded parent surface.
 - **Draping and navigation:** raster imagery and NASA overlays use the terrain triangles. Surface routes, annotations and selected outlines follow the actual rendered terrain grid. Records with unknown altitude are positioned for display on the loaded ground; a reported altitude is not replaced or written back as inferred data. Camera range is relative to the loaded target surface, and clearance checks the geographically displaced eye at the current tilt/heading. Following and route navigation use the same clearance check.
 - **Picking:** terrain tests the exact uploaded raster triangles. 3D picking tests prepared mesh triangles, material cutouts/back faces and the subset actually uploaded to the GPU. An invisible/unprepared or memory-rejected mesh cannot be selected. Heights shown in the inspector describe the rendered geometry, rather than a provider measurement or an invented observation time.

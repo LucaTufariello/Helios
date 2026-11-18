@@ -5,7 +5,7 @@
 #include <QVariantMap>
 class QLabel;
 class QToolButton;
-namespace godeye {
+namespace helios {
 // Bounded native palettes above the map; uncovered map input stays available.
 class WorkspacePanel : public QFrame {
   Q_OBJECT
@@ -59,4 +59,4 @@ private:
   QList<QPointer<WorkspacePanel>> panels_;
   void arrange();
 };
-} // namespace godeye
+} // namespace helios

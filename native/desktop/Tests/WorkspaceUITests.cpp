@@ -11,7 +11,7 @@
 #include <QTest>
 #include <QToolButton>
 #include <QVBoxLayout>
-using namespace godeye;
+using namespace helios;
 class WorkspaceUITests : public QObject {
   Q_OBJECT
 private slots:

@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 void require(bool ok, const char *message) {
   if (!ok)
@@ -347,4 +347,4 @@ QVector<MonitoringWork> monitoringWork(const QJsonObject &plan,
   });
   return work;
 }
-} // namespace godeye
+} // namespace helios

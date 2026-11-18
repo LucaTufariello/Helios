@@ -117,7 +117,7 @@ def product_checks(files, record, work, gpt):
     if not gpt:
         return result
     manifest = files.prepare(work)
-    graph = ET.Element('graph', id='GodEyeCalibrationCheck')
+    graph = ET.Element('graph', id='HeliosCalibrationCheck')
     ET.SubElement(graph, 'version').text = '1.0'
     def node(identifier, operator, parent, parameters):
         n = ET.SubElement(graph, 'node', id=identifier)
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     record = json.loads((args.job/'result.json').read_text())
     if record['state'] != 'completed':
         raise ValueError('Select a completed SAR job')
-    spec = importlib.util.spec_from_file_location('sar_worker', Path(__file__).parents[1]/'Sources/GodEyeMac/Resources/SAR/sentinel1.py')
+    spec = importlib.util.spec_from_file_location('sar_worker', Path(__file__).parents[1]/'Sources/HeliosMac/Resources/SAR/sentinel1.py')
     worker = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(worker)
     report = dict(version=1, checkedAt=dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -188,7 +188,7 @@ if __name__ == '__main__':
                   scope='Numerical integrity and an optional independent calibration calculation. No absolute accuracy certification.',
                   outputChecks=audit_outputs(args.job, record))
     with contextlib.closing(worker.ProductFiles(record['originalInput'])) as files:
-        with tempfile.TemporaryDirectory(prefix='godeye-sar-quality-') as temporary:
+        with tempfile.TemporaryDirectory(prefix='helios-sar-quality-') as temporary:
             report['sourceChecks'] = product_checks(files, record, Path(temporary), args.gpt)
     report['remainingChecks'] = ['Independent, dated ground-control measurements with residual errors in metres',
          'Same-acquisition external processor reference with matched radiometry, masks, DEM and sampling',

@@ -5,7 +5,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <cmath>
-namespace godeye {
+namespace helios {
 const QVector<FeedDescriptor> &domainFeeds() {
   static const QVector<FeedDescriptor> feeds{
       {"earthquakes", "Earthquakes (24h)", "Ground", "Data courtesy of the U.S. Geological Survey",
@@ -133,7 +133,7 @@ QString domainResourcePath(const QString &relative) {
 #ifdef Q_OS_MACOS
   const QString root = QCoreApplication::applicationDirPath() + "/../Resources/sources/";
 #else
-  const QString root = QCoreApplication::applicationDirPath() + "/../share/godeye/sources/";
+  const QString root = QCoreApplication::applicationDirPath() + "/../share/helios/sources/";
 #endif
   return QDir::cleanPath(root + relative);
 }
@@ -168,4 +168,4 @@ QVector<TransitProvider> transitProviders(const QString &path) {
   }
   return providers;
 }
-} // namespace godeye
+} // namespace helios

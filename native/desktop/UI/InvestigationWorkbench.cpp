@@ -40,7 +40,7 @@
 #include <QtConcurrent>
 #include <cmath>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 void require(bool b, const char *s) {
   if (!b)
@@ -394,10 +394,10 @@ InvestigationWorkbench::InvestigationWorkbench(const QString &profile, Missions 
   graphDetail_->setOpenExternalLinks(false);
   connect(graphDetail_, &QTextBrowser::anchorClicked, this, [this](const QUrl &url) {
     run([&] {
-      if (url.scheme() == "godeye-finding") {
+      if (url.scheme() == "helios-finding") {
         restore(findings_, url.path());
         emit findingsRequested();
-      } else if (url.scheme() == "godeye-evidence") {
+      } else if (url.scheme() == "helios-evidence") {
         const auto citation =
             row(investigation(missions_.selected())["citations"].toArray(), url.path());
         require(citation["evidence"].isObject(),
@@ -1033,7 +1033,7 @@ void InvestigationWorkbench::graphSelection() {
     for (auto sid : f["assetSnapshotIDs"].toArray())
       related = related || snapshotIDs.contains(sid.toString());
     if (related)
-      links += "<p><a href='godeye-finding:" + f["id"].toString() +
+      links += "<p><a href='helios-finding:" + f["id"].toString() +
                "'>Open finding: " + f["claim"].toString().toHtmlEscaped() + "</a></p>";
   }
   for (auto v : i["associations"].toArray()) {
@@ -1042,7 +1042,7 @@ void InvestigationWorkbench::graphSelection() {
       continue;
     const auto citation = row(i["citations"].toArray(), association["citationID"].toString());
     if (citation["evidence"].isObject())
-      links += "<p><a href='godeye-evidence:" + citation["id"].toString() +
+      links += "<p><a href='helios-evidence:" + citation["id"].toString() +
                "'>Open retained evidence: " + citation["label"].toString().toHtmlEscaped() +
                "</a></p>";
   }
@@ -1379,4 +1379,4 @@ void InvestigationWorkbench::briefing() {
   } catch (...) {
   }
 }
-} // namespace godeye
+} // namespace helios

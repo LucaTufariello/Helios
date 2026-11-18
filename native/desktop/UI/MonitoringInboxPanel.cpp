@@ -18,7 +18,7 @@
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 #include <QtConcurrent>
-namespace godeye {
+namespace helios {
 namespace {
 QString qualityText(const QJsonObject &result) {
   const auto q = result["quality"].toObject();
@@ -323,4 +323,4 @@ void MonitoringInboxPanel::run(const std::function<void()> &fn) {
     status_->setText(QString::fromUtf8(e.what()));
   }
 }
-} // namespace godeye
+} // namespace helios

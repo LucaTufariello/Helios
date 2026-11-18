@@ -9,7 +9,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <algorithm>
-namespace godeye {
+namespace helios {
 WorkspacePanel::WorkspacePanel(const QString &id, const QString &title, design::Symbol symbol,
                                QWidget *content, QWidget *surface, QSize preferred, bool right)
     : QFrame(surface), id_(id), content_(content), preferred_(preferred), expanded_(preferred),
@@ -245,4 +245,4 @@ void WorkspaceSurface::resizeEvent(QResizeEvent *event) {
   QWidget::resizeEvent(event);
   arrange();
 }
-} // namespace godeye
+} // namespace helios

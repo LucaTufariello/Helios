@@ -14,7 +14,7 @@
 #include <QSettings>
 #include <QVBoxLayout>
 #include <algorithm>
-namespace godeye {
+namespace helios {
 RadarPanel::RadarPanel(const QString &profile, MapWidget &map, std::function<Bounds()> region,
                        QWidget *parent, bool networking)
     : QWidget(parent), map_(map), networking_(networking), region_(std::move(region)),
@@ -306,4 +306,4 @@ void RadarPanel::refresh() {
   }
   emit changed();
 }
-} // namespace godeye
+} // namespace helios

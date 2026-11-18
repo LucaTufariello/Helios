@@ -9,7 +9,7 @@
 class QLabel;
 class QPushButton;
 class QDoubleSpinBox;
-namespace godeye {
+namespace helios {
 class CameraViewer : public QDialog {
   Q_OBJECT
 public:
@@ -52,4 +52,4 @@ private:
   void readFrames();
   void closeEvent(QCloseEvent *event) override;
 };
-} // namespace godeye
+} // namespace helios

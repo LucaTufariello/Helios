@@ -13,7 +13,7 @@
 #include <limits>
 #include <numbers>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 constexpr qsizetype documentLimit = 2 * 1024 * 1024;
 constexpr double radians = std::numbers::pi / 180;
@@ -447,7 +447,7 @@ void saveWorkspace(const QString &filename, const QJsonObject &workspace) {
 QUrl cameraShareURL(const Camera &camera) {
   if (!camera.valid())
     return {};
-  QUrl url("godeye://view");
+  QUrl url("helios://view");
   QUrlQuery query;
   for (const auto &entry : QList<QPair<QString, double>>{{"lat", camera.center.latitude},
                                                          {"lon", camera.center.longitude},
@@ -459,7 +459,7 @@ QUrl cameraShareURL(const Camera &camera) {
   return url;
 }
 std::optional<Camera> cameraFromShareURL(const QUrl &url) {
-  if (url.toString().size() > 16000 || url.scheme() != "godeye" || url.host() != "view" ||
+  if (url.toString().size() > 16000 || url.scheme() != "helios" || url.host() != "view" ||
       !url.userInfo().isEmpty() || url.port(-1) != -1 || !url.fragment().isEmpty() ||
       (!url.path().isEmpty() && url.path() != "/"))
     return {};
@@ -493,7 +493,7 @@ QUrl workspaceShareURL(const QJsonObject &workspace) {
   publicValue["camera"] = Camera::read(value["camera"].toObject())->json();
   const auto bytes = QJsonDocument(publicValue).toJson(QJsonDocument::Compact);
   require(bytes.size() < 10000, "The shared workspace exceeds its size limit.");
-  QUrl url("godeye://workspace");
+  QUrl url("helios://workspace");
   QUrlQuery query;
   query.addQueryItem("state", QString::fromLatin1(bytes.toBase64()));
   url.setQuery(query);
@@ -505,7 +505,7 @@ std::optional<QJsonObject> workspaceFromShareURL(const QUrl &url) {
     value["camera"] = camera->json();
     return value;
   }
-  if (url.toString().size() > 16000 || url.scheme() != "godeye" || url.host() != "workspace" ||
+  if (url.toString().size() > 16000 || url.scheme() != "helios" || url.host() != "workspace" ||
       !url.userInfo().isEmpty() || url.port(-1) != -1 || !url.fragment().isEmpty() ||
       (!url.path().isEmpty() && url.path() != "/"))
     return {};
@@ -558,4 +558,4 @@ QVector<Coordinate> SolarState::terminator() const {
   }
   return values;
 }
-} // namespace godeye
+} // namespace helios

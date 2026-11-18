@@ -11,34 +11,34 @@
 #include <QTimer>
 
 namespace {
-class GodEyeOpenLink : public QObject {
+class HeliosOpenLink : public QObject {
 public:
-  explicit GodEyeOpenLink(godeye::MainWindow &window) : window_(window) {}
+  explicit HeliosOpenLink(helios::MainWindow &window) : window_(window) {}
   bool eventFilter(QObject *, QEvent *event) override {
     if (event->type() != QEvent::FileOpen)
       return false;
     const auto url = static_cast<QFileOpenEvent *>(event)->url();
-    if (url.scheme() != "godeye")
+    if (url.scheme() != "helios")
       return false;
     if (!window_.mapToolsWindow().openLink(url))
-      qWarning("The GodEye workspace link is invalid or outside its limits.");
+      qWarning("The Helios workspace link is invalid or outside its limits.");
     window_.show();
     window_.raise();
     return true;
   }
 
 private:
-  godeye::MainWindow &window_;
+  helios::MainWindow &window_;
 };
 } // namespace
 int main(int argc, char **argv) {
   QApplication app(argc, argv);
-  godeye::design::apply(app);
-  QCoreApplication::setOrganizationName("GodEye");
-  QCoreApplication::setApplicationName("GodEyeDesktop");
+  helios::design::apply(app);
+  QCoreApplication::setOrganizationName("Helios");
+  QCoreApplication::setApplicationName("HeliosDesktop");
   QCoreApplication::setApplicationVersion("0.1");
   QCommandLineParser parser;
-  parser.setApplicationDescription("GodEye native geospatial intelligence workspace");
+  parser.setApplicationDescription("Helios native geospatial intelligence workspace");
   parser.addHelpOption();
   parser.addVersionOption();
   parser.addOption({"profile", "Separate desktop working-library directory.", "directory"});
@@ -62,19 +62,19 @@ int main(int argc, char **argv) {
   parser.addOption({"tileset",
                     "Load an HTTPS or local 3D Tiles tileset (also supported in validation).",
                     "url-or-file"});
-  parser.addPositionalArgument("url", "Optional godeye://view or godeye://workspace link.",
+  parser.addPositionalArgument("url", "Optional helios://view or helios://workspace link.",
                                "[url]");
   parser.process(app);
   if (parser.isSet("validate") || parser.isSet("validate-live") ||
       parser.isSet("validate-optical") || parser.isSet("validate-radar-search"))
-    return godeye::runValidation(app, parser.value("qa-output"), parser.isSet("validate-live"),
+    return helios::runValidation(app, parser.value("qa-output"), parser.isSet("validate-live"),
                                  parser.value("product"), parser.value("tileset"),
                                  parser.value("raster-python"), parser.isSet("validate-optical"),
                                  parser.isSet("validate-radar-search"));
   const QString profile = parser.isSet("profile")
                               ? QDir(parser.value("profile")).absolutePath()
                               : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-  godeye::MainWindow window(profile, !parser.isSet("offline"));
+  helios::MainWindow window(profile, !parser.isSet("offline"));
   if (parser.isSet("raster-python"))
     window.processingWindow().setEngines(parser.value("raster-python"));
   if (parser.isSet("mission-library")) {
@@ -87,13 +87,13 @@ int main(int argc, char **argv) {
   }
   if (parser.isSet("product"))
     window.satelliteWindow().importManifest(parser.value("product"));
-  GodEyeOpenLink links(window);
+  HeliosOpenLink links(window);
   app.installEventFilter(&links);
   const auto urls = parser.positionalArguments();
   if (urls.size() > 1)
-    qWarning("Only one GodEye view/workspace link can be opened at startup.");
+    qWarning("Only one Helios view/workspace link can be opened at startup.");
   else if (urls.size() == 1 && !window.mapToolsWindow().openLink(QUrl(urls.first())))
-    qWarning("The GodEye view/workspace link is invalid or outside its limits.");
+    qWarning("The Helios view/workspace link is invalid or outside its limits.");
   window.show();
   if (parser.isSet("tileset") &&
       !window.map().loadTileset(QUrl::fromUserInput(parser.value("tileset"))))

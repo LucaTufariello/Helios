@@ -4,7 +4,7 @@
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QTest>
-using namespace godeye;
+using namespace helios;
 class DossierTests : public QObject {
   Q_OBJECT
   static QJsonObject area(const Missions &m, const QString &id) {

@@ -4,7 +4,7 @@
 #include "ScientificQueue.h"
 #include <QFutureWatcher>
 #include <QTimer>
-namespace godeye {
+namespace helios {
 class MonitoringRunner : public QObject {
   Q_OBJECT
 public:
@@ -55,4 +55,4 @@ private:
   QJsonObject event(const QString &missionID, const QString &key) const;
   void recover();
 };
-} // namespace godeye
+} // namespace helios

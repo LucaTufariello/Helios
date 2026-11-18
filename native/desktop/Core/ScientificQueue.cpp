@@ -1,6 +1,6 @@
 #include "ScientificQueue.h"
 #include <QTimer>
-namespace godeye {
+namespace helios {
 ScientificQueue::ScientificQueue(QString root, QObject *parent)
     : QObject(parent), root_(std::move(root)) {}
 ScientificQueue::~ScientificQueue() {
@@ -81,4 +81,4 @@ void ScientificQueue::cancelAll() {
     active_->cancel();
   emit changed();
 }
-} // namespace godeye
+} // namespace helios

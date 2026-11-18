@@ -1,8 +1,8 @@
 #pragma once
 #include "DomainFeeds.h"
-#include "GodEyeSGP4.h"
+#include "HeliosSGP4.h"
 #include <array>
-namespace godeye {
+namespace helios {
 struct DomainSatellite {
   QString name, norad;
   QDateTime epoch;
@@ -21,4 +21,4 @@ public:
   bool orbit(const QString &id, QVector<Coordinate> &points, QVector<double> &altitudes,
              QDateTime at = QDateTime::currentDateTimeUtc()) const;
 };
-} // namespace godeye
+} // namespace helios

@@ -8,7 +8,7 @@ class QListWidget;
 class QPushButton;
 class QTabWidget;
 class QPlainTextEdit;
-namespace godeye {
+namespace helios {
 class DossierPanel : public QWidget {
   Q_OBJECT
 public:
@@ -35,8 +35,8 @@ signals:
   void findingRequested(QJsonObject origin);
   void assetRequested(QString areaID);
   void evidenceRequested(QJsonObject evidence);
-  void focusRequested(godeye::Bounds bounds);
-  void acquisitionRequested(godeye::Bounds bounds, bool radar);
+  void focusRequested(helios::Bounds bounds);
+  void acquisitionRequested(helios::Bounds bounds, bool radar);
   void comparisonRequested(QString areaID, QString baselineID, QString laterID);
   void reviewRequested(QJsonObject area);
 
@@ -75,4 +75,4 @@ private:
   void reviewObservation();
   void prepareComparison();
 };
-} // namespace godeye
+} // namespace helios

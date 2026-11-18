@@ -16,7 +16,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
-namespace godeye {
+namespace helios {
 namespace {
 constexpr qsizetype maximumLine = 128 * 1024, maximumLog = 1024 * 1024;
 QString now() {
@@ -107,12 +107,12 @@ QString WorkerJob::workerPath(bool optical) {
 #if defined(Q_OS_MACOS)
   const QString root = QDir(app).absoluteFilePath("../Resources/workers");
 #else
-  const QString root = QDir(app).absoluteFilePath("../share/godeye/workers");
+  const QString root = QDir(app).absoluteFilePath("../share/helios/workers");
 #endif
   return root + (optical ? "/Optical/sentinel2.py" : "/SAR/sentinel1.py");
 }
 QString WorkerJob::hostPath() {
-  return QCoreApplication::applicationDirPath() + "/GodEyeWorkerHost";
+  return QCoreApplication::applicationDirPath() + "/HeliosWorkerHost";
 }
 bool WorkerJob::start(const WorkerRequest &request) {
   if (running() || !directory_.isEmpty())
@@ -192,7 +192,7 @@ bool WorkerJob::start(const WorkerRequest &request) {
   process_.setWorkingDirectory(directory_);
   auto environment = QProcessEnvironment::systemEnvironment();
   environment.insert("PYTHONUNBUFFERED", "1");
-  environment.insert("GODEYE_WORKER_OWN_SESSION", "1");
+  environment.insert("HELIOS_WORKER_OWN_SESSION", "1");
   process_.setProcessEnvironment(environment);
   process_.setUnixProcessParameters(QProcess::UnixProcessFlag::ResetSignalHandlers |
                                     QProcess::UnixProcessFlag::CreateNewSession);
@@ -392,4 +392,4 @@ bool WorkerJob::recover(const QString &directory, QString *error) {
     *error = "Interrupted job could not be marked failed; original files were preserved.";
   return saved;
 }
-} // namespace godeye
+} // namespace helios

@@ -1,8 +1,8 @@
 # Notices
 
-GodEye's source is distributed under the MIT license in [LICENSE](LICENSE).
+Helios's source is distributed under the MIT license in [LICENSE](LICENSE).
 The existing copyright notice for Bilawal Sidhu is retained. The project began
-from God's Eye View; its former browser implementation is preserved in Git history.
+under an earlier name; its former browser implementation is preserved in Git history.
 The maintained application is now the native macOS code under `native/macos/`.
 
 Native components and datasets have separate licenses:
@@ -11,7 +11,7 @@ Native components and datasets have separate licenses:
   the generated application includes `SCENE-NOTICES.txt`.
 - Vallado SGP4 C++: source revision and modifications in
   `native/macos/Sources/CSGP4/UPSTREAM.md`; MIT notice in
-  `native/macos/Sources/GodEyeCore/Resources/SGP4-LICENSE.txt`.
+  `native/macos/Sources/HeliosCore/Resources/SGP4-LICENSE.txt`.
 - OpenStreetMap-derived datacenter/dam extracts: ODbL 1.0 with retained source
   attribution and resource-specific READMEs.
 - TeleGeography cable systems and landing points: CC BY-NC-SA 3.0, including

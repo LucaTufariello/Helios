@@ -1,6 +1,6 @@
 # Security
 
-GodEye is a local native macOS app. It reads public network sources, imported
+Helios is a local native macOS app. It reads public network sources, imported
 geographic/image files and mission documents, and optionally invokes local
 Python raster workers and ESA SNAP GPT.
 

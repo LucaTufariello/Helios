@@ -21,7 +21,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <sys/resource.h>
-using namespace godeye;
+using namespace helios;
 namespace {
 class AuditedMapWidget : public MapWidget {
 public:
@@ -134,11 +134,11 @@ ProductLayer overlay(const QString &id, QColor a, QColor b) {
 } // namespace
 int main(int argc, char **argv) {
   QApplication app(argc, argv);
-  app.setApplicationName("GodEye generated map resource QA");
-  const auto output = qEnvironmentVariable("GODEYE_RESOURCE_QA");
-  if (!qEnvironmentVariableIsSet("GODEYE_RESOURCE_CHECK") || output.isEmpty()) {
+  app.setApplicationName("Helios generated map resource QA");
+  const auto output = qEnvironmentVariable("HELIOS_RESOURCE_QA");
+  if (!qEnvironmentVariableIsSet("HELIOS_RESOURCE_CHECK") || output.isEmpty()) {
     qWarning(
-        "Opt-in only: set GODEYE_RESOURCE_CHECK=1 and GODEYE_RESOURCE_QA to a new QA directory.");
+        "Opt-in only: set HELIOS_RESOURCE_CHECK=1 and HELIOS_RESOURCE_QA to a new QA directory.");
     return 2;
   }
   if (!QDir().mkpath(output))
@@ -475,14 +475,14 @@ int main(int argc, char **argv) {
     report["maximumGpuCallbackDepth"] = map.maximumGpuCallbackDepth();
     report["executableSHA256"] =
         QString::fromLatin1(digest(QCoreApplication::applicationFilePath()));
-#ifdef GODEYE_SOURCE_ROOT
+#ifdef HELIOS_SOURCE_ROOT
     QJsonObject sources;
     for (const auto &name :
          {"native/desktop/Graphics/MapWidget.cpp", "native/desktop/Graphics/MapWidget.h",
           "native/desktop/Graphics/TileCache.cpp", "native/desktop/Core/DailyImagery.cpp",
           "native/desktop/shaders/globe.vert", "native/desktop/shaders/globe.frag",
           "native/desktop/Tests/MapResourceChecks.cpp"})
-      sources[name] = QString::fromLatin1(digest(QString(GODEYE_SOURCE_ROOT) + "/" + name));
+      sources[name] = QString::fromLatin1(digest(QString(HELIOS_SOURCE_ROOT) + "/" + name));
     report["sourceSHA256"] = sources;
 #endif
     const auto bytes = QJsonDocument(report).toJson();

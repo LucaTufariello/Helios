@@ -87,10 +87,10 @@ After building the desktop client, run from the repository root inside a working
 graphical session:
 
 ```sh
-cmake --build output/desktop/build --target GodEyeMapNavigationChecks --parallel 2
-GODEYE_NAVIGATION_CHECK=1 \
-  GODEYE_NAVIGATION_QA="$PWD/output/qa/map-navigation-local" \
-  ./output/desktop/build/bin/GodEyeMapNavigationChecks
+cmake --build output/desktop/build --target HeliosMapNavigationChecks --parallel 2
+HELIOS_NAVIGATION_CHECK=1 \
+  HELIOS_NAVIGATION_QA="$PWD/output/qa/map-navigation-local" \
+  ./output/desktop/build/bin/HeliosMapNavigationChecks
 ```
 
 Choose a separate output directory for each run. The benchmark opens a native
@@ -101,9 +101,9 @@ and desktop activity. Inspect `map-navigation-checks.json` and
 not machine-specific timing thresholds, determine its exit status.
 
 For a source comparison, set the optional CMake cache variable
-`GODEYE_NAVIGATION_BASELINE_ROOT` to an independent snapshot containing
+`HELIOS_NAVIGATION_BASELINE_ROOT` to an independent snapshot containing
 `Graphics/MapWidget.cpp`, `Graphics/MapWidget.h`, `Graphics/TileCache.cpp` and
-`Graphics/TileCache.h`. CMake adds `GodEyeMapNavigationBaseline`, which runs the
+`Graphics/TileCache.h`. CMake adds `HeliosMapNavigationBaseline`, which runs the
 same harness against those frozen graphics sources. Verify benchmark hashes,
 camera/tiles, platform/backend/device, scale and window/framebuffer dimensions
 match before comparing distributions.

@@ -7,8 +7,8 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
-using namespace godeye;
-using namespace godeye::qa;
+using namespace helios;
+using namespace helios::qa;
 namespace {
 QByteArray encoded(QSize size = {256, 256}, const char *format = "PNG", QColor color = Qt::red) {
   QImage image(size, QImage::Format_RGBA8888);
@@ -187,8 +187,8 @@ private slots:
       QVERIFY(!request.url().path().contains("/19/"));
   }
   void publicTileOptIn() {
-    if (!qEnvironmentVariableIsSet("GODEYE_DAILY_LIVE"))
-      QSKIP("Set GODEYE_DAILY_LIVE for an actual NASA GIBS visualization tile check.");
+    if (!qEnvironmentVariableIsSet("HELIOS_DAILY_LIVE"))
+      QSKIP("Set HELIOS_DAILY_LIVE for an actual NASA GIBS visualization tile check.");
     QTemporaryDir directory;
     DailyImageryCache cache(directory.path(), true);
     QVERIFY(cache.configure(DailySource::Terra, QDate(2026, 10, 12)));
@@ -199,7 +199,7 @@ private slots:
     QVERIFY(value);
     QCOMPARE(cache.failures(), 0);
     QCOMPARE(value->id.zoom, 6);
-    const auto qa = qEnvironmentVariable("GODEYE_DAILY_QA");
+    const auto qa = qEnvironmentVariable("HELIOS_DAILY_QA");
     if (!qa.isEmpty()) {
       QVERIFY(QDir().mkpath(qa));
       QVERIFY(value->image.save(qa + "/nasa-terra-20261012-z6.png"));
@@ -222,8 +222,8 @@ private slots:
     }
   }
   void otherPublicSourcesOptIn() {
-    if (!qEnvironmentVariableIsSet("GODEYE_DAILY_LIVE"))
-      QSKIP("Set GODEYE_DAILY_LIVE for all other public NASA visualization sources.");
+    if (!qEnvironmentVariableIsSet("HELIOS_DAILY_LIVE"))
+      QSKIP("Set HELIOS_DAILY_LIVE for all other public NASA visualization sources.");
     QTemporaryDir directory;
     DailyImageryCache cache(directory.path(), true);
     const auto tile = TileID::containing({45.46, 9.18}, 6);
@@ -252,14 +252,14 @@ private slots:
                       {"failedTiles", cache.failures()},
                       {"transparentPixels", transparent},
                       {"totalPixels", 256 * 256}});
-      const auto qa = qEnvironmentVariable("GODEYE_DAILY_QA");
+      const auto qa = qEnvironmentVariable("HELIOS_DAILY_QA");
       if (!qa.isEmpty()) {
         QVERIFY(QDir().mkpath(qa));
         QVERIFY(value->image.save(qa + "/nasa-" + DailyImageryCache::sourceID(source) + "-" +
                                   selectedDate.toString("yyyyMMdd") + "-z6.png"));
       }
     }
-    const auto qa = qEnvironmentVariable("GODEYE_DAILY_QA");
+    const auto qa = qEnvironmentVariable("HELIOS_DAILY_QA");
     if (!qa.isEmpty()) {
       QFile file(qa + "/daily-other-sources.json");
       QVERIFY(file.open(QIODevice::WriteOnly));

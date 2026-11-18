@@ -1,6 +1,6 @@
 #pragma once
 #include "DomainFeeds.h"
-namespace godeye {
+namespace helios {
 struct DomainTrackFix {
   Coordinate coordinate;
   std::optional<double> altitude;
@@ -21,4 +21,4 @@ public:
 private:
   QMap<QString, QVector<DomainTrackFix>> tracks_;
 };
-} // namespace godeye
+} // namespace helios

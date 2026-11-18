@@ -1,7 +1,7 @@
 #pragma once
 #include "Products.h"
 #include <QDateTime>
-namespace godeye {
+namespace helios {
 QDateTime missionTime(const QJsonValue &value);
 struct TimelineEntry {
   QString id, kind, title, source, sourceID, evidenceID, rasterID, band, detail;
@@ -33,4 +33,4 @@ QString timelineComparisonIssue(const TimelineEntry &before, const TimelineEntry
 QStringList timelineComparisonWarnings(const TimelineEntry &before, const TimelineEntry &after);
 QByteArray timelineCSV(const QVector<TimelineEntry> &entries);
 QString rasterReference(const ProductLayer &product);
-} // namespace godeye
+} // namespace helios

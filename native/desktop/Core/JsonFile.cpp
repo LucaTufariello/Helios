@@ -6,7 +6,7 @@
 #include <QLockFile>
 #include <QSaveFile>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 void require(bool ok, const char *message) {
   if (!ok)
@@ -82,4 +82,4 @@ void JsonFile::save(const QJsonDocument &document) {
   hash_ = digest(bytes);
   existed_ = true;
 }
-} // namespace godeye
+} // namespace helios

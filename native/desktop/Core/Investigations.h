@@ -7,7 +7,7 @@
 #include <QStringList>
 #include <optional>
 
-namespace godeye {
+namespace helios {
 // Immutable values: all historical references address a snapshot ID, never a live registry row.
 struct Asset {
   QString id, name, category;
@@ -98,4 +98,4 @@ private:
   QJsonObject document_;
   void publish(QJsonObject document);
 };
-} // namespace godeye
+} // namespace helios

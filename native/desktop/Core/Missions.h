@@ -6,7 +6,7 @@
 #include <QObject>
 #include <functional>
 
-namespace godeye {
+namespace helios {
 double foundationNow();
 QString dateLabel(const QJsonValue &date);
 QString newID();
@@ -93,4 +93,4 @@ private:
   static QJsonObject brief(QJsonObject plan);
   static void activity(QJsonObject &brief, const QString &message);
 };
-} // namespace godeye
+} // namespace helios

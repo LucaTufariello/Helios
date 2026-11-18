@@ -26,7 +26,7 @@
 #include <QVBoxLayout>
 #include <algorithm>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 QString coordinateText(Coordinate p) {
   return QString::number(p.latitude, 'f', 6) + ", " + QString::number(p.longitude, 'f', 6);
@@ -57,7 +57,7 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
   setWindowFlag(Qt::Window, true);
   setAttribute(Qt::WA_QuitOnClose, false);
   setObjectName("mapToolsWindow");
-  setWindowTitle("Map tools — GodEye");
+  setWindowTitle("Map tools — Helios");
   resize(690, 610);
   auto *layout = new QVBoxLayout(this);
   auto *tabs = new QTabWidget;
@@ -526,7 +526,7 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
   connect(paste, &QPushButton::clicked, this, [this] {
     bool ok = false;
     const auto value = QInputDialog::getMultiLineText(
-        this, "Open GodEye link", "godeye://view or godeye://workspace",
+        this, "Open Helios link", "helios://view or helios://workspace",
         QApplication::clipboard()->text().left(16001), &ok);
     if (!ok)
       return;
@@ -869,4 +869,4 @@ void MapToolsWindow::showEvent(QShowEvent *event) {
 void MapToolsWindow::showError(const QString &message) {
   QMessageBox::warning(this, "Map tools", message);
 }
-} // namespace godeye
+} // namespace helios

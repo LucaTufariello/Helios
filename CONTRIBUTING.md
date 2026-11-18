@@ -1,12 +1,12 @@
-# Contributing to GodEye
+# Contributing to Helios
 
-GodEye is a native Apple Silicon macOS application. Use the setup instructions
+Helios is a native Apple Silicon macOS application. Use the setup instructions
 in [README.md](README.md), then build with `make build`.
 
 ## Architecture
 
-Keep SwiftUI/AppKit interface code in `native/macos/Sources/GodEyeMac/`, portable
-validated models and services in `GodEyeCore/`, scene bridging in `CScene/`, and
+Keep SwiftUI/AppKit interface code in `native/macos/Sources/HeliosMac/`, portable
+validated models and services in `HeliosCore/`, scene bridging in `CScene/`, and
 renderer/dependency implementation in `native/macos/engine/`. Scientific workers
 live with the app's SAR/Optical resources; invoke them through `SarProcessor`
 using argument arrays, background jobs and bounded diagnostics.
@@ -33,7 +33,7 @@ Update native documentation and source/attribution metadata with behavior change
 Use public, accessible sources with compatible terms and retain attribution,
 acquisition times, provenance and unknown values. A free endpoint does not imply
 permission to redistribute its data. The canonical reference datasets and transit
-registry live in `native/macos/Sources/GodEyeCore/Resources/`; see the
+registry live in `native/macos/Sources/HeliosCore/Resources/`; see the
 [resource maintenance notes](native/macos/scripts/README.md).
 
 Keep patches scoped and describe the problem, resulting behavior, validation and

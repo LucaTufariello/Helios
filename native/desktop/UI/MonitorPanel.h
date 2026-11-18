@@ -8,7 +8,7 @@ class QLabel;
 class QListWidget;
 class QPlainTextEdit;
 class QSpinBox;
-namespace godeye {
+namespace helios {
 class MonitorPanel : public QWidget {
   Q_OBJECT
 public:
@@ -34,4 +34,4 @@ private:
   void select();
   void run(const std::function<void()> &action);
 };
-} // namespace godeye
+} // namespace helios

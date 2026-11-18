@@ -16,8 +16,8 @@ from scipy.ndimage import shift
 ROOT=Path(__file__).parents[4]
 def module(name,path):
     spec=importlib.util.spec_from_file_location(name,path); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); return m
-registration=module('registration',ROOT/'native/macos/Sources/GodEyeMac/Resources/SAR/registration.py')
-review=module('review',ROOT/'native/macos/Sources/GodEyeMac/Resources/SAR/change_review.py')
+registration=module('registration',ROOT/'native/macos/Sources/HeliosMac/Resources/SAR/registration.py')
+review=module('review',ROOT/'native/macos/Sources/HeliosMac/Resources/SAR/change_review.py')
 fixture=module('fixture',ROOT/'native/desktop/Tests/monitoring_fixture.py')
 evaluation=module('evaluation',ROOT/'native/macos/Validation/evaluate_monitoring.py')
 

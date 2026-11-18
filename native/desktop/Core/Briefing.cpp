@@ -19,7 +19,7 @@
 #include <QTextOption>
 #include <cmath>
 #include <stdexcept>
-namespace godeye {
+namespace helios {
 namespace {
 void require(bool b, const char *s) {
   if (!b)
@@ -68,7 +68,7 @@ FrozenBriefing prepareBriefing(const QJsonObject &plan, const QStringList &selec
   QJsonObject overview = i;
   for (auto key : {"findings", "snapshots", "citations", "associations"})
     overview.remove(key);
-  out.manifest = {{"schema", "org.godeye.investigation-briefing"},
+  out.manifest = {{"schema", "org.helios.investigation-briefing"},
                   {"version", 1},
                   {"exportID", newID()},
                   {"frozenAt", foundationNow()},
@@ -94,7 +94,7 @@ FrozenBriefing prepareBriefing(const QJsonObject &plan, const QStringList &selec
                  ".warning{color:#8d350d;} .label{font-weight:bold;}li{margin-bottom:6pt;} "
                  "table{border-collapse:collapse;}td{padding:6pt;vertical-align:top;}img{margin:"
                  "8pt 0;}</style></head><body>";
-  html += "<p class='meta'>GODEYE / INVESTIGATION BRIEFING / LOCAL ANALYST RECORD</p><h1>" +
+  html += "<p class='meta'>HELIOS / INVESTIGATION BRIEFING / LOCAL ANALYST RECORD</p><h1>" +
           h(plan["name"].toString()) + "</h1>";
   html += "<p class='meta'>Frozen " + h(dateLabel(out.manifest["frozenAt"])) + "<br/>Case " +
           h(plan["id"].toString()) + "<br/>Status: " + h(i["status"].toString()) + "</p>";
@@ -111,14 +111,14 @@ FrozenBriefing prepareBriefing(const QJsonObject &plan, const QStringList &selec
     require(!capture["capturedAt"].isUndefined() && !capture["attribution"].toString().isEmpty(),
             "Map capture needs capture time and attribution.");
     const auto scaled = map.scaled(1600, 1200, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    out.images["godeye:map"] = scaled;
+    out.images["helios:map"] = scaled;
     auto meta = capture;
     meta["sha256"] = imageHash(scaled);
     meta["meaning"] = "Map context captured from display; not an acquisition date or a "
                       "georeferenced measurement.";
     out.manifest["mapCapture"] = meta;
     html += "<h2 style='page-break-before:always'>Explicitly captured map context</h2>" +
-            imageTag("godeye:map", scaled, 620, 500) + "<p class='meta'>Captured " +
+            imageTag("helios:map", scaled, 620, 500) + "<p class='meta'>Captured " +
             h(dateLabel(capture["capturedAt"])) + ". " + h(capture["attribution"].toString()) +
             "<br/>Display capture; acquisition dates are listed per source.</p>";
   }
@@ -240,7 +240,7 @@ FrozenBriefing prepareBriefing(const QJsonObject &plan, const QStringList &selec
           else
             for (const auto &p : readProducts(manifestPath, false))
               if (p.kind == e["kind"].toString()) {
-                const auto key = "godeye:evidence/" + c["id"].toString();
+                const auto key = "helios:evidence/" + c["id"].toString();
                 state["previewPath"] = p.preview;
                 state["geotiffPath"] = p.geotiff;
                 state["scientificPath"] = p.scientific;
@@ -337,7 +337,7 @@ FrozenBriefing prepareBriefing(const QJsonObject &plan, const QStringList &selec
   return out;
 }
 void validateBriefingManifest(const QJsonObject &m) {
-  require(m["schema"] == "org.godeye.investigation-briefing" && m["version"] == 1,
+  require(m["schema"] == "org.helios.investigation-briefing" && m["version"] == 1,
           "Invalid briefing manifest schema.");
   auto content = m;
   content.remove("contentSHA256");
@@ -410,7 +410,7 @@ QString exportBriefing(const FrozenBriefing &briefing, const QString &parent) {
   const auto name =
       "briefing-" + QDateTime::currentDateTimeUtc().toString("yyyyMMdd-HHmmss") + "-" + suffix;
   QDir dir(parent);
-  const auto temporary = ".godeye-briefing-" + newID();
+  const auto temporary = ".helios-briefing-" + newID();
   require(dir.mkdir(temporary), "Cannot create briefing staging directory.");
   QDir stage(dir.filePath(temporary));
   try {
@@ -420,7 +420,7 @@ QString exportBriefing(const FrozenBriefing &briefing, const QString &parent) {
       writer.setResolution(96);
       writer.setPageMargins(QMarginsF(16, 18, 16, 18));
       writer.setTitle(briefing.manifest["case"].toObject()["name"].toString());
-      writer.setCreator("GodEye / native Qt briefing");
+      writer.setCreator("Helios / native Qt briefing");
       QTextDocument doc;
       doc.setDefaultFont(QFont("Noto Sans", 10));
       QTextOption option;
@@ -443,7 +443,7 @@ QString exportBriefing(const FrozenBriefing &briefing, const QString &parent) {
         painter.setPen(QColor("#436579"));
         painter.setFont(QFont("Noto Sans", 8));
         painter.drawText(QRectF(0, 0, writer.width(), 18), Qt::AlignLeft,
-                         "GODEYE  /  " +
+                         "HELIOS  /  " +
                              briefing.manifest["case"].toObject()["name"].toString().left(90));
         painter.save();
         painter.translate(0, 24 - n * bodyHeight);
@@ -474,4 +474,4 @@ QString exportBriefing(const FrozenBriefing &briefing, const QString &parent) {
     throw;
   }
 }
-} // namespace godeye
+} // namespace helios
