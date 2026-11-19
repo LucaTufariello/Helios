@@ -1,6 +1,6 @@
 # Native domain sources
 
-The Qt Sources & observations window ports the 19 enabled Swift `FeedKind` values.
+The Qt Sources & observations window implements the 19 enabled feed kinds.
 It uses compiled Widgets, bounded native HTTPS and a fixed-endpoint TLS WebSocket
 client. Source records, stored mission snapshots, retained observed fixes and
 propagated orbital estimates remain distinct. Local annotations are supplied by
@@ -105,7 +105,7 @@ Add evidence creates a bounded compatible mission record with the original
 source identifier, units, coordinate, optional altitude and source time. Raw
 provider responses and transient camera delivery links remain outside the
 mission snapshot. Numeric/boolean detail fields become textual representations
-required by the existing Swift mission schema. Oversized geometry is explicitly
+required by the existing mission schema. Oversized geometry is explicitly
 rejected for mission evidence instead of silently simplified; Export record
 retains the admitted full source record. Rendered map geometry can be bounded
 independently without changing the stored source geometry.

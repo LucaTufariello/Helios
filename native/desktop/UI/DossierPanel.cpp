@@ -87,16 +87,27 @@ DossierPanel::DossierPanel(Missions &missions, QWidget *parent)
     return button;
   };
   action(actions, 8, "Register / link shared asset", "dossierAsset", [this] {
-    guardContext(missionID_, areaID_);emit assetRequested(areaID_);
+    guardContext(missionID_, areaID_);
+    emit assetRequested(areaID_);
   });
   action(actions, 9, "Draft finding from observation", "dossierFinding", [this] {
     guardContext(missionID_, areaID_);
-    const auto id=selection(observations_);QJsonObject source;
-    for(auto v:view_.observations) if(v.toObject()["id"]==id)source=v.toObject();
-    if(source.isEmpty())throw std::runtime_error("Select an observation in this dossier first.");
-    emit findingRequested(QJsonObject{{"kind","Observation"},{"sourceID",source["id"]},
-      {"label",source["title"]},{"record",source},{"areaID",areaID_},{"sourceDate",source["observedAt"]},
-      {"qualityLimitations","Observation snapshot; model proposals and source resolution remain limitations. Analyst review is required."}});
+    const auto id = selection(observations_);
+    QJsonObject source;
+    for (auto v : view_.observations)
+      if (v.toObject()["id"] == id)
+        source = v.toObject();
+    if (source.isEmpty())
+      throw std::runtime_error("Select an observation in this dossier first.");
+    emit findingRequested(QJsonObject{
+        {"kind", "Observation"},
+        {"sourceID", source["id"]},
+        {"label", source["title"]},
+        {"record", source},
+        {"areaID", areaID_},
+        {"sourceDate", source["observedAt"]},
+        {"qualityLimitations", "Observation snapshot; model proposals and source resolution remain "
+                               "limitations. Analyst review is required."}});
   });
   action(actions, 0, "Show area on map", "dossierFocus", [this] {
     guardContext(missionID_, areaID_);

@@ -1,31 +1,30 @@
 # Helios
 
-Helios is a native desktop workspace for geographic analysis,
-satellite imagery, infrastructure review and mission planning. The map remains
-the main view; floating tools and a separate Mission Control window share the
-same areas, imagery and evidence.
+Helios is a native desktop workspace for geographic analysis, satellite imagery,
+infrastructure review and mission planning. The map remains the main view;
+floating tools and a separate Mission Control window share the same areas,
+imagery and evidence.
 
-The **macOS and Linux** C++20/Qt client now implements the GPU globe and shared
-Cesium scene engine, 19 source layers, map tools, optical/SAR processing controls,
-infrastructure review, Mission Control timelines/monitors and optional local CPU
-model proposals. Linux builds and actual Wayland/Vulkan checks run on Omarchy
-with a GTX 1070. Platform and scientific acceptance remain incomplete; see
-[migration status](docs/MIGRATION-STATUS.md). The functional Swift macOS client
-remains available as the reference during migration. See the
-[Qt desktop guide](native/desktop/README.md) and [platform handoff](docs/CROSS-PLATFORM.md).
+Helios is a single **C++20 / Qt 6 Widgets** application for **Apple Silicon macOS
+and Linux**. It implements the GPU globe and shared Cesium scene engine, 19 source
+layers, map tools, optical/SAR processing controls, infrastructure review, Mission
+Control timelines/monitors and optional local CPU model proposals. Linux builds and
+actual Wayland/Vulkan checks run on Omarchy with a GTX 1070. Platform and scientific
+acceptance remain incomplete; see [migration status](docs/MIGRATION-STATUS.md).
 
-Both clients use compiled native rendering and networking. The Swift reference
-uses SwiftUI, AppKit, Metal and Foundation; Qt uses Widgets and RHI with Vulkan on
-Linux and Metal on macOS. The browser application is retired. Neither client
-requires Node.js, npm, a local web server, QML or a browser runtime.
+The application uses compiled native rendering and networking: Qt Widgets with RHI,
+Vulkan on Linux and Metal on macOS. It requires no Node.js, npm, local web server,
+QML, WebEngine or browser runtime. The earlier Swift macOS client and the browser
+implementation were retired; their code remains in Git history only. Scientific
+processing uses owned Python workers as separate processes; no Swift or JavaScript
+runtime is required.
 
 ## Build and run
 
-For the Qt client, install CMake 3.24+, a C++20 compiler and matching Qt 6.8+
-Base/private headers and Shader Tools. Qt 6.11.2 is the tested Linux version.
-The first build downloads pinned Cesium Native dependencies and can take several
-minutes; later builds reuse them. Run the following commands from the root of
-your cloned repository.
+Install CMake 3.24+, a C++20 compiler and matching Qt 6.8+ Base/private headers and
+Shader Tools. Qt 6.11.2 is the tested Linux version. The first build downloads pinned
+Cesium Native dependencies and can take several minutes; later builds reuse them.
+Run the following commands from the root of your cloned repository.
 
 ### Linux (Omarchy / Arch, x86_64)
 
@@ -80,9 +79,9 @@ same source-build commands with a matching Qt 6.8+ installation. Those
 distributions remain unverified; the current binary packages target the Arch
 system-library generation used to build them.
 
-### macOS (Apple Silicon, Qt client)
+### macOS (Apple Silicon)
 
-Install the build tools with Homebrew, then build and open the separate Qt app:
+Install the build tools with Homebrew, then build and open the Qt app:
 
 ```sh
 brew install cmake pkgconf qtbase qtshadertools
@@ -90,27 +89,9 @@ make test-desktop
 open output/desktop/build/bin/HeliosDesktop.app
 ```
 
-Fresh Mac validation of the expanded Qt client is still required.
-
-### macOS (Swift reference client)
-
-To build the Swift reference, use an **Apple Silicon Mac**, **macOS 14 or later**,
-and full **Xcode** with the macOS SDK, Swift 6 and Metal compiler.
-Install CMake 3.24+, Python 3 and pkg-config
-(Homebrew packages `cmake` and `pkgconf`). A first engine build downloads pinned
-native dependencies and can take several minutes; subsequent builds reuse them.
-
-From the repository root:
-
-```sh
-brew install cmake pkgconf
-make build
-open output/native/Helios.app
-```
-
-The build produces an arm64 app and verifies a local ad-hoc signature. It is not
-a Developer ID signed or notarized release. Validation on a separate macOS 14
-machine remains outstanding. `make run` builds and opens the same application.
+Fresh Mac validation of the expanded Qt client is still required. The build
+deploys the matching Qt frameworks and plugins into the arm64 bundle and verifies
+its local ad-hoc signature. It is not a notarized release.
 
 ### Windows
 
@@ -119,11 +100,11 @@ Windows builds and packages are not currently supported. See
 
 ## Workspaces
 
-The Qt interface follows the macOS workspace with floating map palettes, a
-consistent dark analyst theme and a Mission Control sidebar. Search is available
-with **Ctrl+K** on Linux; **Ctrl+Shift+H** hides the palettes. See the
-[desktop design and navigation guide](docs/DESKTOP-DESIGN.md) for panel controls,
-keyboard access and the relationship to the Swift reference.
+The interface uses floating map palettes, a consistent dark analyst theme and a
+Mission Control sidebar. Search is available with **Ctrl+K** on Linux;
+**Ctrl+Shift+H** hides the palettes. See the
+[desktop design and navigation guide](docs/DESKTOP-DESIGN.md) for panel controls
+and keyboard access.
 
 - **Map:** geographic search, terrain and 3D Tiles, layers, record inspection,
   raw data, annotations, directions and saved view state.
@@ -151,14 +132,11 @@ or damage detector. See the workflow guides for scientific and operational limit
 The map and most public sources work without SAR tools or credentials. To process
 radar or retrieve optical raster pixels, configure a separate scientific Python.
 
-### Qt client on Linux or macOS
-
 Use an installed Python 3.12 interpreter to create an isolated environment:
 
 ```sh
 /absolute/path/to/python3.12 -m venv .venv
-.venv/bin/python -m pip install \
-  -r native/macos/Sources/HeliosMac/Resources/SAR/requirements.txt
+.venv/bin/python -m pip install -r native/workers/SAR/requirements.txt
 ```
 
 In **Processing Center → Engine and jobs**, set **Raster Python** to the environment's
@@ -170,18 +148,13 @@ Python may not contain these packages. On Linux you can also select it at launch
 ./output/desktop/build/bin/HeliosDesktop --raster-python "$PWD/.venv/bin/python"
 ```
 
-The workers remain under `native/macos/` in the source tree and are shared by both
-platforms; the Qt build copies them into its runtime resources. The environment
-provides NumPy, Rasterio/GDAL, Pillow and h5py. Scientific Python and SNAP are
-external dependencies even when using a packaged application.
+The workers live under `native/workers/` and are copied into the application's
+runtime resources at build time. The environment provides NumPy, Rasterio/GDAL,
+Pillow and h5py. Scientific Python and SNAP are external dependencies even when
+using a packaged application.
 
-### Swift reference on macOS
-
-```sh
-make setup-raster
-```
-
-Select its Python executable in the satellite processing settings.
+`make setup-raster` can create the default development environment under
+`output/raster-venv/`.
 
 ### Radar processing and local models
 
@@ -197,63 +170,53 @@ and model contract; it never downloads weights automatically.
 
 ## Development and tests
 
-On Linux and macOS, the portable Qt/core checks are:
+The portable Qt/core checks are:
 
 ```sh
 make test-shared    # standalone C++ geography tests
-make test-desktop   # build Qt desktop client and run native regression suites
+make test-desktop   # build the Qt desktop client and run native regression suites
 ```
 
-With the scientific environment above prepared, run the shared raster fixtures
-on either platform:
+With the scientific environment prepared, run the shared worker fixtures on
+either platform:
 
 ```sh
 HELIOS_SAR_PYTHON="$PWD/.venv/bin/python" make test-raster
 ```
 
-The Swift/Xcode commands below are macOS-only:
+The optional checks are:
 
 ```sh
-make test          # Swift/core/scene tests; builds the native engine if needed
-make format-check  # Swift formatting using Xcode's swift-format
-make check         # formatting, shared core, Swift and raster checks
+make format-check   # clang-format check over the owned C++ sources
+make check          # formatting, shared core, desktop and raster checks
 ```
 
-`make build`, `make run`, `make setup-raster` and `make check` use the macOS
-reference tooling. Linux users should use the desktop targets and explicit raster
-environment above.
-
-`make format` formats native Swift sources. Individual scripts remain available
-under `native/macos/`. Opt-in public-provider checks use
-`HELIOS_LIVE_CHECKS=1 native/macos/test.sh --filter Live`. Real SNAP processing,
-independent image registration/radiometric validation, aerial detector accuracy,
-optional GPU inference and complete manual UI coverage remain separate acceptance
-checks. A trained CPU model execution is recorded in migration status.
+`make setup-raster` creates `output/raster-venv/` and installs the worker
+requirements; select a different environment with `HELIOS_SAR_RUNTIME` or
+`HELIOS_SAR_PYTHON`. Real SNAP processing, independent image registration/radiometric
+validation, aerial detector accuracy, optional GPU inference and complete manual UI
+coverage remain separate acceptance checks. A trained CPU model execution is
+recorded in migration status.
 
 ## Project layout
 
-- `native/macos/Sources/HeliosMac/`: SwiftUI/AppKit workspace, Metal renderer and
-  optional local satellite workers.
-- `native/macos/Sources/HeliosCore/`: validated models, data sources, storage,
-  processing orchestration and canonical bundled reference datasets.
-- `native/scene/`: shared C++ scene adapter and pinned Cesium Native build;
-  `native/macos/Sources/CScene/` retains the Swift bridge/transport integration.
-- `native/macos/Sources/CSGP4/`: native Vallado orbital propagation.
-- `native/shared/`: portable C++20 geography with CMake and SwiftPM integration.
-- `native/desktop/`: C++/Qt client, GPU map, source/workflow/storage modules and tests.
-- `native/macos/Tests/`: Swift fixtures and scientific raster tests.
-- `native/macos/Validation/`: opt-in satellite validation tools.
-- `docs/`: maintained native workflow and architecture guides.
+- `native/desktop/`: C++20/Qt client, GPU map, source/workflow/storage modules and tests.
+- `native/scene/`: shared C++ scene adapter and pinned Cesium Native build.
+- `native/shared/`: portable C++20 geography library.
+- `native/sgp4/`: native Vallado SGP4/SDP4 propagation.
+- `native/workers/`: owned Python scientific workers, their tests and validation tools.
+- `native/resources/`: canonical bundled reference datasets and transit registry.
+- `docs/`: maintained workflow and architecture guides.
 
 ## Guides
 
-- [API model handoff: complete the macOS/Linux migration](MIGRATION-HANDOFF.md)
+- [Migration history and completion record](MIGRATION-HANDOFF.md)
 - [Product roadmap and next implementation milestones](docs/ROADMAP.md)
 - [Cross-platform architecture and Linux handoff](docs/CROSS-PLATFORM.md)
-- [Architecture and native rendering](docs/NATIVE-MACOS.md)
+- [Application architecture and native rendering](docs/ARCHITECTURE.md)
 - [Current capabilities and limits](docs/CURRENT-STATE.md)
 - [Mission Control](docs/MISSION-CONTROL.md)
-- [Connected site dossiers in the shared Qt client](docs/SITE-DOSSIERS.md)
+- [Connected site dossiers](docs/SITE-DOSSIERS.md)
 - [Site monitoring and verified relative correction](docs/SITE-MONITORING.md)
 - [Map workspace and evidence overlays](docs/MAP-WORKSPACE-AND-MISSIONS.md)
 - [Map navigation performance and benchmark](docs/MAP-PERFORMANCE.md)
@@ -263,8 +226,8 @@ checks. A trained CPU model execution is recorded in migration status.
 - [Infrastructure change review](docs/SATELLITE-INFRASTRUCTURE-REVIEW.md)
 - [SAR quality and evaluation](docs/SAR-QUALITY-AND-MONITORING.md)
 - [Local object detection](docs/LOCAL-OBJECT-DETECTION.md)
-- [Qt local CPU assistance and model contracts](docs/LOCAL-INFERENCE.md)
-- [Qt source layers and native camera playback](native/desktop/DOMAIN-SOURCES.md)
+- [Local CPU assistance and model contracts](docs/LOCAL-INFERENCE.md)
+- [Source layers and native camera playback](native/desktop/DOMAIN-SOURCES.md)
 - [Map tools, annotations and workspace links](docs/MAP-TOOLS.md)
 - [Daily visualization sources](docs/DAILY-IMAGERY.md)
 - [Satellite analysis roadmap](docs/SATELLITE-ANALYSIS-PLAN.md)
@@ -272,12 +235,13 @@ checks. A trained CPU model execution is recorded in migration status.
 
 ## Storage and licensing
 
-Mission documents, annotations, satellite downloads and processed images live
-under `~/Library/Application Support/Helios/` for the Swift app. Qt uses its own
-platform application-data directory, or an explicit `--profile DIRECTORY`; it
-does not automatically replace or import the Swift library. Provider credentials
-use macOS Keychain or optional Linux Secret Service. Copernicus account sessions
-remain in memory. Removing source/build files does not remove a working profile.
+Helios uses its platform application-data directory, or an explicit
+`--profile DIRECTORY`. It does not automatically replace or import an older
+library. Historical mission, optical and SAR documents remain readable through
+explicit import/open commands; existing macOS data lives under
+`~/Library/Application Support/Helios/`. Provider credentials use macOS Keychain
+or optional Linux Secret Service. Copernicus account sessions remain in memory.
+Removing source/build files does not remove a working profile.
 
 The source license is [MIT](LICENSE); existing copyright notices remain intact.
 Bundled datasets, map providers, native components and optional detector models

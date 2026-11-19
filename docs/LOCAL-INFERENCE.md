@@ -174,4 +174,4 @@ observation. A source or mission switch cannot redirect an old proposal.
 NVIDIA acceleration has **not** been tested on the GTX 1070. This implementation
 offers CPU only and neither changes drivers nor claims CUDA/kernel compatibility.
 The Mac Python/Qt path and Metal map interaction still require a real Mac check.
-The preserved Swift Core ML/Vision adapter remains available in the Mac client.
+No Apple Vision/Core ML adapter is used; the inference boundary is replaceable.

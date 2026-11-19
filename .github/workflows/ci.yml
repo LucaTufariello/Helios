@@ -93,7 +93,7 @@ jobs:
         id: toolchain
         run: |
           test "$(uname -m)" = arm64
-          brew install cmake pkgconf qtbase qtshadertools
+          brew install cmake pkgconf qtbase qtshadertools clang-format
           "$(brew --prefix qtbase)/bin/qmake" -query
           echo "identity=$(clang --version; brew list --versions qtbase qtshadertools)" > "$RUNNER_TEMP/toolchain.txt"
           echo "identity=$(shasum -a 256 "$RUNNER_TEMP/toolchain.txt" | cut -c 1-20)" >> "$GITHUB_OUTPUT"
@@ -120,6 +120,9 @@ jobs:
           uv pip install --python "$helios_inference/bin/python" -r native/desktop/Inference/requirements.txt
           echo "HELIOS_INFERENCE_PYTHON=$helios_inference/bin/python" >> "$GITHUB_ENV"
           "$helios_inference/bin/python" -m unittest discover -s native/desktop/Tests -p test_inference.py -v
+
+      - name: Check C++ formatting
+        run: make format-check
 
       - name: Build and run portable Qt regression tests
         run: make test-desktop
@@ -159,10 +162,10 @@ jobs:
       - name: Build and test portable geography
         run: make test-shared
 
-  verify:
-    name: Apple Silicon build and tests
+  workers:
+    name: Scientific Python workers
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 30
     env:
       HELIOS_SAR_RUNTIME: ${{ runner.temp }}/helios-raster
       HELIOS_SAR_PYTHON: ${{ runner.temp }}/helios-raster/bin/python3
@@ -172,28 +175,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify Apple Silicon and install build tools
-        run: |
-          test "$(uname -m)" = arm64
-          brew install cmake pkgconf
-          xcodebuild -version
+      - name: Verify Apple Silicon
+        run: test "$(uname -m)" = arm64
 
-      - name: Check Swift formatting
-        run: make format-check
-
-      - name: Build and test the shared C++ core
-        run: make test-shared
-
-      - name: Run native tests
-        run: make test
-
-      - name: Prepare raster test environment
+      - name: Create the worker test environment
         run: |
           python3 -m venv "$HELIOS_SAR_RUNTIME"
-          "$HELIOS_SAR_PYTHON" -m pip install -r native/macos/Sources/HeliosMac/Resources/SAR/requirements.txt
+          "$HELIOS_SAR_PYTHON" -m pip install --upgrade pip
+          "$HELIOS_SAR_PYTHON" -m pip install -r native/workers/SAR/requirements-tested.txt
 
-      - name: Run SAR and optical tests
+      - name: Run worker tests
         run: make test-raster
-
-      - name: Build and verify native application
-        run: make build

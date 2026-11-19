@@ -25,7 +25,7 @@ SOFTWARE.
 NOTE ON THIRD-PARTY DATA AND COMPONENTS — THE MIT LICENSE ABOVE COVERS THE
 PROJECT SOURCE CODE ONLY.
 
-Bundled datasets under native/macos/Sources/HeliosCore/Resources/ and data
+Bundled datasets under native/resources/ and data
 fetched from providers retain their own licenses and terms:
 
   - TeleGeography cable systems and landing points: CC BY-NC-SA 3.0.

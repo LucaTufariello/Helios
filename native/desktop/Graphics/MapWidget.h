@@ -146,7 +146,7 @@ private:
     QImage image;
     QString textureKey;
     bool line = false, lineList = false, overlay = false, terrain = false, scene = false,
-         display = false, daily = false;
+         display = false, daily = false, background = false;
     bool doubleSided = false, blend = false;
     float alphaCutoff = -1;
     int wrapS = 10497, wrapT = 10497, magFilter = 9729, minFilter = 9987;
@@ -187,7 +187,8 @@ private:
   std::unique_ptr<QRhiTexture> white_;
   std::unique_ptr<QRhiSampler> linear_, nearest_;
   std::unique_ptr<QRhiShaderResourceBindings> layoutBindings_;
-  std::unique_ptr<QRhiGraphicsPipeline> triangles_, overlayPipeline_, lines_, lineList_;
+  std::unique_ptr<QRhiGraphicsPipeline> triangles_, overlayPipeline_, lines_, lineList_,
+      background_;
   std::array<std::unique_ptr<QRhiGraphicsPipeline>, 4> scenePipelines_;
   bool streets_ = false, terrain_ = true, grid_ = true, selecting_ = false;
   std::optional<Coordinate> firstCorner_;

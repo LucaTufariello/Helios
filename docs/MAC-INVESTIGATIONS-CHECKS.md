@@ -3,8 +3,8 @@
 The Linux implementation and package checks pass. Fresh execution on a Mac remains
 an acceptance gate; the user has deferred it until later. Use an Apple Silicon
 Mac with macOS 14 or newer and full Xcode selected as the active developer tools.
-The shared Qt client contains the new workbench. The Swift reference has matching
-persistence and cleanup support.
+The shared Qt client contains the investigation workbench, including persistence
+and cleanup.
 
 ## Transfer the exact implementation
 
@@ -39,15 +39,15 @@ already exists. The first build downloads pinned Cesium/native dependencies. The
 build creates and verifies a local ad-hoc signed Qt bundle. It also runs all 24
 desktop CTest targets, including investigation core and UI tests.
 
-Run Swift persistence tests and formatting separately:
+Run formatting and the worker tests separately:
 
 ```sh
-make test
 make format-check
+make setup-raster
+make test-raster
 ```
 
-`make test` builds the Swift reference's native engine and runs Swift XCTest,
-including the Qt-authored investigation and registry fixture checks. Preserve the
+`make test-desktop` already ran the investigation core and UI suites. Preserve the
 terminal output if a check fails.
 
 ## Check the actual Metal workflow
@@ -81,9 +81,9 @@ commands. Native PDF generation requires neither environment. An optional
 ## Check a portable case
 
 Use disposable library copies and distinct test profiles; keep actual working
-libraries separate while the Qt and Swift clients are open.
+libraries separate while testing.
 
-1. Open `native/macos/Tests/HeliosCoreTests/Fixtures/cross-platform-investigation.json`
+1. Open `native/desktop/Tests/Fixtures/cross-platform-investigation.json`
    in Qt Mission Control and save a separate working copy. Its synthetic finding
    should retain its prior decision, citations and dependent tasks. Raster files
    are intentionally unavailable.
@@ -106,6 +106,6 @@ libraries separate while the Qt and Swift clients are open.
    citations, task origins and dependencies survive. Registry import remains
    explicit; a copied mission does not transfer raster files.
 
-Return the desktop/Swift test output, `validation.json`, screenshots and any
+Return the desktop test output, `validation.json`, screenshots and any
 problematic briefing with the Mac/Qt versions. A passing Linux compatibility
 harness does not replace this real Mac run.

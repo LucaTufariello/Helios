@@ -98,11 +98,9 @@ be linked raster evidence. Tasks may optionally contain `observationID`, referri
 to an observation in the same mission. Legacy areas without dossier metadata remain
 readable and start with no curated links or pins; overlap does not promote evidence.
 
-The Swift reference now has matching typed persistence fields, validation and
-removal cleanup. Its interface remains unchanged. Use the updated clients and
-separate working copies: older Swift binaries can drop unfamiliar fields when
-saving, and concurrent editing across clients is unsupported. Fresh Swift test
-execution and Qt/Metal acceptance still require a Mac.
+The dossier metadata is optional typed persistence with validation and removal
+cleanup. Concurrent editing by multiple writers is unsupported; fresh Apple
+Silicon Qt/Metal acceptance still requires a Mac.
 
 ## Validation
 
@@ -117,5 +115,5 @@ The generated native GPU validation in the [Qt guide](../native/desktop/README.m
 exercises dossier navigation, reference pinning, observation review, follow-up,
 Timeline/SAR context and save/reopen. It retains `dossier-overview.png`,
 `dossier-evidence.png`, `dossier-evidence-source.png`, `dossier-reviews.png`, `dossier-compact.png` and
-`dossier-mission.json`. These use explicitly generated inputs. Swift compatibility
-checks use `cross-platform-dossier.json` alongside the unchanged legacy fixture.
+`dossier-mission.json`. These use explicitly generated inputs. Document-compatibility checks use
+`cross-platform-dossier.json` alongside the unchanged legacy fixture.

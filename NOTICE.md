@@ -3,15 +3,15 @@
 Helios's source is distributed under the MIT license in [LICENSE](LICENSE).
 The existing copyright notice for Bilawal Sidhu is retained. The project began
 under an earlier name; its former browser implementation is preserved in Git history.
-The maintained application is now the native macOS code under `native/macos/`.
+The maintained application is the C++20/Qt 6 desktop client under `native/desktop/`.
 
 Native components and datasets have separate licenses:
 
 - Cesium Native and its transitive libraries: pinned by the native CMake build;
   the generated application includes `SCENE-NOTICES.txt`.
 - Vallado SGP4 C++: source revision and modifications in
-  `native/macos/Sources/CSGP4/UPSTREAM.md`; MIT notice in
-  `native/macos/Sources/HeliosCore/Resources/SGP4-LICENSE.txt`.
+  `native/sgp4/UPSTREAM.md`; MIT notice in
+  `native/resources/SGP4-LICENSE.txt`.
 - OpenStreetMap-derived datacenter/dam extracts: ODbL 1.0 with retained source
   attribution and resource-specific READMEs.
 - TeleGeography cable systems and landing points: CC BY-NC-SA 3.0, including

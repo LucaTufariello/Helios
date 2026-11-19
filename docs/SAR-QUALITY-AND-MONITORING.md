@@ -4,17 +4,17 @@ The current product is calibrated Sigma0, geometrically terrain-corrected with S
 
 ## Reproducible developer checks
 
-`native/macos/Validation/sar_quality.py` is separate from the production raster calculations. It reuses safe product admission and SNAP process control, while independently calculating the expected dB values and calibration LUT values. It reads saved rasters in blocks rather than loading an acquisition into memory. Original downloads, completed outputs, and existing job records are read only. Optional calibration probes use a temporary extraction that is removed after success or failure.
+`native/workers/validation/sar_quality.py` is separate from the production raster calculations. It reuses safe product admission and SNAP process control, while independently calculating the expected dB values and calibration LUT values. It reads saved rasters in blocks rather than loading an acquisition into memory. Original downloads, completed outputs, and existing job records are read only. Optional calibration probes use a temporary extraction that is removed after success or failure.
 
 From the repository root, with the existing configured SAR Python environment:
 
 ```sh
 "$HOME/Library/Application Support/Helios/SAR/runtime/bin/python3" -B \
-  native/macos/Validation/sar_quality.py \
+  native/workers/validation/sar_quality.py \
   --job "$HOME/Library/Application Support/Helios/SAR/jobs/<completed-job-UUID>" \
   --report output/validation/quality.json \
   --gpt /Applications/esa-snap/bin/gpt
-native/macos/test-sar.sh
+native/workers/test.sh
 ```
 
 Omit `--gpt` to run the export/grid checks without extracting data or invoking SNAP. The JSON report distinguishes checks performed from remaining independent-reference checks. Exit status is nonzero when a completed numerical check fails; a successful exit does not certify absolute accuracy.

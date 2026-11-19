@@ -28,14 +28,14 @@ QJsonObject distribution(QVector<double> samples) {
     return {{"count", 0}};
   std::sort(samples.begin(), samples.end());
   const auto percentile = [&](double fraction) {
-    return samples[std::clamp(qsizetype(std::ceil(samples.size() * fraction)) - 1,
-                             qsizetype(0), samples.size() - 1)];
+    return samples[std::clamp(qsizetype(std::ceil(samples.size() * fraction)) - 1, qsizetype(0),
+                              samples.size() - 1)];
   };
   double sum = 0;
   for (double value : samples)
     sum += value;
   return {{"count", samples.size()}, {"min", samples.front()}, {"mean", sum / samples.size()},
-          {"p50", percentile(.5)}, {"p95", percentile(.95)}, {"p99", percentile(.99)},
+          {"p50", percentile(.5)},   {"p95", percentile(.95)}, {"p99", percentile(.99)},
           {"max", samples.back()}};
 }
 double cpuSeconds() {
@@ -63,27 +63,43 @@ public:
   }
   void begin(const QString &name) {
     phase = name;
-    renders.clear(); framesBetween.clear(); paints.clear(); updates.clear();
-    timerSpacing.clear(); cameraCalls.clear(); arrivals.clear(); picks.clear();
+    renders.clear();
+    framesBetween.clear();
+    paints.clear();
+    updates.clear();
+    timerSpacing.clear();
+    cameraCalls.clear();
+    arrivals.clear();
+    picks.clear();
     lastRender = -1;
     frameStart = frames();
     timeStart = clock.nsecsElapsed();
     cpuStart = cpuSeconds();
     firstRender = -1;
-    minTiles = 1000000; maxTiles = 0; statusCount = 0;
+    minTiles = 1000000;
+    maxTiles = 0;
+    statusCount = 0;
   }
   QJsonObject finish() const {
-    return {{"phase", phase}, {"frames", double(frames() - frameStart)},
+    return {{"phase", phase},
+            {"frames", double(frames() - frameStart)},
             {"wallMS", (clock.nsecsElapsed() - timeStart) / 1e6},
             {"cpuMS", (cpuSeconds() - cpuStart) * 1000},
-            {"firstRenderMS", firstRender}, {"renderMS", distribution(renders)},
-            {"frameSpacingMS", distribution(framesBetween)}, {"paintEventMS", distribution(paints)},
-            {"updateEventMS", distribution(updates)}, {"timerSpacingMS", distribution(timerSpacing)},
-            {"cameraCallMS", distribution(cameraCalls)}, {"terrainArrivalMS", distribution(arrivals)},
-            {"pickMS", distribution(picks)}, {"minimumRenderedTiles", minTiles == 1000000 ? 0 : minTiles},
-            {"maximumRenderedTiles", maxTiles}, {"statusNotifications", statusCount}};
+            {"firstRenderMS", firstRender},
+            {"renderMS", distribution(renders)},
+            {"frameSpacingMS", distribution(framesBetween)},
+            {"paintEventMS", distribution(paints)},
+            {"updateEventMS", distribution(updates)},
+            {"timerSpacingMS", distribution(timerSpacing)},
+            {"cameraCallMS", distribution(cameraCalls)},
+            {"terrainArrivalMS", distribution(arrivals)},
+            {"pickMS", distribution(picks)},
+            {"minimumRenderedTiles", minTiles == 1000000 ? 0 : minTiles},
+            {"maximumRenderedTiles", maxTiles},
+            {"statusNotifications", statusCount}};
   }
   QVector<double> timerSpacing, cameraCalls, arrivals, picks;
+
 protected:
   void render(QRhiCommandBuffer *cb) override {
     const auto start = clock.nsecsElapsed();
@@ -109,6 +125,7 @@ protected:
       updates.append(duration);
     return handled;
   }
+
 private:
   QElapsedTimer clock;
   QString phase;
@@ -154,7 +171,8 @@ QVector<MapMarker> markers(int count) {
     const double radius = .22 * std::sqrt((i + .5) / count);
     result.append({QString("generated-%1").arg(i),
                    {baseCamera.center.latitude + radius * std::sin(angle),
-                    baseCamera.center.longitude + radius * std::cos(angle)}, {}});
+                    baseCamera.center.longitude + radius * std::cos(angle)},
+                   {}});
   }
   return result;
 }
@@ -192,15 +210,20 @@ int main(int argc, char **argv) {
   QElapsedTimer total;
   total.start();
   const double startCPU = cpuSeconds();
-  QJsonObject report{{"generated", true}, {"networking", false}, {"qtVersion", qVersion()},
+  QJsonObject report{{"generated", true},
+                     {"networking", false},
+                     {"qtVersion", qVersion()},
                      {"startedAtUTC", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
-                     {"platform", QGuiApplication::platformName()}, {"fixtureVersion", 1},
-                     {"camera", baseCamera.json()}, {"nominalCameraIntervalMS", 16},
-                     {"limitations", "Generated 256px map tiles and flat 120m terrain, one native "
-                        "window/screen/DPI; no provider requests, MainWindow feed refresh, large "
-                        "3D scene, GPU timestamp query, or physical input latency. Render timings "
-                        "measure CPU work/command recording; frame/paint timings also expose "
-                        "event and compositor pacing. No timing thresholds determine pass/fail."}};
+                     {"platform", QGuiApplication::platformName()},
+                     {"fixtureVersion", 1},
+                     {"camera", baseCamera.json()},
+                     {"nominalCameraIntervalMS", 16},
+                     {"limitations",
+                      "Generated 256px map tiles and flat 120m terrain, one native "
+                      "window/screen/DPI; no provider requests, MainWindow feed refresh, large "
+                      "3D scene, GPU timestamp query, or physical input latency. Render timings "
+                      "measure CPU work/command recording; frame/paint timings also expose "
+                      "event and compositor pacing. No timing thresholds determine pass/fail."}};
   QJsonArray checks, phases;
   QTimer::singleShot(0, &map, [&] {
     const auto require = [&](bool ok, const QString &label) {
@@ -241,7 +264,8 @@ int main(int argc, char **argv) {
       require(QTest::qWaitForWindowExposed(&map, 5000), "Native window exposed");
       QTest::qWait(150);
       require(map.hardwareGpu() && map.error().isEmpty(), "Actual hardware GPU selected");
-      report["backend"] = map.backend(); report["gpu"] = map.gpu();
+      report["backend"] = map.backend();
+      report["gpu"] = map.gpu();
       report["devicePixelRatio"] = map.devicePixelRatioF();
       report["windowLogicalSize"] = QJsonObject{{"width", map.width()}, {"height", map.height()}};
       const auto initialFramebuffer = map.grabFramebuffer();
@@ -302,10 +326,10 @@ int main(int argc, char **argv) {
       QTest::qWait(100);
       map.begin("repeated-five-point-picks");
       const QVector<QPointF> points{{map.width() * .5, map.height() * .5},
-                                   {map.width() * .15, map.height() * .15},
-                                   {map.width() * .85, map.height() * .15},
-                                   {map.width() * .15, map.height() * .85},
-                                   {map.width() * .85, map.height() * .85}};
+                                    {map.width() * .15, map.height() * .15},
+                                    {map.width() * .85, map.height() * .15},
+                                    {map.width() * .15, map.height() * .85},
+                                    {map.width() * .85, map.height() * .85}};
       int validPicks = 0, terrainPicks = 0;
       for (int repeat = 0; repeat < 12; ++repeat)
         for (auto point : points) {
@@ -317,8 +341,10 @@ int main(int argc, char **argv) {
           terrainPicks += hit && hit->terrain;
         }
       phases.append(map.finish());
-      report["validPicks"] = validPicks; report["terrainPicks"] = terrainPicks;
-      require(validPicks == 60 && terrainPicks > 0, "Center and four inset corners return valid picks");
+      report["validPicks"] = validPicks;
+      report["terrainPicks"] = terrainPicks;
+      require(validPicks == 60 && terrainPicks > 0,
+              "Center and four inset corners return valid picks");
       const auto screenshot = map.grabFramebuffer();
       require(nonBlank(screenshot) && screenshot.save(output + "/generated-navigation.png"),
               "Native framebuffer remains populated after navigation");
@@ -330,17 +356,21 @@ int main(int argc, char **argv) {
               "Offline generated run completed without renderer or transport failure");
       report["passed"] = true;
     } catch (const std::exception &error) {
-      report["passed"] = false; report["failure"] = error.what();
+      report["passed"] = false;
+      report["failure"] = error.what();
     }
-    report["checks"] = checks; report["phases"] = phases;
+    report["checks"] = checks;
+    report["phases"] = phases;
     report["wallSeconds"] = total.elapsed() / 1000.;
     report["cpuSeconds"] = cpuSeconds() - startCPU;
-    report["executableSHA256"] = QString::fromLatin1(digest(QCoreApplication::applicationFilePath()));
+    report["executableSHA256"] =
+        QString::fromLatin1(digest(QCoreApplication::applicationFilePath()));
 #ifdef HELIOS_SOURCE_ROOT
     QJsonObject sources;
-    for (const auto &name : {"native/desktop/Tests/MapNavigationChecks.cpp",
-                            "native/desktop/Core/Geography.cpp", "native/desktop/Core/DailyImagery.cpp",
-                            "native/desktop/shaders/globe.vert", "native/desktop/shaders/globe.frag"})
+    for (const auto &name :
+         {"native/desktop/Tests/MapNavigationChecks.cpp", "native/desktop/Core/Geography.cpp",
+          "native/desktop/Core/DailyImagery.cpp", "native/desktop/shaders/globe.vert",
+          "native/desktop/shaders/globe.frag"})
       sources[name] = QString::fromLatin1(digest(QString(HELIOS_SOURCE_ROOT) + "/" + name));
 #ifdef HELIOS_NAVIGATION_GRAPHICS_ROOT
     const QString graphicsRoot = HELIOS_NAVIGATION_GRAPHICS_ROOT;
@@ -357,7 +387,8 @@ int main(int argc, char **argv) {
     const auto bytes = QJsonDocument(report).toJson();
     QSaveFile file(output + "/map-navigation-checks.json");
     file.setDirectWriteFallback(false);
-    const bool saved = file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size() && file.commit();
+    const bool saved =
+        file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size() && file.commit();
     app.exit(saved && report["passed"].toBool() ? 0 : 1);
   });
   return app.exec();

@@ -11,7 +11,7 @@ The initial tracked patch and untracked source archive are retained under
 - Case completion metadata and guarded closure; findings with evidence roles, alternatives, analyst review and retained prior decisions. Revised reviewed content returns to Unreviewed; newly typed rationale remains a draft.
 - Explicit observation, monitoring-entry and SAR-candidate promotion. SAR drafts retain and fingerprint the original report, candidate, site, quality and source identities; stale source records are rejected.
 - Finding task origins, local owner labels and prerequisite enforcement, including cycles, deletion of referenced prerequisites and reopening completed prerequisites.
-- Portable immutable case context, missing-file visibility and explicit registry adoption/import. Swift models preserve the extension and registry records.
+- Portable immutable case context, missing-file visibility and explicit registry adoption/import. The Qt models preserve the extension and registry records.
 - Native A4 PDF and JSON manifest, explicit finding selection, optional map capture, bounded frozen previews, missing/conflicting evidence, outstanding work, recorded fingerprints and derivation references. Publication uses a new folder containing both completed files.
 
 ## Linux validation
@@ -35,23 +35,17 @@ Generated civilian airport/road records demonstrate the connected workflow. They
 are not evidence of changes at a real facility. The milestone does not assert new
 satellite-analysis accuracy or operational effectiveness.
 
-## Swift and Mac gate
+## Mac gate
 
-Swift 6.4.1 parses/formats the source, and the package manifest is admitted. The
-actual new investigation models additionally pass a Linux compatibility harness
-using Glibc in place of Darwin and minimal pre-existing model stubs. It decodes the
-Qt fixtures, round-trips decisions/snapshots, enforces task dependencies and checks
-registry conflict/archive/deletion behavior. Logs are `swift-format.log`,
-`swift-package-manifest.json` and `swift-compatibility.log`. The toolchain signature
-was verified before use; it is development tooling and is not an app dependency.
+The Swift reference and its compatibility harness were removed with the rest of
+the Swift client. The Qt investigation models decode the portable fixtures,
+round-trip decisions/snapshots, enforce task dependencies and check registry
+conflict/archive/deletion behavior in the desktop suites.
 
 **Deferred by the user for later:** a fresh macOS build/run of the shared Qt application,
-Metal workflow checks, Swift XCTest execution and round-tripping an edited case
-between the actual Mac and Linux clients. The compatibility harness is not a
-substitute. Existing macOS CI jobs include the new CTest targets and Swift tests;
-the new fixture tests are in `InvestigationTests.swift`. Follow the
-[Mac validation handoff](../MAC-INVESTIGATIONS-CHECKS.md) using the source snapshot
-above; the new UI belongs to the shared Qt client.
+Metal workflow checks and round-tripping an edited case between the actual Mac and
+Linux machines. Follow the [Mac validation handoff](../MAC-INVESTIGATIONS-CHECKS.md)
+using the source snapshot above; the workbench belongs to the shared Qt client.
 
 Owner labels are local labels, conclusions are human-authored, and retained
 history is neither authenticated collaboration nor a tamper-proof audit.

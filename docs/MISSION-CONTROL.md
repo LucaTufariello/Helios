@@ -1,8 +1,9 @@
 # Native mission control
 
-For the shared Qt client on Linux/macOS, see [connected site dossiers](SITE-DOSSIERS.md)
-and the [desktop guide](../native/desktop/README.md). The interface descriptions
-below refer to the Swift macOS reference.
+The shared Qt client implements this workflow on Linux and macOS; see
+[connected site dossiers](SITE-DOSSIERS.md) and the
+[desktop guide](../native/desktop/README.md). Evidence dated before November 2026
+was collected with the earlier Swift reference and is retained as history.
 
 Mission Control (Command-6) opens a separate, resizable macOS window. It shares
 Helios's existing map, imagery libraries and selected mission. Move it to another
@@ -115,16 +116,16 @@ See Apple's [Vision image transformation API](https://developer.apple.com/docume
 
 ## Architecture and storage
 
-- `HeliosCore/MissionOperations.swift`: bounded Codable area/note/object/task/monitor
+- `Core/Missions.cpp`, `Core/Monitoring.cpp`: bounded area/note/object/task/monitor
   models, review states, deterministic scheduling/deduplication and box georeferencing.
-- `HeliosCore/MissionPlan.swift`: backward-compatible optional mission brief, validation,
-  atomic persistence and one-time `plans-before-mission-control.json` migration backup.
-- `HeliosMac/MissionControlView.swift`: native dedicated window content, imagery preview,
-  metadata inspector, comparison and mission forms.
-- `HeliosMac/MissionOperationsWorkspace.swift`: shared map commands, saved edits and local
-  asynchronous automation runner using the existing catalogue clients.
-- `HeliosMac/MissionDetection.swift`: replaceable local Vision/Core ML adapter.
-- `HeliosMac/MissionValidation.swift`: isolated opt-in application integration checks.
+- `Core/Monitors.cpp`, `Core/Timeline.cpp`: in-app acquisition/evidence monitors,
+  baselines, deduplication and bounded activity history.
+- `UI/MissionWindow.cpp`, `UI/MissionEditor.cpp`: dedicated Mission Control window,
+  imagery preview, metadata inspector, comparison and mission forms sharing the map model.
+- `UI/TimelinePanel.cpp`, `UI/MonitorPanel.cpp`: timeline, comparison and monitor controls.
+- `Core/Inference.cpp`, `UI/InferenceWindow.cpp`: replaceable local ONNX CPU adapter used
+  for observation proposals; no Apple Vision/Core ML path exists.
+- `Validation.cpp`: isolated opt-in native window/GPU integration checks.
 
 Storage remains `~/Library/Application Support/Helios/Missions/plans.json`. The
 mission library is capped at 8 MB, 200 plans, and per plan: 500 evidence links,
@@ -135,18 +136,16 @@ or collaborative audit log. Provider credentials are not copied into mission exp
 
 ## Validation
 
-Run `native/macos/test.sh`, `native/macos/test-sar.sh`, and
-`make format-check`. Build with `native/macos/build-app.sh`.
-The new core tests cover legacy migration, rich document limits, references,
+Run `make test-desktop`, `make test-raster`, and `make format-check`.
+The desktop suites cover legacy migration, rich document limits, references,
 corruption preservation, model scores, schedule recovery/deduplication and normalized
 box orientation/invalid coordinates.
 
-For opt-in application checks, create a disposable directory whose name starts
-`helios-mission-validation-`, set `HELIOS_VALIDATION_ROOT` to it and
-`HELIOS_VALIDATION_FIXTURES` to `native/macos/Tests/HeliosCoreTests/Fixtures` (absolute),
-and run the native binary with `--mission-validation`. It generates explicitly labeled
-fixtures only in that root, exercises shared map actions, review/persistence/exports,
-runs an evidence monitor and captures the nine sections. Window capture uses macOS
+For opt-in application checks, run the native binary with
+`--validate --qa-output <new-directory>` (plus `--raster-python` for generated
+scientific and infrastructure work, and `HELIOS_INFERENCE_PYTHON` for generated
+model proposals). It uses a disposable profile, exercises shared map actions,
+review/persistence/exports, runs an evidence monitor and captures the sections. Window capture uses macOS
 `screencapture` and requires screen recording access. Read `validation.json`; this is
 programmatic window/model validation, not pointer-based interaction testing. It does
 not independently validate satellite radiometry, image registration or model accuracy.
@@ -159,7 +158,7 @@ not independently validate satellite radiometry, image registration or model acc
 - SAR/optical processing suite: 56 passed.
 - Release app: arm64 build and local signature verification passed. The native
   map smoke check rendered on Apple M2, loaded 43 tiles and 37 earthquake records,
-  and reported no renderer/tile failures. Swift formatting checks passed.
+  and reported no renderer/tile failures.
 - Isolated release application validation: 24 checks passed, including native
   window reopening, area drawing/point selection, shared map/evidence state,
   linked notes, observation review, tasks, evidence automation, migration backup,
@@ -204,11 +203,10 @@ basis, source identifiers, availability, evidence references, bounds and review 
 Spreadsheet formula prefixes and quoted text are escaped. The full mission JSON
 also retains acquisition snapshots; neither export embeds imagery.
 
-Implementation: `HeliosCore/MissionTimeline.swift` contains deterministic filtering,
-assessment, comparison checks and CSV export. `MissionTimelineWorkspace.swift`
-builds entries from existing stores and controls the shared map;
-`MissionTimelineView.swift` provides the native interface. `MissionTimelineTests`
-covers date boundaries, unknown times, area matches, acquisition deduplication,
+Implementation: `native/desktop/Core/Timeline.cpp` contains deterministic filtering,
+assessment, comparison checks and CSV export. `UI/TimelinePanel.cpp` builds entries
+from the existing stores, presents filters and controls the shared map. The core and
+UI tests cover date boundaries, unknown times, area matches, acquisition deduplication,
 missing files, comparison constraints, backwards-compatible snapshots and CSV.
 See [Choosing a local detector](LOCAL-OBJECT-DETECTION.md) for model recommendations
 and the current adapter's limits.
@@ -220,8 +218,8 @@ zero failures, including eight new timeline tests. The rebuilt arm64 release pas
 34 isolated application checks: acquisition metadata retention, comparison activation
 and persistence, deleted-preview rejection/recovery, note time semantics, CSV export
 and the existing mission workflows. All nine sections and a compact timeline window
-were captured; the timeline layouts were inspected. Swift/repository formatting,
-release build and local signature verification passed. Reports and screenshots are
+were captured; the timeline layouts were inspected. Formatting, release build and
+local signature verification passed. Reports and screenshots are
 in `output/qa/mission-timeline-2026-10-11`. These use labeled generated fixtures;
 they do not validate detector accuracy or physical/radiometric change.
 

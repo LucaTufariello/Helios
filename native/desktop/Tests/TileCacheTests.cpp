@@ -19,8 +19,7 @@ std::vector<float> gradient() {
   return samples;
 }
 double interpolatedGradient(double u, double v) {
-  return std::clamp(u * 256 - .5, 0., 255.) +
-         1000 * std::clamp(v * 256 - .5, 0., 255.) - 100000;
+  return std::clamp(u * 256 - .5, 0., 255.) + 1000 * std::clamp(v * 256 - .5, 0., 255.) - 100000;
 }
 } // namespace
 class TileCacheTests : public QObject {

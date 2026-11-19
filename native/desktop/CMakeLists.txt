@@ -9,9 +9,9 @@ add_library(HeliosDesktopCore STATIC
   Core/Geography.cpp Core/Investigations.cpp Core/Briefing.cpp Core/Missions.cpp Core/Monitoring.cpp Core/ScientificQueue.cpp Core/MonitoringRunner.cpp Core/Dossiers.cpp Core/Products.cpp Core/WorkerJob.cpp Core/OpticalCatalog.cpp Core/Credentials.cpp
   Core/HttpRequest.cpp Core/RadarCatalog.cpp Core/RadarDownload.cpp Core/JsonFile.cpp Core/Infrastructure.cpp Core/Timeline.cpp Core/Monitors.cpp Core/LibraryStorage.cpp Core/MapTools.cpp Core/Inference.cpp Core/DailyImagery.cpp
   Core/DomainFeeds.cpp Core/DomainParsers.cpp Core/DomainProto.cpp Core/DomainOrbit.cpp Core/DomainSocket.cpp Core/DomainNetwork.cpp Core/DomainHistory.cpp
-  ../macos/Sources/CSGP4/HeliosSGP4.cpp ../macos/Sources/CSGP4/SGP4.cpp)
+  ../sgp4/HeliosSGP4.cpp ../sgp4/SGP4.cpp)
 target_include_directories(HeliosDesktopCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-  ${PROJECT_SOURCE_DIR}/native/macos/Sources/CSGP4/include)
+  ${PROJECT_SOURCE_DIR}/native/sgp4/include)
 target_link_libraries(HeliosDesktopCore PUBLIC HeliosSpatial Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent)
 target_compile_features(HeliosDesktopCore PUBLIC cxx_std_20)
 if(APPLE)
@@ -42,7 +42,13 @@ set_target_properties(HeliosDesktop PROPERTIES
   MACOSX_BUNDLE_GUI_IDENTIFIER "org.helios.desktop.preview"
   MACOSX_BUNDLE_BUNDLE_NAME "Helios Desktop"
   MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
-  MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1")
+  MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+  MACOSX_BUNDLE_ICON_FILE "AppIcon.icns")
+if(APPLE)
+  set(helios_app_icon "${CMAKE_CURRENT_SOURCE_DIR}/packaging/AppIcon.icns")
+  set_source_files_properties("${helios_app_icon}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+  target_sources(HeliosDesktop PRIVATE "${helios_app_icon}")
+endif()
 qt_add_shaders(HeliosDesktop "helios_shaders"
   PREFIX "/helios"
   FILES shaders/globe.vert shaders/globe.frag)
@@ -56,7 +62,7 @@ endif()
 if(BUILD_TESTING)
   qt_add_executable(HeliosInvestigationTests Tests/InvestigationTests.cpp)
   target_link_libraries(HeliosInvestigationTests PRIVATE HeliosDesktopCore Qt6::Test)
-  target_compile_definitions(HeliosInvestigationTests PRIVATE HELIOS_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Tests/HeliosCoreTests/Fixtures")
+  target_compile_definitions(HeliosInvestigationTests PRIVATE HELIOS_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/desktop/Tests/Fixtures")
   add_test(NAME desktop-investigations COMMAND HeliosInvestigationTests)
   set_tests_properties(desktop-investigations PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
   qt_add_executable(HeliosInvestigationUiTests Tests/InvestigationUITests.cpp UI/InvestigationWorkbench.cpp UI/MissionEditor.cpp UI/WorkspaceStyle.cpp)
@@ -90,7 +96,7 @@ if(BUILD_TESTING)
   qt_add_executable(HeliosDesktopTests Tests/CoreTests.cpp)
   target_link_libraries(HeliosDesktopTests PRIVATE HeliosDesktopCore Qt6::Test)
   target_compile_definitions(HeliosDesktopTests PRIVATE
-    HELIOS_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Tests/HeliosCoreTests/Fixtures")
+    HELIOS_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/desktop/Tests/Fixtures")
   add_test(NAME desktop-core COMMAND HeliosDesktopTests)
   qt_add_executable(HeliosSceneTests Tests/SceneTests.cpp)
   target_link_libraries(HeliosSceneTests PRIVATE HeliosScene Qt6::Test Qt6::Gui)
@@ -108,7 +114,7 @@ if(BUILD_TESTING)
   qt_add_executable(HeliosOpticalTests Tests/OpticalTests.cpp)
   target_link_libraries(HeliosOpticalTests PRIVATE HeliosDesktopCore Qt6::Test)
   target_compile_definitions(HeliosOpticalTests PRIVATE
-    HELIOS_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Tests/HeliosCoreTests/Fixtures")
+    HELIOS_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/desktop/Tests/Fixtures")
   add_test(NAME desktop-optical COMMAND HeliosOpticalTests)
   qt_add_executable(HeliosCredentialTests Tests/CredentialTests.cpp)
   target_link_libraries(HeliosCredentialTests PRIVATE HeliosDesktopCore Qt6::Test)
@@ -123,7 +129,7 @@ if(BUILD_TESTING)
   qt_add_executable(HeliosInfrastructureTests Tests/InfrastructureTests.cpp)
   target_link_libraries(HeliosInfrastructureTests PRIVATE HeliosDesktopCore Qt6::Test)
   target_compile_definitions(HeliosInfrastructureTests PRIVATE
-    HELIOS_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Tests/HeliosCoreTests/Fixtures")
+    HELIOS_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/desktop/Tests/Fixtures")
   add_test(NAME desktop-infrastructure COMMAND HeliosInfrastructureTests)
   qt_add_executable(HeliosMissionOperationsTests Tests/MissionOperationsTests.cpp)
   target_link_libraries(HeliosMissionOperationsTests PRIVATE HeliosDesktopCore Qt6::Test)
@@ -152,8 +158,8 @@ if(BUILD_TESTING)
   qt_add_executable(HeliosDomainTests Tests/DomainTests.cpp)
   target_link_libraries(HeliosDomainTests PRIVATE HeliosDesktopCore Qt6::Test)
   target_compile_definitions(HeliosDomainTests PRIVATE
-    HELIOS_DOMAIN_SOURCE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Sources/HeliosCore/Resources"
-    HELIOS_DOMAIN_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/macos/Tests/HeliosCoreTests/Fixtures")
+    HELIOS_DOMAIN_SOURCE_DIR="${PROJECT_SOURCE_DIR}/native/resources"
+    HELIOS_DOMAIN_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/native/desktop/Tests/Fixtures")
   add_test(NAME desktop-domain COMMAND HeliosDomainTests)
   qt_add_executable(HeliosDomainUiTests Tests/DomainUITests.cpp UI/DomainWindow.cpp UI/CameraViewer.cpp UI/WorkspaceStyle.cpp)
   target_link_libraries(HeliosDomainUiTests PRIVATE HeliosDesktopCore Qt6::Widgets Qt6::Test)
@@ -207,7 +213,7 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS HeliosDesktop BUNDLE DESTINATION . COMPONENT Helios RUNTIME DESTINATION bin COMPONENT Helios)
-set(helios_workers_source "${PROJECT_SOURCE_DIR}/native/macos/Sources/HeliosMac/Resources")
+set(helios_workers_source "${PROJECT_SOURCE_DIR}/native/workers")
 set(helios_worker_files SAR/sentinel1.py SAR/change_review.py SAR/registration.py SAR/requirements-monitoring.txt SAR/requirements.txt
   Optical/sentinel2.py Optical/optical_sources.py)
 foreach(helios_worker IN LISTS helios_worker_files)
@@ -218,7 +224,7 @@ foreach(helios_inference_file infer.py requirements.txt tinyyolov2-voc.contract.
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Inference/${helios_inference_file}"
     "${CMAKE_BINARY_DIR}/share/helios/workers/Inference/${helios_inference_file}" COPYONLY)
 endforeach()
-set(helios_domain_resources "${PROJECT_SOURCE_DIR}/native/macos/Sources/HeliosCore/Resources")
+set(helios_domain_resources "${PROJECT_SOURCE_DIR}/native/resources")
 foreach(helios_domain_file transit-feeds.json SGP4-LICENSE.txt)
   configure_file("${helios_domain_resources}/${helios_domain_file}"
     "${CMAKE_BINARY_DIR}/share/helios/sources/${helios_domain_file}" COPYONLY)

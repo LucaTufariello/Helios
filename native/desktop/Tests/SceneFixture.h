@@ -11,7 +11,7 @@
 #include <stdexcept>
 
 namespace helios::qa {
-// Isolated generated fixture matching the Swift scene regression geometry.
+// Isolated generated fixture matching the earlier scene regression geometry.
 inline QString sceneFixture(const QString &directory, const QString &content = "roof.glb",
                             int mode = 4, const QString &alphaMode = "OPAQUE", double alpha = 1,
                             bool textured = false) {

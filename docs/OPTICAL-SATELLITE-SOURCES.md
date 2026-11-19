@@ -1,6 +1,6 @@
 # Native optical satellite sources
 
-The Satellite section has a **Satellite source** selector. Sentinel-1 opens the existing SAR workflow; Sentinel-2, CBERS-4A WPM and PRISMA use the Reference imagery page. Changing source clears its pending search and selects saved images belonging to that sensor, so a previous sensor's overlay is not mistaken for a new result. All controls and mapping remain native SwiftUI/AppKit/Metal.
+The Satellite section has a **Satellite source** selector. Sentinel-1 opens the existing SAR workflow; Sentinel-2, CBERS-4A WPM and PRISMA use the Reference imagery page. Changing source clears its pending search and selects saved images belonging to that sensor, so a previous sensor's overlay is not mistaken for a new result. All controls and mapping remain native Qt Widgets with RHI rendering.
 
 ## Detail, coverage and access
 
@@ -25,11 +25,11 @@ A live all-date INPE search on 2026-10-05 returned **zero CBERS WPM L4 scenes fo
 
 ## Implementation and dependencies
 
-`SentinelOpticalQuery/Scene/Result` retain their existing names and backward-readable saved Sentinel-2 documents; optional source identity defaults legacy scenes to Sentinel-2. Provider-specific scene validation and fixed asset admission live in `HeliosCore/SentinelOptical.swift`. CBERS uses `https://data.inpe.br/bdc/stac/v1/search`, collection `CB4A-WPM-L4-DN-1`, and the deterministic COG mirror under `https://brazil-eosats.s3.us-west-2.amazonaws.com/CBERS4A/WPM/`. INPE scenes can exist before the mirror is populated; unavailable assets fail explicitly. There is no substitution by a quicklook or another sensor.
+`SentinelOpticalQuery/Scene/Result` retain their existing names and backward-readable saved Sentinel-2 documents; optional source identity defaults legacy scenes to Sentinel-2. Provider-specific scene validation and fixed asset admission live in `native/desktop/Core/OpticalCatalog.cpp` and `native/workers/Optical/sentinel2.py`. CBERS uses `https://data.inpe.br/bdc/stac/v1/search`, collection `CB4A-WPM-L4-DN-1`, and the deterministic COG mirror under `https://brazil-eosats.s3.us-west-2.amazonaws.com/CBERS4A/WPM/`. INPE scenes can exist before the mirror is populated; unavailable assets fail explicitly. There is no substitution by a quicklook or another sensor.
 
-`OpticalWorkspace` keeps the existing UUID dataset storage under `~/Library/Application Support/Helios/Satellite/optical/`, process adapter, progress/cancellation, saved-image library and export conventions. Python runs in isolated mode behind `SarProcessor.renderOptical`. `sentinel2.py` dispatches to `optical_sources.py`; no GUI processing engine, browser or local server is added. Existing S2 TCI handling is preserved.
+The Qt Satellite window keeps the existing UUID dataset storage under `~/Library/Application Support/Helios/Satellite/optical/`, process adapter, progress/cancellation, saved-image library and export conventions. Python runs in isolated mode through the owned worker host. `sentinel2.py` dispatches to `optical_sources.py`; no GUI processing engine, browser or local server is added. Existing S2 TCI handling is preserved.
 
-Run `native/macos/setup-sar.sh` to install native arm64 NumPy, Rasterio/GDAL, Pillow and **h5py 3.11–3.14** in the existing dedicated runtime. h5py is needed only for PRISMA. SNAP is needed for Sentinel-1 SAR, not the optical viewers.
+Run `native/workers/setup-raster.sh` to install NumPy, Rasterio/GDAL, Pillow and **h5py** in a dedicated runtime. h5py is needed only for PRISMA. SNAP is needed for Sentinel-1 SAR, not the optical viewers.
 
 ### CBERS processing
 

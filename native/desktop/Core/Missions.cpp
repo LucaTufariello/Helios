@@ -74,7 +74,7 @@ void text(const QJsonObject &o, const char *key, int limit, bool nonempty = fals
   check(v.isString(), "A mission text field has an invalid type.");
   const auto s = v.toString();
   check(!nonempty || !s.trimmed().isEmpty(), "A required mission field is empty.");
-  // Swift String.count uses grapheme clusters, not UTF-16 code units.
+  // The earlier macOS client counted grapheme clusters, not UTF-16 code units.
   QTextBoundaryFinder finder(QTextBoundaryFinder::Grapheme, s);
   int count = 0;
   while (finder.toNextBoundary() >= 0)

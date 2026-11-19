@@ -69,14 +69,14 @@ infrastructure review workflow and its documented validation limits.
 
 ## Implementation and persistence
 
-SwiftUI owns in-window palettes and native controls; the original Swift/AppKit tools
-and source configuration remain reused. Metal renders at most two bounded raster
-preview layers. Texture preparation is asynchronous and bounded to 2048 pixels per
+Qt Widgets owns in-window palettes and native controls; the map tools and source
+configuration are shared with the main window. Qt RHI renders at most two bounded
+raster preview layers. Texture preparation is asynchronous and bounded to 2048 pixels per
 side/32 MB encoded input; opacity changes reuse textures and geometry. Closing a
 palette does not cancel a dataset processing job. Existing cancellations remain in
 the SAR/optical tools.
 
-`MissionPlan.swift` owns validated bounded mission documents. Atomic storage is
+`native/desktop/Core/Missions.cpp` owns validated bounded mission documents. Atomic storage is
 `~/Library/Application Support/Helios/Missions/plans.json`, with an 8 MB document cap,
 200-plan cap, 500-item cap per plan, 120-character names, 4,000-character objectives
 and 32,000-character notes. Unreadable previous files are preserved. Numeric

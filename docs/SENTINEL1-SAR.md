@@ -1,15 +1,15 @@
-# Sentinel-1 GRD processing in the native macOS app
+# Sentinel-1 GRD processing in Helios
 
 ## Architecture and scope
 
-The production application is `native/macos`: Swift 6, macOS 14+, arm64, SwiftUI/AppKit, Metal and Foundation. The interface, orchestration and storage are native; optional scientific workers are local background processes.
+The application is `native/desktop`: C++20 and Qt 6 Widgets, with Metal or Vulkan rendering behind Qt RHI. The interface, orchestration and storage are native; optional scientific workers are local background processes.
 
-The existing native application uses `NSOpenPanel` / `NSSavePanel`, Swift tasks, Codable JSON documents, and local Application Support files. It has no general durable job queue or database. SAR follows these conventions:
+The desktop application uses Qt file dialogs, owned worker processes, JSON documents and a separate platform profile directory. It has no general durable job queue or database. SAR follows these conventions:
 
-- `HeliosCore/SarProcessor.swift`: typed product/options/result/output/progress models, asynchronous worker abstraction, safe process arguments, cancellation and interrupted-job recovery.
-- `HeliosMac/SarWorkspace.swift`: native import, configuration, status, result browser, preview, export and job storage controller.
-- `HeliosMac/Resources/SAR/sentinel1.py`: local worker with discrete admission, inspection, graph construction, processing, raster conversion and output stages.
-- `GlobeRenderer.swift`: a bounded georeferenced PNG display overlay in the existing Metal scene. It uses the **terrain-corrected output's actual EPSG:4326 bounds**, not the raw SAFE measurement footprint.
+- `Core/ScientificQueue.{h,cpp}`, `Core/WorkerJob.{h,cpp}`: typed product/options/result/output/progress models, asynchronous worker boundary, safe process arguments, cancellation and interrupted-job recovery.
+- `UI/ProcessingWindow.cpp`, `UI/RadarPanel.cpp`: import, configuration, status, result browser, preview, export and job storage.
+- `native/workers/SAR/sentinel1.py`: local worker with discrete admission, inspection, graph construction, processing, raster conversion and output stages.
+- `Graphics/MapWidget.cpp`: a bounded georeferenced display overlay on the map. It uses the **terrain-corrected output's actual EPSG:4326 bounds**, not the raw SAFE measurement footprint.
 
 The pipeline currently supports Sentinel-1 A/B/C/D Level-1 **GRD** SAFE products, IW/EW/SM acquisition modes, one measurement per available VV/VH polarization. Mission parsing accepts C/D identifiers, but compatibility with actual C/D acquisitions still depends on the installed Microwave Toolbox and needs real-product validation. HH/HV-only products, SLC, OCN, InSAR and advanced classification are explicitly outside this implementation.
 
@@ -32,7 +32,7 @@ Requirements:
 Install the raster environment from the repository:
 
 ```sh
-native/macos/setup-sar.sh
+native/workers/setup-raster.sh
 ```
 
 Optional environment variables: `HELIOS_SAR_PYTHON` chooses the interpreter for creating the environment; `HELIOS_SAR_RUNTIME` chooses its location. The default runtime is `~/Library/Application Support/Helios/SAR/runtime`. These dependencies are installed explicitly by the setup script; importing a dataset does not install software.
@@ -51,15 +51,15 @@ The SAR panel has two native workflows: **Find & download** and **Process & resu
 
 Region selection finds complete intersecting acquisitions: it does **not** crop products, change radar georeferencing, or request a server-side SAR processing job. Downloading a scene can require several gigabytes even for a small search rectangle. An unavailable scene cannot be downloaded. Product name filtering intentionally excludes SLC, newer COG-packaged variants and HH/HV-only products that the existing processor does not support.
 
-`HeliosCore/SentinelCatalog.swift` owns typed region/query/scene models, catalogue requests, an actor-isolated account session, streaming download delegate and provenance records. `HeliosMac/SarAcquisitionWorkspace.swift` owns native search/login/download UI state and handoff to `SarWorkspace.inspect()`. Region picking reuses `WorkspaceModel.mapClick`, `GeoBounds.viewport`, existing `ScenePath` rendering and the native Metal surface picker.
+`Core/RadarCatalog.{h,cpp}` owns typed region/query/scene models, catalogue requests, the account session and provenance records. `Core/RadarDownload.{h,cpp}` owns the streaming download. `UI/RadarPanel.cpp` owns search/login/download UI state and handoff to the SAFE inspector. Region picking reuses the map click handler, viewport bounds, footprint rendering and the native surface picker.
 
 Authentication follows [Copernicus's documented token flow](https://documentation.dataspace.copernicus.eu/APIs/Token.html): HTTPS form-encoded `cdse-public` password grant with optional `totp`, followed by refresh-token renewal when necessary. Password fields are cleared after submission. Passwords, access tokens and refresh tokens stay in memory and never enter UserDefaults, workspace exports, job records, logs or downloaded-product metadata. Sign out clears the session; restarting requires sign-in again. Server authentication bodies are never presented to users. Generation checks prevent an interrupted sign-in from restoring a signed-out session.
 
-Downloads use the documented `download.dataspace.copernicus.eu/odata/v1/Products(<UUID>)/$value` endpoint. The regular endpoint supplies a zipped SAFE without relying on the separate native-compressed `$zip` endpoint's limited retention. A serial URLSession delegate writes incoming chunks directly to a unique partial file, with a 40 GiB cap, initial disk-capacity check, HTTP status/length validation and ZIP header/end-record checks. Only exact HTTPS download/catalogue service hosts may receive a forwarded Authorization header during redirects; unexpected hosts are rejected. Cancel/failure removes partial files; complete files are published by a filesystem move and never silently overwritten. Interrupted partials are removed on restart only when their recorded owner process is confirmed gone. A lost connection currently requires restarting the download; byte-range resume is not implemented. Downloads run while the application is open, not as an OS background transfer after quitting.
+Downloads use the documented `download.dataspace.copernicus.eu/odata/v1/Products(<UUID>)/$value` endpoint. The regular endpoint supplies a zipped SAFE without relying on the separate native-compressed `$zip` endpoint's limited retention. A serial Qt network reply writes incoming chunks directly to a unique partial file, with a 40 GiB cap, initial disk-capacity check, HTTP status/length validation and ZIP header/end-record checks. Only exact HTTPS download/catalogue service hosts may receive a forwarded Authorization header during redirects; unexpected hosts are rejected. Cancel/failure removes partial files; complete files are published by a filesystem move and never silently overwritten. Interrupted partials are removed on restart only when their recorded owner process is confirmed gone. A lost connection currently requires restarting the download; byte-range resume is not implemented. Downloads run while the application is open, not as an OS background transfer after quitting.
 
 Completed downloads live at `~/Library/Application Support/Helios/SAR/downloads/<catalogue-UUID>/product.zip`, with `download.json` containing the source scene, selected search query and completion timestamp. Stored paths derive from a validated UUID rather than a remote filename. Authentication is not included. The full existing SAFE inspector performs ZIP CRC, path, XML, product and measurement admission before processing. Transport completion/ZIP framing alone is not scientific validation; catalogue checksums are not assumed to describe the dynamically packaged download bytes.
 
-Tests use generated ZIP bytes and mocked HTTP responses for query construction, metadata/polarization admission, login encoding, token refresh, credential-safe errors, redirect policy, streamed transfers, unknown/known size limits, truncated archives, response length mismatch, cancellation and failure cleanup. `HELIOS_LIVE_CHECKS=1 native/macos/test.sh --filter SentinelCatalogTests/testLiveCopernicusCatalogue` checks the real public catalogue. Authenticated acquisition download and real SAR scientific acceptance still require an account and a representative actual product.
+Tests use generated ZIP bytes and mocked HTTP responses for query construction, metadata/polarization admission, login encoding, token refresh, credential-safe errors, redirect policy, streamed transfers, unknown/known size limits, truncated archives, response length mismatch, cancellation and failure cleanup. `HELIOS_LIVE_CHECKS=1 ./output/desktop/build/bin/HeliosRadarTests testLiveCopernicusCatalogue` (or the opt-in `--validate-radar-search` harness) checks the real public catalogue. Authenticated acquisition download and real SAR scientific acceptance still require an account and a representative actual product.
 
 ## Scientific pipeline
 
@@ -99,7 +99,7 @@ The globe uses a bounded display preview, not the full scientific raster, with E
 
 Local job directory: `~/Library/Application Support/Helios/SAR/jobs/<UUID>/`.
 
-The Swift process adapter passes a fixed operation and argument array to an isolated Python interpreter (`-I`); Python passes an argument array to GPT. Neither constructs a shell command from product names/options. Workspace state links and exported workspace documents do not include SAR paths, datasets or processing results; results are separately persisted local jobs.
+The owned process adapter passes a fixed operation and argument array to an isolated Python interpreter (`-I`); Python passes an argument array to GPT. Neither constructs a shell command from product names/options. Workspace state links and exported workspace documents do not include SAR paths, datasets or processing results; results are separately persisted local jobs.
 
 Admission limits are 20,000 files, 40 GiB declared product size, 16 MiB per XML document, 250,000 XML elements, and a maximum ZIP compression ratio of 1000. ZIP traversal/absolute/backslash paths, URI-encoded/query/fragment/control-character paths, links/special files, encryption, duplicate/case-colliding paths and entries outside the selected SAFE are rejected. XML is UTF-8, and DTD/entity declarations are rejected before parsing, including auxiliary XML/KML. Manifest file references must stay within the admitted product. Extraction uses exclusive file creation and streaming writes, with CRC checking and a declared-size bound. Preflight and exact-grid disk estimates reject insufficient space.
 
@@ -113,25 +113,25 @@ These checks reduce common file admission risks; they are not a sandbox or a pro
 
 - Small generated SAFE structures, measurement TIFFs and already-geocoded floating-point raster fixtures test admission, metadata, graph construction, numerical conversion, export, output transparency, cancellation and cleanup. Fixtures are explicitly test data; they do **not** validate real SAR calibration or terrain correction.
 - Tests mock SNAP only to exercise orchestration/failure/completion. A real subprocess fixture verifies GPT-child termination and intermediate cleanup on cancellation.
-- Swift tests cover state transitions, result-file admission, bounded metadata reads, missing runtime and interrupted-job recovery. The existing native and legacy suites remain regression gates.
+- Desktop tests cover state transitions, result-file admission, bounded metadata reads, missing runtime and interrupted-job recovery. The Python worker tests remain a separate gate.
 - The raster environment was installed and exercised locally on arm64. The initial implementation used fixtures. Subsequently a real Sentinel-1D GRD acquisition completed the SNAP pipeline, and export/LUT consistency checks passed; see [the current quality report](SAR-QUALITY-AND-MONITORING.md). Independent absolute radiometric and geographic accuracy remain unverified. Successful processing and those numerical checks do not certify scientific accuracy.
 - Real native UI validation may require an unlocked desktop. Build/tests alone do not establish visual QA.
 - No uncertainty model, radiometric terrain flattening, incidence normalization, layover/shadow classification, geoid processing outside SNAP, AOI subset or offline bulk downloader is implemented.
 - Recovery/export behavior was tested, but full disk-exhaustion, decoder-adversarial and long-running multi-gigabyte workloads need further validation. Only one job is processed at a time in each native workspace.
 
-Local validation on October 4, 2026: **21 Python worker tests passed**, and the native suite passed **86 deterministic tests** (94 total, eight live-provider tests intentionally skipped). Six native tests specifically cover the SAR adapter models/storage boundary. The retained legacy suite passed **3,899 tests**, with one skipped and no failures. Swift strict formatting, the repository's 890-file formatting check, shell syntax and arm64 release/signature checks passed. Existing native dependency packaging emits empty-object archive notices; no new Swift compile warnings were introduced.
+Earlier validation on October 4, 2026 (`earlier reference, historical`): **21 Python worker tests passed**, and the native suite passed **86 deterministic tests** (94 total, eight live-provider tests intentionally skipped). Six tests covered the SAR adapter models/storage boundary. The retained legacy suite passed **3,899 tests**, with one skipped and no failures. Formatting, shell syntax and arm64 release/signature checks passed. Existing native dependency packaging emits empty-object archive notices.
 
 Native UI checks exercised generated SAFE structural import and VV/VH detection, queued/failed states for missing SNAP, saved result browsing, VV/composite selection, stable near-constant composite stretching, native PNG export, georeferenced globe focus, terrain-aligned overlay rendering and overlay removal. The display-only result was explicitly labeled as generated test data. Visual depth gaps prompted replacement of the separate overlay grid with the exact existing terrain meshes. Both test-only job directories, their temporary SAFE/raster files and the test export were removed afterward. The application and worker were left stopped. These UI checks do not establish real SAR processing accuracy.
 
 Run the tests:
 
 ```sh
-native/macos/test.sh
-native/macos/test-sar.sh
-native/macos/build-app.sh
+make test-desktop
+make test-raster
+./native/desktop/build.sh
 ```
 
-`HELIOS_SAR_PYTHON=/absolute/path/to/python3 native/macos/test-sar.sh` selects a test environment. Generated fixtures are temporary and no satellite-sized acquisition is committed.
+`HELIOS_SAR_PYTHON=/absolute/path/to/python3 make test-raster` selects a test environment. Generated fixtures are temporary and no satellite-sized acquisition is committed.
 
 For a real-product acceptance run: install updated SNAP 14+, import an official VV/VH IW GRD acquisition, keep precise orbit on, process with and without Refined Lee, compare Float32 pixel samples/CRS/geographic alignment to an independently processed SNAP reference, verify nodata and water behavior, export/open results in a GIS, then exercise cancellation and an unavailable DEM/orbit case. Record the product identifier, exact engine/toolbox version, graph/options and evidence before claiming scientific validation.
 
@@ -141,7 +141,7 @@ Keep future SLC/InSAR/coherence/change-detection work behind a processor abstrac
 
 Download feature validation: the native interface was exercised against live catalogue results, including two-corner selection, current-view bounds, acquisition selection, footprint focus, the native account form and the retained processing panel. Authentication/download transport is covered by mocked responses; a live authenticated multi-gigabyte transfer was not performed during implementation. Existing SAR processing tests remain separate from real-product scientific acceptance.
 
-Final download checks on October 4, 2026: 24 acquisition tests passed with the live catalogue check enabled; the full native suite passed 109 tests with nine external-service checks skipped; the SAR Python suite passed 21 tests; the retained legacy suite passed 3,899 tests with one skipped. Strict Swift formatting and repository formatting passed. The installed SNAP GPT starts and exposes the required orbit, border/thermal-noise, calibration, speckle and terrain-correction operators. This verifies engine availability, not real-product calibration/geocoding.
+Final download checks on October 4, 2026: 24 acquisition tests passed with the live catalogue check enabled; the full native suite passed 109 tests with nine external-service checks skipped; the SAR Python suite passed 21 tests; the retained legacy suite passed 3,899 tests with one skipped. Formatting checks passed. The installed SNAP GPT starts and exposes the required orbit, border/thermal-noise, calibration, speckle and terrain-correction operators. This verifies engine availability, not real-product calibration/geocoding.
 
 ## Real-product terrain correction fix — October 4, 2026
 
