@@ -71,7 +71,7 @@ def main() -> None:
             shutil.rmtree(staging)
     desktop_file.parent.mkdir(parents=True, exist_ok=True)
     entry = "\n".join((
-        "[Desktop Entry]", "Type=Application", "Name=Helios Desktop",
+        "[Desktop Entry]", "Type=Application", "Name=Helios",
         "Comment=Native imagery, infrastructure and mission workspace",
         "Exec=" + desktop_quote(str(target / "helios-desktop")) + " %u",
         "Icon=" + str(target / "share/helios/helios.svg").replace("\\", "\\\\"),

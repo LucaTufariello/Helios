@@ -4,7 +4,7 @@ build:
 	./native/desktop/build.sh
 
 run: build
-	open output/desktop/build/bin/HeliosDesktop.app
+	open output/desktop/build/bin/Helios.app
 
 build-shared:
 	cmake -S . -B output/shared/build -DCMAKE_BUILD_TYPE=Release

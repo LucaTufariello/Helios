@@ -280,7 +280,7 @@ void DailyImageryCache::pump() {
       continue;
     }
     QNetworkRequest request(url(source_, date_, item.id));
-    request.setRawHeader("User-Agent", "HeliosDesktop/0.1 (native GIS viewer)");
+    request.setRawHeader("User-Agent", "Helios/0.1 (native GIS viewer)");
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::ManualRedirectPolicy);
     request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);

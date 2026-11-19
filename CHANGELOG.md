@@ -20,6 +20,9 @@
 - The fallback globe is drawn as a depth-free background layer, so coarse imagery
   no longer shows dark seams where the globe's own tessellation dips close to the
   imagery surface at long camera ranges.
+- The desktop application is named Helios: the macOS bundle and executable are
+  `Helios.app` and `bin/Helios`, with matching menu-bar, Dock, Linux desktop-entry
+  and CI artifact names.
 
 ## Native application — 12 October 2026
 

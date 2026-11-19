@@ -74,7 +74,7 @@ On macOS, install `qtbase` and `qtshadertools` using Homebrew, then:
 
 ```sh
 make test-desktop
-open output/desktop/build/bin/HeliosDesktop.app
+open output/desktop/build/bin/Helios.app
 ```
 
 The build script deploys Qt frameworks/plugins into this arm64 bundle, adds the
@@ -88,7 +88,7 @@ dependencies, leaving the existing GPU driver unchanged:
 sudo pacman -S --needed base-devel cmake qt6-base qt6-shadertools qt6-wayland vulkan-tools
 ./native/desktop/diagnose-linux.sh
 make test-desktop
-./output/desktop/build/bin/HeliosDesktop
+./output/desktop/build/bin/Helios
 ```
 
 The Arch CI job compiles the Qt client and runs headless core tests. It does not
@@ -164,7 +164,7 @@ actual compositor minimization and large-site stress remain outstanding; see
 
 ```sh
 make test-desktop
-./output/desktop/build/bin/HeliosDesktop.app/Contents/MacOS/HeliosDesktop \
+./output/desktop/build/bin/Helios.app/Contents/MacOS/Helios \
   --validate --qa-output output/qa/desktop
 ```
 

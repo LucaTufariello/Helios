@@ -43,11 +43,11 @@ The Qt harness uses a disposable profile and generated QA data; it never needs
 real user missions:
 
 ```sh
-./output/desktop/build/bin/HeliosDesktop.app/Contents/MacOS/HeliosDesktop \
+./output/desktop/build/bin/Helios.app/Contents/MacOS/Helios \
   --validate --qa-output output/qa/desktop
 ```
 
-On Linux use `./output/desktop/build/bin/HeliosDesktop`. Inspect
+On Linux use `./output/desktop/build/bin/Helios`. Inspect
 `validation.json`, the generated imagery and the briefing output. Add
 `--product /absolute/path/to/copied-job/result.json` to inspect a copied completed
 product, or `--validate-live` to request real public basemap/terrain data.
@@ -82,7 +82,7 @@ Set `HELIOS_INVESTIGATION_QA` to an absolute output directory when running
 `HeliosInvestigationTests` or `HeliosInvestigationUiTests` directly to retain the
 civilian evaluation library, briefings, screenshots and graph timing evidence.
 UI/headless runs use `QT_QPA_PLATFORM=offscreen`. These generated fixtures are not
-real satellite-analysis validation. `HeliosDesktop --validate` additionally
+real satellite-analysis validation. `Helios --validate` additionally
 exercises the connected workflow with the native GPU and a captured map.
 
 GitHub Actions is configured for the Qt client on Linux and Apple Silicon macOS

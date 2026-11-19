@@ -122,7 +122,7 @@ void TileCache::pump() {
                              ? r.id.key() + ".png"
                              : QString("%1/%2/%3").arg(r.id.zoom).arg(r.id.y).arg(r.id.x);
     QNetworkRequest request{QUrl(base + tail)};
-    request.setRawHeader("User-Agent", "HeliosDesktop/0.1 (native GIS viewer)");
+    request.setRawHeader("User-Agent", "Helios/0.1 (native GIS viewer)");
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::SameOriginRedirectPolicy);
     request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);

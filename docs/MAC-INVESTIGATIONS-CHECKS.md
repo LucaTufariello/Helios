@@ -31,7 +31,7 @@ mkdir "$HOME/Helios-investigations-check"
 zstd -dc "$HOME/Downloads/helios-source.tar.zst" | tar -x -C "$HOME/Helios-investigations-check"
 cd "$HOME/Helios-investigations-check/Helios"
 make test-desktop
-open output/desktop/build/bin/HeliosDesktop.app
+open output/desktop/build/bin/Helios.app
 ```
 
 Compare the checksum before extracting. Choose another new directory if that name
@@ -55,7 +55,7 @@ terminal output if a check fails.
 From the extracted repository, with the desktop session unlocked:
 
 ```sh
-./output/desktop/build/bin/HeliosDesktop.app/Contents/MacOS/HeliosDesktop \
+./output/desktop/build/bin/Helios.app/Contents/MacOS/Helios \
   --validate --qa-output output/qa/investigations-mac
 ```
 
@@ -69,7 +69,7 @@ For a fuller regression run, use the existing configured environments:
 
 ```sh
 HELIOS_INFERENCE_PYTHON=/absolute/path/to/inference/bin/python \
-./output/desktop/build/bin/HeliosDesktop.app/Contents/MacOS/HeliosDesktop \
+./output/desktop/build/bin/Helios.app/Contents/MacOS/Helios \
   --validate --raster-python /absolute/path/to/raster/bin/python3 \
   --qa-output output/qa/investigations-mac-full
 ```

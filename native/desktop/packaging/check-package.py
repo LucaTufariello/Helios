@@ -129,7 +129,7 @@ def main() -> None:
             gpu_results[kind] = {key: report[key] for key in ("gpu", "backend", "elapsedSeconds", "peakResidentBytes", "processCpuSeconds")}
             gpu_results[kind]["checkCount"] = len(report["checks"])
         result = {"passed": True, "checks": checks, "runtimeLocation": str(app),
-                  "packagedExecutableSha256": sha256(app / "bin/HeliosDesktop"),
+                  "packagedExecutableSha256": sha256(app / "bin/Helios"),
                   "workerHostSha256": sha256(app / "bin/HeliosWorkerHost"), "sourceSha256": manifest["sourceSha256"],
                   "qtVersion": manifest["qtVersion"], "gpuResults": gpu_results}
         (output / "package-check.json").write_text(json.dumps(result, indent=2) + "\n")

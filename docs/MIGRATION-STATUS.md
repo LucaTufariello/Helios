@@ -26,7 +26,7 @@ CUDA, desktop configuration or system package changes were made.
 Build: GCC 16.2.1, Qt 6.11.2, CMake 4.4.4. Qt Base, Shader Tools and Wayland were
 already installed. CMake was missing, so a local Python environment under ignored
 `output/tools/` supplied it; this is a development prerequisite, not an application
-runtime dependency. The current binary is `output/desktop/build/bin/HeliosDesktop`.
+runtime dependency. The current binary is `output/desktop/build/bin/Helios`.
 
 Evidence root: `output/qa/linux-20261015T100735Z/` (ignored, local to that machine).
 

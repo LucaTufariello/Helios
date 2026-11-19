@@ -150,7 +150,7 @@ def native_package(application: Path, destination: Path, version: str, runtime: 
     (staging / "usr/bin/helios-desktop").symlink_to("../../opt/helios-desktop/helios-desktop")
     desktop = staging / "usr/share/applications/io.helios.desktop.desktop"
     desktop.parent.mkdir(parents=True)
-    desktop.write_text("\n".join(("[Desktop Entry]", "Type=Application", "Name=Helios Desktop",
+    desktop.write_text("\n".join(("[Desktop Entry]", "Type=Application", "Name=Helios",
                                  "Comment=Native imagery, infrastructure and mission workspace",
                                  "Exec=/opt/helios-desktop/helios-desktop %u",
                                  "Icon=/opt/helios-desktop/share/helios/helios.svg", "Terminal=false",
@@ -197,8 +197,8 @@ def main() -> None:
     if args.native and not shutil.which("bsdtar"):
         raise ValueError("bsdtar is required for the native pacman package.")
     build = args.build.resolve()
-    if not (build / "bin/HeliosDesktop").is_file() or not (build / "bin/HeliosWorkerHost").is_file():
-        raise ValueError("Build HeliosDesktop and its worker host before packaging.")
+    if not (build / "bin/Helios").is_file() or not (build / "bin/HeliosWorkerHost").is_file():
+        raise ValueError("Build Helios and its worker host before packaging.")
     ffmpeg = args.ffmpeg.resolve()
     if not ffmpeg.is_file():
         raise ValueError("Install the distribution FFmpeg package explicitly before creating a media-enabled Linux artifact.")
@@ -207,17 +207,17 @@ def main() -> None:
         raise ValueError("Choose a new output directory; packaging never replaces an existing artifact.")
     destination.mkdir(parents=True)
     application = destination / "helios-desktop"
-    before = digest(build / "bin/HeliosDesktop")
+    before = digest(build / "bin/Helios")
     # Do not run the upstream scene libraries' install rules: some use absolute
     # development export paths. The application runtime has this bounded layout.
-    for name in ("HeliosDesktop", "HeliosWorkerHost"):
+    for name in ("Helios", "HeliosWorkerHost"):
         copy_file(build / "bin" / name, application / "bin" / name)
     copy_file(ffmpeg, application / "bin/ffmpeg")
     # Worker tests may generate interpreter caches beside these read-only
     # sources. Ship the portable sources, not machine-specific bytecode.
     shutil.copytree(build / "share/helios", application / "share/helios",
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
-    if before != digest(application / "bin/HeliosDesktop") or before != digest(build / "bin/HeliosDesktop"):
+    if before != digest(application / "bin/Helios") or before != digest(build / "bin/Helios"):
         raise ValueError("The executable changed while packaging. Wait for the build and choose a new output directory.")
     qt_version = command("qmake6", "-query", "QT_VERSION")
     qt_plugins = Path(command("qmake6", "-query", "QT_INSTALL_PLUGINS"))
@@ -237,7 +237,7 @@ def main() -> None:
     qt_libraries: dict[str, Path] = {}
     media_libraries: dict[str, Path] = {}
     host_libraries: dict[str, Path] = {}
-    for file in [build / "bin/HeliosDesktop", ffmpeg] + [qt_plugins / name for name in selected]:
+    for file in [build / "bin/Helios", ffmpeg] + [qt_plugins / name for name in selected]:
         for name, source in dependencies(file).items():
             if name.startswith("libQt6"):
                 if any(module in name for module in ("Qml", "Quick", "WebEngine", "WebChannel")):
@@ -290,7 +290,7 @@ def main() -> None:
         (application / name).chmod(0o755)
     copy_file(PACKAGING / "helios.svg", application / "share/helios/helios.svg")
     copy_file(ROOT / "native/desktop/PACKAGING.md", application / "README.md")
-    for executable in ("HeliosDesktop", "HeliosWorkerHost", "ffmpeg"):
+    for executable in ("Helios", "HeliosWorkerHost", "ffmpeg"):
         subprocess.run(["strip", "--strip-unneeded", str(application / "bin" / executable)], check=True)
     snapshot, source_hashes = source_snapshot(destination)
     revision = command("git", "-C", str(ROOT), "rev-parse", "HEAD")

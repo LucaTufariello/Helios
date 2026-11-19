@@ -30,33 +30,33 @@ elseif(UNIX)
   endif()
 endif()
 
-qt_add_executable(HeliosDesktop MACOSX_BUNDLE
+qt_add_executable(Helios MACOSX_BUNDLE
   main.cpp Graphics/TileCache.cpp Graphics/MapWidget.cpp UI/WorkspaceStyle.cpp UI/WorkspacePanel.cpp
   UI/InvestigationWorkbench.cpp UI/SiteMonitoringPanel.cpp UI/MonitoringInboxPanel.cpp UI/DossierPanel.cpp UI/MainWindow.cpp UI/MissionWindow.cpp UI/MissionEditor.cpp UI/SatelliteWindow.cpp UI/ProcessingWindow.cpp UI/RadarPanel.cpp UI/ReviewWindow.cpp UI/TimelinePanel.cpp UI/MonitorPanel.cpp UI/MapToolsWindow.cpp UI/InferenceWindow.cpp UI/DomainWindow.cpp UI/CameraViewer.cpp Validation.cpp)
-target_link_libraries(HeliosDesktop PRIVATE HeliosDesktopCore HeliosScene Qt6::GuiPrivate
+target_link_libraries(Helios PRIVATE HeliosDesktopCore HeliosScene Qt6::GuiPrivate
   Qt6::Widgets Qt6::Network Qt6::Concurrent Qt6::Test)
-add_dependencies(HeliosDesktop HeliosWorkerHost)
-set_target_properties(HeliosDesktop PROPERTIES
+add_dependencies(Helios HeliosWorkerHost)
+set_target_properties(Helios PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/HeliosInfo.plist.in"
   MACOSX_BUNDLE_GUI_IDENTIFIER "org.helios.desktop.preview"
-  MACOSX_BUNDLE_BUNDLE_NAME "Helios Desktop"
+  MACOSX_BUNDLE_BUNDLE_NAME "Helios"
   MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
   MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
   MACOSX_BUNDLE_ICON_FILE "AppIcon.icns")
 if(APPLE)
   set(helios_app_icon "${CMAKE_CURRENT_SOURCE_DIR}/packaging/AppIcon.icns")
   set_source_files_properties("${helios_app_icon}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-  target_sources(HeliosDesktop PRIVATE "${helios_app_icon}")
+  target_sources(Helios PRIVATE "${helios_app_icon}")
 endif()
-qt_add_shaders(HeliosDesktop "helios_shaders"
+qt_add_shaders(Helios "helios_shaders"
   PREFIX "/helios"
   FILES shaders/globe.vert shaders/globe.frag)
-qt_add_resources(HeliosDesktop "helios_qa" PREFIX "/helios" FILES Tests/review_fixture.py Tests/monitoring_fixture.py Tests/inference_fixture.py)
+qt_add_resources(Helios "helios_qa" PREFIX "/helios" FILES Tests/review_fixture.py Tests/monitoring_fixture.py Tests/inference_fixture.py)
 
 if(NOT MSVC)
   target_compile_options(HeliosDesktopCore PRIVATE -Wall -Wextra -Wpedantic)
-  target_compile_options(HeliosDesktop PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(Helios PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 if(BUILD_TESTING)
@@ -212,7 +212,7 @@ if(BUILD_TESTING)
 
 endif()
 
-install(TARGETS HeliosDesktop BUNDLE DESTINATION . COMPONENT Helios RUNTIME DESTINATION bin COMPONENT Helios)
+install(TARGETS Helios BUNDLE DESTINATION . COMPONENT Helios RUNTIME DESTINATION bin COMPONENT Helios)
 set(helios_workers_source "${PROJECT_SOURCE_DIR}/native/workers")
 set(helios_worker_files SAR/sentinel1.py SAR/change_review.py SAR/registration.py SAR/requirements-monitoring.txt SAR/requirements.txt
   Optical/sentinel2.py Optical/optical_sources.py)
@@ -237,13 +237,13 @@ if(APPLE)
   # Plain test executables use the same ../Resources contract as bundle binaries.
   file(COPY "${CMAKE_BINARY_DIR}/share/helios/workers" "${CMAKE_BINARY_DIR}/share/helios/sources"
     DESTINATION "${CMAKE_BINARY_DIR}/Resources" PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
-  add_custom_command(TARGET HeliosDesktop POST_BUILD COMMAND ${CMAKE_COMMAND}
+  add_custom_command(TARGET Helios POST_BUILD COMMAND ${CMAKE_COMMAND}
     "-DHELIOS_WORKER_STAGE=${CMAKE_BINARY_DIR}/share/helios"
-    "-DHELIOS_RESOURCE_ROOT=$<TARGET_BUNDLE_DIR:HeliosDesktop>/Contents/Resources"
+    "-DHELIOS_RESOURCE_ROOT=$<TARGET_BUNDLE_DIR:Helios>/Contents/Resources"
     -P "${CMAKE_CURRENT_SOURCE_DIR}/StageWorkers.cmake"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_BINARY_DIR}/share/helios/sources" "$<TARGET_BUNDLE_DIR:HeliosDesktop>/Contents/Resources/sources"
-    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:HeliosWorkerHost>" "$<TARGET_BUNDLE_DIR:HeliosDesktop>/Contents/MacOS/HeliosWorkerHost")
-  install(DIRECTORY "${CMAKE_BINARY_DIR}/share/helios/workers" "${CMAKE_BINARY_DIR}/share/helios/sources" DESTINATION HeliosDesktop.app/Contents/Resources COMPONENT Helios
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_BINARY_DIR}/share/helios/sources" "$<TARGET_BUNDLE_DIR:Helios>/Contents/Resources/sources"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:HeliosWorkerHost>" "$<TARGET_BUNDLE_DIR:Helios>/Contents/MacOS/HeliosWorkerHost")
+  install(DIRECTORY "${CMAKE_BINARY_DIR}/share/helios/workers" "${CMAKE_BINARY_DIR}/share/helios/sources" DESTINATION Helios.app/Contents/Resources COMPONENT Helios
     PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
 else()
   install(TARGETS HeliosWorkerHost RUNTIME DESTINATION bin COMPONENT Helios)

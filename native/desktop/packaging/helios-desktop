@@ -29,11 +29,11 @@ if [[ "${1:-}" == --check-runtime ]]; then
         fi
       done <<< "$helios_dependencies"
     fi
-  done < <(find "$helios_package/bin" "$helios_package/plugins" -type f \( -name 'HeliosDesktop' -o -name 'ffmpeg' -o -name '*.so' \) -print0)
+  done < <(find "$helios_package/bin" "$helios_package/plugins" -type f \( -name 'Helios' -o -name 'ffmpeg' -o -name '*.so' \) -print0)
   if [[ "$helios_failed" == 0 ]]; then
     printf 'Helios runtime dependencies resolve; Qt libraries use %s/lib.\n' "$helios_package"
     printf 'The host supplies Vulkan/OpenGL drivers, ICDs, fonts, certificates and its graphical session.\n'
   fi
   exit "$helios_failed"
 fi
-exec "$helios_package/bin/HeliosDesktop" "$@"
+exec "$helios_package/bin/Helios" "$@"

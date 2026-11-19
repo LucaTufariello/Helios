@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
   QApplication app(argc, argv);
   helios::design::apply(app);
   QCoreApplication::setOrganizationName("Helios");
-  QCoreApplication::setApplicationName("HeliosDesktop");
+  QCoreApplication::setApplicationName("Helios");
   QCoreApplication::setApplicationVersion("0.1");
   QCommandLineParser parser;
   parser.setApplicationDescription("Helios native geospatial intelligence workspace");

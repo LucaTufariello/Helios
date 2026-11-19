@@ -17,7 +17,7 @@ fi
 cmake "${helios_args[@]}"
 cmake --build "$helios_build" --parallel "${HELIOS_BUILD_JOBS:-2}"
 if [[ "$(uname -s)" == Darwin ]]; then
-  helios_app="$helios_build/bin/HeliosDesktop.app"
+  helios_app="$helios_build/bin/Helios.app"
   if [[ -n "${helios_qt:-}" ]]; then
     "$helios_qt/bin/macdeployqt" "$helios_app" -always-overwrite
   fi
@@ -30,5 +30,5 @@ if [[ "$(uname -s)" == Darwin ]]; then
   codesign --verify --deep --strict "$helios_app"
   printf 'Qt desktop preview: %s\n' "$helios_app"
 else
-  printf 'Qt desktop preview: %s\n' "$helios_build/bin/HeliosDesktop"
+  printf 'Qt desktop preview: %s\n' "$helios_build/bin/Helios"
 fi

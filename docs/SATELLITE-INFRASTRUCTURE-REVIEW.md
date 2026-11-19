@@ -75,7 +75,7 @@ For an isolated native UI profile, run:
 ```sh
 "$HOME/Library/Application Support/Helios/SAR/runtime/bin/python3" -B \
   native/workers/validation/create_change_review_fixture.py --output /tmp/helios-review-qa
-./output/desktop/build/bin/HeliosDesktop --profile /tmp/helios-review-qa
+./output/desktop/build/bin/Helios --profile /tmp/helios-review-qa
 ```
 
 The output directory must be new. The satellite sidebar explicitly identifies the developer profile/generated QA data. Fixture jobs never enter the user's normal library. This flag is only an explicit developer override; the application does not automatically load example acquisitions or findings. Stop the validation instance and remove its temporary profile after testing.

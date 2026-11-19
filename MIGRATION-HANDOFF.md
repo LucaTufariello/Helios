@@ -63,7 +63,7 @@ make setup-raster   # once, then:
 make test-raster
 ```
 
-`HeliosDesktop --validate --qa-output output/qa/desktop --raster-python
+`Helios --validate --qa-output output/qa/desktop --raster-python
 /absolute/path/to/raster/bin/python3` exercises the native workflows with the GPU.
 Without `--raster-python` the harness skips every generated scientific job, so the
 worker, dossier and monitoring checks do not run. Fresh Apple Silicon

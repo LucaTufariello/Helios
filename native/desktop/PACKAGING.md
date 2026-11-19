@@ -97,7 +97,7 @@ an ad-hoc Mac signature are not a notarized or audited public release.
 
 # macOS bundle
 
-`native/desktop/build.sh` creates `HeliosDesktop.app` on Apple Silicon, deploys
+`native/desktop/build.sh` creates `Helios.app` on Apple Silicon, deploys
 its matching Homebrew Qt frameworks/plugins, copies the worker host, workers and
 licenses, and verifies an ad-hoc signature. The CI Qt job builds and checks that
 bundle on an arm64 runner. Its notice collector retains installed Homebrew Qt

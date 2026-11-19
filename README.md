@@ -35,7 +35,7 @@ sudo pacman -S --needed base-devel git cmake ninja python pkgconf curl zip unzip
   qt6-base qt6-shadertools qt6-wayland vulkan-icd-loader vulkan-tools
 ./native/desktop/diagnose-linux.sh
 make test-desktop
-./output/desktop/build/bin/HeliosDesktop
+./output/desktop/build/bin/Helios
 ```
 
 `make test-desktop` builds the Qt application and runs its regression suites.
@@ -54,8 +54,8 @@ sudo pacman -S --needed ffmpeg libsecret
 To use a separate profile or inspect local data offline:
 
 ```sh
-./output/desktop/build/bin/HeliosDesktop --profile "$HOME/.local/share/Helios-test"
-./output/desktop/build/bin/HeliosDesktop --profile "$HOME/.local/share/Helios-test" --offline
+./output/desktop/build/bin/Helios --profile "$HOME/.local/share/Helios-test"
+./output/desktop/build/bin/Helios --profile "$HOME/.local/share/Helios-test" --offline
 ```
 
 If you have a Linux package archive, extract it, enter its `helios-desktop/`
@@ -86,7 +86,7 @@ Install the build tools with Homebrew, then build and open the Qt app:
 ```sh
 brew install cmake pkgconf qtbase qtshadertools
 make test-desktop
-open output/desktop/build/bin/HeliosDesktop.app
+open output/desktop/build/bin/Helios.app
 ```
 
 Fresh Mac validation of the expanded Qt client is still required. The build
@@ -145,7 +145,7 @@ raster imports**. This selection is saved for that profile. The default system
 Python may not contain these packages. On Linux you can also select it at launch:
 
 ```sh
-./output/desktop/build/bin/HeliosDesktop --raster-python "$PWD/.venv/bin/python"
+./output/desktop/build/bin/Helios --raster-python "$PWD/.venv/bin/python"
 ```
 
 The workers live under `native/workers/` and are copied into the application's

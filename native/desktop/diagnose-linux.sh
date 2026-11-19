@@ -39,4 +39,4 @@ else
   printf 'vulkaninfo unavailable; install the distribution Vulkan diagnostic tools.\n'
 fi
 printf '\nThese observations do not certify rendering or CUDA compatibility.\n'
-printf 'Next: make test-desktop; launch HeliosDesktop in the graphical session.\n'
+printf 'Next: make test-desktop; launch Helios in the graphical session.\n'

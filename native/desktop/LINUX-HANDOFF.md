@@ -36,7 +36,7 @@ project scripts do not install or change drivers or CUDA.
 sudo pacman -S --needed base-devel cmake qt6-base qt6-shadertools qt6-wayland vulkan-tools
 ./native/desktop/diagnose-linux.sh
 make test-desktop
-./output/desktop/build/bin/HeliosDesktop
+./output/desktop/build/bin/Helios
 ```
 
 Run GPU checks inside the graphical Hyprland session. Qt private RHI headers and
@@ -77,8 +77,8 @@ Optional provider keys require a working Linux Secret Service/libsecret store.
 6. Run isolated GPU checks and inspect the reports and screenshots:
 
    ```sh
-   ./output/desktop/build/bin/HeliosDesktop --validate --qa-output output/qa/linux-generated
-   ./output/desktop/build/bin/HeliosDesktop --validate-live --qa-output output/qa/linux-live
+   ./output/desktop/build/bin/Helios --validate --qa-output output/qa/linux-generated
+   ./output/desktop/build/bin/Helios --validate-live --qa-output output/qa/linux-live
    ```
 
    Add `--raster-python /absolute/path/to/python3` to exercise generated PRISMA
