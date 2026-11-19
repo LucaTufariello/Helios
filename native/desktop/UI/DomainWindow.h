@@ -52,15 +52,15 @@ signals:
 
 private:
   QString profile_, section_ = "All", selectedID_, mediaRecordID_, followedID_;
-  bool estimatedOrbit_ = false, followingPending_ = false;
+  bool followingPending_ = false;
   QDateTime playback_;
   DomainHistory history_;
   DomainNetwork network_;
   QListWidget *feeds_, *records_;
-  QComboBox *group_, *transit_, *camera_, *sentinel_;
+  QComboBox *transit_, *camera_, *sentinel_;
   QLabel *status_, *credit_, *recordTitle_, *image_, *mediaStatus_;
   QTextEdit *details_, *raw_;
-  QPushButton *refresh_, *cancel_, *focus_, *orbit_, *evidence_, *frame_, *video_, *follow_;
+  QPushButton *refresh_, *cancel_, *focus_, *evidence_, *frame_, *video_, *follow_;
   QCheckBox *trails_, *selectedOnly_;
   QSpinBox *playbackSeconds_;
   QLineEdit *sourceQuery_;

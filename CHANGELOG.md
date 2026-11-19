@@ -1,5 +1,26 @@
 # Changelog
 
+## Focused display and source set — 19 November 2026
+
+- Removed the map display filters (monochrome, thermal and night vision). The
+  globe now always renders the standard imagery path; the shader, layer panel,
+  workspace links and validation checks no longer carry display styles.
+- Reduced the Sky section to Military Flights (adsb.lol) and Space Missions
+  (Launch Library 2). Atmosphere, Satellites and Live Flights were removed with
+  their network, parser, history and workspace plumbing, and the bundled SGP4/SDP4
+  propagation library, its license notice and reference vectors are gone.
+- Submarine cable routes now reach the map in full: a dedicated batched line-list
+  layer draws all bundled TeleGeography geometries in one GPU mesh, landing points
+  get their own marker budget, and reference geometry no longer competes with live
+  trail budgets. The status line reports rendered cable route points.
+- Removed Road Traffic Flow (TomTom) from the Ground section with its feed
+  descriptor, tile cache, parser, credential field and tests; the shared map no
+  longer carries relative flow layers.
+- Removed the car/foot/bike directions tool (public OSRM) with its routing
+  request, route/step parser, management UI tab, map layer and tests. Place
+  lookup (Photon), annotations and workspace links remain unchanged.
+- Updated the maintained documentation and tests to the reduced 15-source set.
+
 ## C++/Qt-only application — 19 November 2026
 
 - Removed the Swift macOS client, its SwiftPM packages, Metal engine wrapper and

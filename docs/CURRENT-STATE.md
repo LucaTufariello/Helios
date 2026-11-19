@@ -3,7 +3,7 @@
 Helios is a C++20/Qt 6 desktop client for macOS and Linux. The browser
 implementation and the earlier Swift macOS client are retired; their code remains
 in Git history. The application uses Widgets, native networking and RHI rendering,
-with shared spatial/scene code and the native SGP4/SDP4 implementation.
+with shared spatial/scene code.
 
 Qt implements the enabled source layers, map tools, optical/SAR processing
 controls, infrastructure review, Mission Control timelines/monitors and optional
@@ -23,9 +23,9 @@ separate Mission Control sidebar. See the
 ## Available workflows
 
 - Full-map navigation with terrain/3D Tiles, loaded-surface picking, tilt/heading,
-  bounded imagery caches, directions, annotations, record inspection and raw data.
-- Public source groups for aircraft, AIS vessels, orbital estimates, launches,
-  traffic, infrastructure, weather, earthquakes, disaster alerts and thermal detections.
+  bounded imagery caches, annotations, record inspection and raw data.
+- Public source groups for military aircraft, AIS vessels, launch metadata,
+  traffic cameras, infrastructure, earthquakes, disaster alerts and thermal detections.
 - Canonical bundled datacenter/dam/cable data and public GTFS-realtime registry.
 - Dated optical search/viewing, Sentinel-1 GRD discovery/download and optional local
   SNAP processing, floating-point exports, previews and terrain-aligned raster overlays.

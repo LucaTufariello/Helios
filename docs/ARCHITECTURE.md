@@ -17,8 +17,6 @@ are described in [CURRENT-STATE.md](CURRENT-STATE.md), with setup in the
   macOS and Vulkan on Linux behind the rendering boundary.
 - `native/shared/` is a portable C++20 WGS84/geometry library with a plain C ABI
   and explicit success/failure results. It has no Qt, GPU or Apple dependency.
-- `native/sgp4/` supplies compiled Vallado SGP4/SDP4 propagation. No Python or
-  JavaScript runtime is used for live orbital rendering.
 - `native/workers/` contains the scientific Python workers. They run as cancellable
   local processes behind the shared process/job boundary; SNAP GPT performs
   Sentinel-1 calibration and geocoding. Their outputs retain scientific values and

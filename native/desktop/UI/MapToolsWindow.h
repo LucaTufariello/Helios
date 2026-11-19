@@ -35,18 +35,16 @@ private:
   DomainWindow &domain_;
   Missions &missions_;
   AnnotationLibrary annotations_;
-  MapLookup places_, directions_;
+  MapLookup places_;
   QString profile_, editingAnnotation_;
   bool networking_, ready_ = false, drawing_ = false, applying_ = false;
-  int pickEndpoint_ = 0;
   QVector<Coordinate> drawingPoints_;
-  QLineEdit *placeQuery_, *start_, *end_, *title_;
-  QComboBox *mode_, *shape_, *style_, *imagery_, *basemap_;
+  QLineEdit *placeQuery_, *title_;
+  QComboBox *shape_, *imagery_, *basemap_;
   QDateEdit *date_;
   QSlider *opacity_;
-  QListWidget *placeResults_, *routeSteps_, *annotationList_;
-  QLabel *placeStatus_, *routeStatus_, *drawingStatus_, *workspaceStatus_, *dailyStatus_,
-      *solarStatus_;
+  QListWidget *placeResults_, *annotationList_;
+  QLabel *placeStatus_, *drawingStatus_, *workspaceStatus_, *dailyStatus_, *solarStatus_;
   QCheckBox *terrain_, *solar_;
   QTimer solarTimer_;
   std::optional<SolarState> solarState_;

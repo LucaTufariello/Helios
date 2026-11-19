@@ -69,7 +69,7 @@ def main() -> None:
         for resource in required_resources:
             if not (app / "share/helios/workers" / resource).is_file():
                 raise ValueError("Packaged worker resource is missing: " + resource)
-        for resource in ("transit-feeds.json", "SGP4-LICENSE.txt", "datacenters/datacenters.geojsonl",
+        for resource in ("transit-feeds.json", "datacenters/datacenters.geojsonl",
                          "dams/dams.geojsonl", "telegeography_submarine_cables/cable-geo.json"):
             if not (app / "share/helios/sources" / resource).is_file():
                 raise ValueError("Packaged source resource is missing: " + resource)

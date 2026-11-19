@@ -35,8 +35,7 @@ struct DomainSnapshot {
   }
 };
 struct DomainConfiguration {
-  QString satelliteGroup = "stations", transitID = "mbta", cameraProvider = "london",
-          sentinelKind = "SENTINEL-2";
+  QString transitID = "mbta", cameraProvider = "london", sentinelKind = "SENTINEL-2";
 };
 struct TransitProvider {
   QString id, name, attribution, license, licenseUrl;
@@ -55,12 +54,8 @@ QVector<QVector<Coordinate>> geometry(const QJsonValue &value, int maximumPoints
 DomainSnapshot parse(const QString &feed, const QByteArray &bytes, Coordinate center, Bounds bounds,
                      const DomainConfiguration &configuration,
                      QDateTime now = QDateTime::currentDateTimeUtc());
-DomainSnapshot atmosphere(const QByteArray &weather, const QByteArray &air, Coordinate center,
-                          QString airError = {});
 DomainSnapshot reference(const QString &feed, const QString &root = {});
 DomainSnapshot transit(const QByteArray &bytes, const TransitProvider &provider,
-                       QDateTime now = QDateTime::currentDateTimeUtc());
-DomainSnapshot traffic(const QByteArray &bytes, TileID tile,
                        QDateTime now = QDateTime::currentDateTimeUtc());
 std::optional<DomainRecord> ais(const QByteArray &bytes, QString *error = nullptr);
 QUrl cameraURL(const QString &url);

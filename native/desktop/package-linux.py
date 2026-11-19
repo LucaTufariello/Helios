@@ -270,7 +270,6 @@ def main() -> None:
                          (build / "SCENE-NOTICES.txt", "SCENE-NOTICES.txt")):
         copy_file(source, licensing / name)
     resources = ROOT / "native/resources"
-    copy_file(resources / "SGP4-LICENSE.txt", licensing / "SGP4-LICENSE.txt")
     for source in resources.glob("*/README.md"):
         copy_file(source, licensing / "datasets" / source.parent.name / source.name)
     for name in qt_packages:

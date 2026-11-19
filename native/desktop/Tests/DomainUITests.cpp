@@ -26,7 +26,7 @@ private slots:
     DomainSnapshot live;
     DomainRecord r;
     r.id = "fixture:same-id";
-    r.feed = "flights";
+    r.feed = "military";
     r.label = "Live fixture";
     r.source = "Live provider fixture";
     r.coordinate = {5, 6};
@@ -34,7 +34,7 @@ private slots:
     window.setAnnotations(live);
     QJsonObject saved{
         {"id", r.id},
-        {"feed", "flights"},
+        {"feed", "military"},
         {"label", "Saved fixture"},
         {"source", "Original provider fixture"},
         {"coordinate", QJsonObject{{"latitude", 1}, {"longitude", 2}}},
@@ -130,7 +130,6 @@ private slots:
         QVERIFY(window.network().snapshot(feed.id).error.contains("Offline mode"));
       }
     auto config = window.network().configuration();
-    config.satelliteGroup = "gps-ops";
     config.cameraProvider = "finland";
     config.transitID = "hsl-helsinki";
     config.sentinelKind = "SENTINEL-1";
@@ -139,7 +138,7 @@ private slots:
     for (auto *combo : window.findChildren<QComboBox *>())
       displayed.insert(combo->currentData().isValid() ? combo->currentData().toString()
                                                       : combo->currentText());
-    for (const auto &value : QStringList{"gps-ops", "finland", "hsl-helsinki", "SENTINEL-1"})
+    for (const auto &value : QStringList{"finland", "hsl-helsinki", "SENTINEL-1"})
       QVERIFY(displayed.contains(value));
   }
   void suppliedRecordSelectionEvidenceAndRetainedSettings() {

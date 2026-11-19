@@ -8,10 +8,8 @@ add_subdirectory(../scene "${CMAKE_BINARY_DIR}/native/scene")
 add_library(HeliosDesktopCore STATIC
   Core/Geography.cpp Core/Investigations.cpp Core/Briefing.cpp Core/Missions.cpp Core/Monitoring.cpp Core/ScientificQueue.cpp Core/MonitoringRunner.cpp Core/Dossiers.cpp Core/Products.cpp Core/WorkerJob.cpp Core/OpticalCatalog.cpp Core/Credentials.cpp
   Core/HttpRequest.cpp Core/RadarCatalog.cpp Core/RadarDownload.cpp Core/JsonFile.cpp Core/Infrastructure.cpp Core/Timeline.cpp Core/Monitors.cpp Core/LibraryStorage.cpp Core/MapTools.cpp Core/Inference.cpp Core/DailyImagery.cpp
-  Core/DomainFeeds.cpp Core/DomainParsers.cpp Core/DomainProto.cpp Core/DomainOrbit.cpp Core/DomainSocket.cpp Core/DomainNetwork.cpp Core/DomainHistory.cpp
-  ../sgp4/HeliosSGP4.cpp ../sgp4/SGP4.cpp)
-target_include_directories(HeliosDesktopCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-  ${PROJECT_SOURCE_DIR}/native/sgp4/include)
+  Core/DomainFeeds.cpp Core/DomainParsers.cpp Core/DomainProto.cpp Core/DomainSocket.cpp Core/DomainNetwork.cpp Core/DomainHistory.cpp)
+target_include_directories(HeliosDesktopCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(HeliosDesktopCore PUBLIC HeliosSpatial Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent)
 target_compile_features(HeliosDesktopCore PUBLIC cxx_std_20)
 if(APPLE)
@@ -225,7 +223,7 @@ foreach(helios_inference_file infer.py requirements.txt tinyyolov2-voc.contract.
     "${CMAKE_BINARY_DIR}/share/helios/workers/Inference/${helios_inference_file}" COPYONLY)
 endforeach()
 set(helios_domain_resources "${PROJECT_SOURCE_DIR}/native/resources")
-foreach(helios_domain_file transit-feeds.json SGP4-LICENSE.txt)
+foreach(helios_domain_file transit-feeds.json)
   configure_file("${helios_domain_resources}/${helios_domain_file}"
     "${CMAKE_BINARY_DIR}/share/helios/sources/${helios_domain_file}" COPYONLY)
 endforeach()

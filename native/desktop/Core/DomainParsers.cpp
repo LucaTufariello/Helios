@@ -106,13 +106,11 @@ DomainSnapshot earthquakes(const QJsonObject &root) {
   }
   return out;
 }
-DomainSnapshot aircraft(const QJsonObject &root, QString feed, bool openSky) {
+DomainSnapshot aircraft(const QJsonObject &root, QString feed) {
   DomainSnapshot out;
-  out.source = openSky ? "OpenSky Network" : "adsb.lol";
-  if (openSky && root["states"].isNull())
-    return out;
+  out.source = "adsb.lol";
   bool ok;
-  auto rows = array(root, openSky ? "states" : "ac", &ok);
+  auto rows = array(root, "ac", &ok);
   if (!ok || rows.size() > 100000)
     return malformed();
   auto now = number(root["now"]);
@@ -120,56 +118,39 @@ DomainSnapshot aircraft(const QJsonObject &root, QString feed, bool openSky) {
     *now /= 1000;
   QSet<QString> seen;
   for (const auto value : rows) {
-    QJsonObject row = value.toObject();
-    const auto cells = value.toArray();
-    if (openSky && cells.size() < 14) {
-      ++out.rejected;
-      continue;
-    }
-    auto id = clean(openSky ? cells[0] : row["hex"], 32).toLower();
-    auto point = openSky ? coordinate(cells[6], cells[5]) : coordinate(row["lat"], row["lon"]);
+    const auto row = value.toObject();
+    auto id = clean(row["hex"], 32).toLower();
+    auto point = coordinate(row["lat"], row["lon"]);
     if (id.isEmpty() || !point || seen.contains(id)) {
       ++out.rejected;
       continue;
     }
     seen.insert(id);
-    auto label = clean(openSky ? cells[1] : row["flight"], 160);
+    auto label = clean(row["flight"], 160);
     if (label.isEmpty())
       label = clean(row["r"], 160);
     if (label.isEmpty())
       label = id.toUpper();
-    auto r = record(feed + ":" + id, feed, label, *point, out.source,
-                    openSky ? QJsonObject{{"state", cells}} : row);
+    auto r = record(feed + ":" + id, feed, label, *point, out.source, row);
     r.details = {{"ICAO", id.toUpper()}};
-    auto alt = number(openSky ? cells[13] : row["alt_geom"]);
-    if (alt)
-      r.altitude = *alt * (openSky ? 1 : .3048);
-    auto epoch = openSky ? number(cells[3]) : std::optional<double>{};
-    if (!openSky && now)
-      if (auto age = number(row["seen_pos"]))
-        epoch = *now - std::max(0.0, *age);
-    if (epoch && std::abs(*epoch) < 8640000000000.0)
-      r.observedAt = QDateTime::fromMSecsSinceEpoch(qint64(*epoch * 1000), QTimeZone::UTC);
-    auto speed = number(openSky ? cells[9] : row["gs"]);
-    if (speed)
-      r.details["Ground speed"] = QString::number(*speed / (openSky ? .514444 : 1), 'f', 0) + " kt";
-    auto baro = number(openSky ? cells[7] : row["alt_baro"]);
-    if (baro)
-      r.details["Barometric altitude"] =
-          QString::number(*baro / (openSky ? .3048 : 1), 'f', 0) + " ft";
-    if (openSky)
-      r.details["Origin country"] = clean(cells[2]);
-    else {
-      r.details["Type"] = clean(row["t"]);
-      r.details["Registration"] = clean(row["r"]);
-      r.details["Ground state"] =
-          row["alt_baro"] == "ground" ? "Reported on ground" : "Not reported on ground";
-    }
+    if (auto alt = number(row["alt_geom"]))
+      r.altitude = *alt * .3048;
+    if (now)
+      if (auto age = number(row["seen_pos"])) {
+        const auto epoch = *now - std::max(0.0, *age);
+        if (std::abs(epoch) < 8640000000000.0)
+          r.observedAt = QDateTime::fromMSecsSinceEpoch(qint64(epoch * 1000), QTimeZone::UTC);
+      }
+    if (auto speed = number(row["gs"]))
+      r.details["Ground speed"] = QString::number(*speed, 'f', 0) + " kt";
+    if (auto baro = number(row["alt_baro"]))
+      r.details["Barometric altitude"] = QString::number(*baro / .3048, 'f', 0) + " ft";
+    r.details["Type"] = clean(row["t"]);
+    r.details["Registration"] = clean(row["r"]);
+    r.details["Ground state"] =
+        row["alt_baro"] == "ground" ? "Reported on ground" : "Not reported on ground";
     out.records.append(r);
   }
-  if (!openSky && feed == "flights")
-    out.notices = {"Regional fallback within 125 nautical miles of the requested view center; "
-                   "coverage is incomplete."};
   return out;
 }
 DomainSnapshot disasters(const QByteArray &bytes) {
@@ -556,12 +537,10 @@ DomainSnapshot parse(const QString &feed, const QByteArray &bytes, Coordinate ce
   const auto root = document.object();
   if (feed == "earthquakes")
     return earthquakes(root);
-  if (feed == "flights" || feed == "military")
-    return aircraft(root, feed, root.contains("states"));
+  if (feed == "military")
+    return aircraft(root, feed);
   if (feed == "energy" || feed == "installations")
     return mapped(root, feed, bounds);
-  if (feed == "atmosphere")
-    return atmosphere(bytes, {}, center);
   DomainSnapshot out;
   out.retrievedAt = now;
   QSet<QString> seen;
@@ -693,93 +672,6 @@ DomainSnapshot parse(const QString &feed, const QByteArray &bytes, Coordinate ce
       out.notices.append("Catalog capped at 2,000 cameras.");
   } else
     return malformed();
-  return out;
-}
-DomainSnapshot atmosphere(const QByteArray &weather, const QByteArray &air, Coordinate center,
-                          QString airError) {
-  const auto root = QJsonDocument::fromJson(weather).object(), current = root["current"].toObject(),
-             units = root["current_units"].toObject();
-  const auto temperature = number(current["temperature_2m"]);
-  if (!temperature || !center.valid() || units.isEmpty())
-    return malformed();
-  DomainSnapshot out;
-  out.source = "Open-Meteo model";
-  auto r = record("atmosphere:camera-point", "atmosphere",
-                  "Modelled weather · " + QString::number(*temperature, 'f', 1) + " " +
-                      units["temperature_2m"].toString(),
-                  center, out.source, root);
-  r.details = {{"Method", "Weather model for the requested point; not a station observation"}};
-  const QMap<QString, QString> fields{
-      {"temperature_2m", "Temperature"},        {"apparent_temperature", "Feels like"},
-      {"relative_humidity_2m", "Humidity"},     {"wind_speed_10m", "Wind speed"},
-      {"wind_direction_10m", "Wind direction"}, {"surface_pressure", "Surface pressure"}};
-  for (auto i = fields.begin(); i != fields.end(); ++i)
-    if (auto n = number(current[i.key()]))
-      r.details[i.value()] =
-          QString::number(*n, 'f', 1) + " " + units[i.key()].toString("unit unavailable");
-  const auto daily = root["daily"].toObject(), dailyUnits = root["daily_units"].toObject();
-  const auto dates = daily["time"].toArray();
-  for (int i = 0; i < std::min(2, int(dates.size())); ++i)
-    for (const QString key :
-         {"temperature_2m_max", "temperature_2m_min", "precipitation_probability_max"}) {
-      const auto values = daily[key].toArray();
-      if (i < values.size())
-        if (auto n = number(values[i]))
-          r.details[dates[i].toString() + " · " + key] =
-              QString::number(*n, 'f', 1) + " " + dailyUnits[key].toString();
-    }
-  static const QMap<int, QString> labels{{0, "Clear sky"},
-                                         {1, "Mainly clear"},
-                                         {2, "Partly cloudy"},
-                                         {3, "Overcast"},
-                                         {45, "Fog"},
-                                         {48, "Depositing rime fog"},
-                                         {51, "Light drizzle"},
-                                         {53, "Drizzle"},
-                                         {55, "Dense drizzle"},
-                                         {56, "Light freezing drizzle"},
-                                         {57, "Dense freezing drizzle"},
-                                         {61, "Slight rain"},
-                                         {63, "Rain"},
-                                         {65, "Heavy rain"},
-                                         {66, "Light freezing rain"},
-                                         {67, "Heavy freezing rain"},
-                                         {71, "Slight snow"},
-                                         {73, "Snow"},
-                                         {75, "Heavy snow"},
-                                         {77, "Snow grains"},
-                                         {80, "Slight showers"},
-                                         {81, "Showers"},
-                                         {82, "Violent showers"},
-                                         {85, "Slight snow showers"},
-                                         {86, "Heavy snow showers"},
-                                         {95, "Thunderstorm"},
-                                         {96, "Thunderstorm, slight hail"},
-                                         {99, "Thunderstorm, heavy hail"}};
-  if (auto code = number(current["weather_code"], false);
-      code && *code == std::floor(*code) && labels.contains(int(*code)))
-    r.details["Conditions"] = labels[int(*code)];
-  auto airRoot = QJsonDocument::fromJson(air).object(), airCurrent = airRoot["current"].toObject(),
-       airUnits = airRoot["current_units"].toObject();
-  bool available = false;
-  for (const QString key : {"european_aqi", "us_aqi", "pm2_5", "pm10", "nitrogen_dioxide", "ozone"})
-    if (auto n = number(airCurrent[key], false); n && *n >= 0) {
-      available = true;
-      r.details[key] =
-          QString::number(*n, 'f', 1) + " " + airUnits[key].toString("unit unavailable");
-    }
-  r.details["Air quality"] =
-      available ? "CAMS / Open-Meteo model; not a station observation"
-                : "Unavailable" + (airError.isEmpty() ? QString{} : ": " + airError);
-  if (available) {
-    r.details["Air model time (UTC)"] = airCurrent["time"];
-    r.raw["airQuality"] = airRoot;
-  }
-  auto time = current["time"].toString();
-  if (!time.endsWith('Z'))
-    time += time.size() == 16 ? ":00Z" : "Z";
-  r.observedAt = utcDate(time);
-  out.records.append(r);
   return out;
 }
 DomainSnapshot reference(const QString &feed, const QString &root) {

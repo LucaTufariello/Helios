@@ -17,24 +17,6 @@ QByteArray places(const QString &name = "Milan") {
       {"properties", QJsonObject{{"name", name}, {"city", "Milan"}, {"country", "Italy"}}}};
   return QJsonDocument(QJsonObject{{"features", QJsonArray{feature}}}).toJson();
 }
-QByteArray route() {
-  QJsonArray steps;
-  for (auto type : {"depart", "turn", "roundabout", "arrive"})
-    steps.append(QJsonObject{{"distance", 100},
-                             {"name", "Via Test"},
-                             {"maneuver", QJsonObject{{"type", type},
-                                                      {"modifier", "slight right"},
-                                                      {"exit", 2},
-                                                      {"location", QJsonArray{9.19, 45.46}}}}});
-  QJsonObject value{
-      {"distance", 1200},
-      {"duration", 300},
-      {"geometry",
-       QJsonObject{{"type", "LineString"},
-                   {"coordinates", QJsonArray{QJsonArray{9.18, 45.46}, QJsonArray{9.19, 45.465}}}}},
-      {"legs", QJsonArray{QJsonObject{{"steps", steps}}}}};
-  return QJsonDocument(QJsonObject{{"code", "Ok"}, {"routes", QJsonArray{value}}}).toJson();
-}
 QByteArray read(const QString &path) {
   QFile file(path);
   if (!file.open(QIODevice::ReadOnly))
@@ -66,34 +48,6 @@ private slots:
              {"properties", QJsonObject{{"name", "Bad"}}}}}}};
     QVERIFY(parsePlaces(QJsonDocument(invalid).toJson()).isEmpty());
   }
-  void routeURLParserAndLimits() {
-    const auto url = routeURL({45.46, 9.18}, {45.47, 9.20}, "car");
-    QCOMPARE(url.host(), "routing.openstreetmap.de");
-    QVERIFY(url.path().contains("routed-car/route/v1/driving/"));
-    QVERIFY(routeURL({0, 0}, {0, 90}, "car").isEmpty());
-    QVERIFY(routeURL({45, 9}, {45, 10}, "shell").isEmpty());
-    const auto result = parseRoute(route());
-    QCOMPARE(result.points.size(), 2);
-    QCOMPARE(result.distance, 1200.);
-    QCOMPARE(result.duration, 300.);
-    QCOMPARE(result.steps.size(), 4);
-    QVERIFY(result.steps[1].instruction.contains("Turn slightly right"));
-    QVERIFY(result.steps[2].instruction.contains("take exit 2"));
-    QCOMPARE(result.steps.last().instruction, "Arrive at your destination");
-    QVERIFY_EXCEPTION_THROWN(parseRoute("{\"code\":\"NoRoute\"}"), std::runtime_error);
-    auto root = QJsonDocument::fromJson(route()).object();
-    auto value = root["routes"].toArray().first().toObject();
-    value["distance"] = -1;
-    root["routes"] = QJsonArray{value};
-    QVERIFY_EXCEPTION_THROWN(parseRoute(QJsonDocument(root).toJson()), std::runtime_error);
-    value["distance"] = 1200;
-    QJsonArray many;
-    for (int i = 0; i < 30001; ++i)
-      many.append(QJsonArray{9, 45});
-    value["geometry"] = QJsonObject{{"type", "LineString"}, {"coordinates", many}};
-    root["routes"] = QJsonArray{value};
-    QVERIFY_EXCEPTION_THROWN(parseRoute(QJsonDocument(root).toJson()), std::runtime_error);
-  }
   void asynchronousLookupCancellationAndPreviousResults() {
     FakeNetwork network;
     MapLookup lookup(nullptr, &network);
@@ -114,10 +68,6 @@ private slots:
     QTRY_VERIFY(!lookup.busy());
     QVERIFY(!lookup.error().isEmpty());
     QCOMPARE(lookup.places()[0].label, "Milan, Italy");
-    network.responses.enqueue({route()});
-    QVERIFY(lookup.route({45.46, 9.18}, {45.47, 9.20}, "foot"));
-    QTRY_VERIFY(!lookup.busy());
-    QCOMPARE(lookup.result().points.size(), 2);
     QVERIFY(!lookup.search("\n"));
     QVERIFY(!lookup.error().isEmpty());
   }
@@ -179,7 +129,7 @@ private slots:
     camera["privateExtension"] = "not-shared";
     value["camera"] = camera;
     value["annotations"] = QJsonArray{newAnnotation("Private note", {{45, 9}}, false)};
-    value["layers"] = QJsonArray{"earthquakes", "neighborhoods", "traffic"};
+    value["layers"] = QJsonArray{"earthquakes", "neighborhoods", "cables"};
     value["trackedID"] = "neighborhoods:old";
     value.remove("terrain");
     value = validatedWorkspace(value);
@@ -250,7 +200,7 @@ private slots:
   }
   void publicLookupOptIn() {
     if (!qEnvironmentVariableIsSet("HELIOS_MAPTOOLS_LIVE"))
-      QSKIP("Set HELIOS_MAPTOOLS_LIVE for Photon and public OSRM checks.");
+      QSKIP("Set HELIOS_MAPTOOLS_LIVE for the public Photon check.");
     MapLookup search;
     QVERIFY(search.search("Milano Italia"));
     QTRY_VERIFY_WITH_TIMEOUT(!search.busy(), 45000);
@@ -268,34 +218,6 @@ private slots:
                                     {"firstPlace", search.places().first().label},
                                     {"firstCoordinate", search.places().first().coordinate.json()}})
               .toJson();
-      QCOMPARE(file.write(bytes), bytes.size());
-    }
-  }
-  void publicRouteOptIn() {
-    if (!qEnvironmentVariableIsSet("HELIOS_MAPTOOLS_LIVE"))
-      QSKIP("Set HELIOS_MAPTOOLS_LIVE for the public OSRM route check.");
-    MapLookup directions;
-    QVERIFY(directions.route({45.4641, 9.1919}, {45.4700, 9.2000}, "foot"));
-    QTRY_VERIFY_WITH_TIMEOUT(!directions.busy(), 45000);
-    QVERIFY2(directions.error().isEmpty(), qPrintable(directions.error()));
-    QVERIFY(directions.result().points.size() >= 2);
-    const auto qa = qEnvironmentVariable("HELIOS_MAPTOOLS_QA");
-    if (!qa.isEmpty()) {
-      QVERIFY(QDir().mkpath(qa));
-      QFile file(qa + "/osrm-live.json");
-      QVERIFY(file.open(QIODevice::WriteOnly));
-      QJsonObject report{
-          {"routingProvider", "routing.openstreetmap.de / OSRM"},
-          {"mode", "foot"},
-          {"start", Coordinate{45.4641, 9.1919}.json()},
-          {"end", Coordinate{45.4700, 9.2000}.json()},
-          {"distanceMetres", directions.result().distance},
-          {"durationSeconds", directions.result().duration},
-          {"geometryPoints", directions.result().points.size()},
-          {"steps", directions.result().steps.size()},
-          {"disclosure",
-           "Provider route estimate, not observed movement or a navigation guarantee"}};
-      const auto bytes = QJsonDocument(report).toJson();
       QCOMPARE(file.write(bytes), bytes.size());
     }
   }

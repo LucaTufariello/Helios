@@ -9,9 +9,6 @@ Native components and datasets have separate licenses:
 
 - Cesium Native and its transitive libraries: pinned by the native CMake build;
   the generated application includes `SCENE-NOTICES.txt`.
-- Vallado SGP4 C++: source revision and modifications in
-  `native/sgp4/UPSTREAM.md`; MIT notice in
-  `native/resources/SGP4-LICENSE.txt`.
 - OpenStreetMap-derived datacenter/dam extracts: ODbL 1.0 with retained source
   attribution and resource-specific READMEs.
 - TeleGeography cable systems and landing points: CC BY-NC-SA 3.0, including

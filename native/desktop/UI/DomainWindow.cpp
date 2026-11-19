@@ -72,10 +72,6 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   }
   auto *form = new QFormLayout;
   sourceLayout->addLayout(form);
-  group_ = new QComboBox;
-  for (const auto &group : QStringList{"stations", "active", "starlink", "weather", "gps-ops"})
-    group_->addItem(group == "gps-ops" ? "GPS" : group, group);
-  form->addRow("Satellite group", group_);
   transit_ = new QComboBox;
   for (const auto &provider : transitProviders())
     transit_->addItem(provider.name, provider.id);
@@ -109,7 +105,6 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   auto updateProviderFields = [this, form, providerRegion] {
     const auto id =
         feeds_->currentItem() ? feeds_->currentItem()->data(Qt::UserRole).toString() : QString{};
-    form->setRowVisible(group_, id == "satellites");
     form->setRowVisible(transit_, id == "transit");
     form->setRowVisible(camera_, id == "cameras");
     form->setRowVisible(sentinel_, id == "sentinel");
@@ -145,11 +140,10 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   auto *actions = new QGridLayout;
   inspectLayout->addLayout(actions);
   focus_ = new QPushButton("Show on map");
-  orbit_ = new QPushButton("Estimated orbit");
   evidence_ = new QPushButton("Add evidence…");
   auto *exportRecord = new QPushButton("Export record…");
   int actionIndex = 0;
-  for (auto *button : {focus_, orbit_, evidence_, exportRecord}) {
+  for (auto *button : {focus_, evidence_, exportRecord}) {
     actions->addWidget(button, actionIndex / 2, actionIndex % 2);
     ++actionIndex;
   }
@@ -251,18 +245,16 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
     if (settings.value("enabled/" + feed.id, false).toBool())
       restoreEnabled.append(feed.id);
   DomainConfiguration config;
-  config.satelliteGroup = settings.value("satelliteGroup", "stations").toString();
   config.transitID = settings.value("transitID", "mbta").toString();
   config.cameraProvider = settings.value("cameraProvider", "london").toString();
   config.sentinelKind = settings.value("sentinelKind", "SENTINEL-2").toString();
-  for (auto pair : {std::pair(group_, config.satelliteGroup), std::pair(transit_, config.transitID),
-                    std::pair(camera_, config.cameraProvider)}) {
+  for (auto pair :
+       {std::pair(transit_, config.transitID), std::pair(camera_, config.cameraProvider)}) {
     const int index = pair.first->findData(pair.second);
     if (index >= 0)
       pair.first->setCurrentIndex(index);
   }
   sentinel_->setCurrentText(config.sentinelKind);
-  config.satelliteGroup = group_->currentData().toString();
   config.transitID = transit_->currentData().toString();
   config.cameraProvider = camera_->currentData().toString();
   config.sentinelKind = sentinel_->currentText();
@@ -281,20 +273,16 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
   });
   connect(records_, &QListWidget::currentItemChanged, this, [this] {
     emit liveSelectionRequested();
-    const auto previous = selectedID_;
     selectedID_ = records_->currentItem() ? records_->currentItem()->data(Qt::UserRole).toString()
                                           : QString{};
-    if (previous != selectedID_)
-      estimatedOrbit_ = false;
     inspect();
   });
   connect(refresh_, &QPushButton::clicked, this, [this] { network_.refresh(); });
   connect(cancel_, &QPushButton::clicked, this, [this] { network_.cancel(); });
   connect(providers, &QPushButton::clicked, this, &DomainWindow::providerSettings);
-  for (auto *combo : {group_, transit_, camera_, sentinel_})
+  for (auto *combo : {transit_, camera_, sentinel_})
     connect(combo, &QComboBox::currentIndexChanged, this, [this] {
       DomainConfiguration c;
-      c.satelliteGroup = group_->currentData().toString();
       c.transitID = transit_->currentData().toString();
       c.cameraProvider = camera_->currentData().toString();
       c.sentinelKind = sentinel_->currentText();
@@ -305,20 +293,6 @@ DomainWindow::DomainWindow(const QString &profile, QWidget *parent, bool network
     if (auto r = selected())
       emit focusRequested(r->coordinate,
                           r->altitude ? std::max(250000.0, *r->altitude * 3) : 25000);
-  });
-  connect(orbit_, &QPushButton::clicked, this, [this] {
-    emit liveSelectionRequested();
-    if (auto r = selected()) {
-      QVector<Coordinate> points;
-      QVector<double> heights;
-      if (network_.orbit(r->id, points, heights,
-                         DomainParsers::utcDate(r->details["Propagation UTC"]))) {
-        estimatedOrbit_ = true;
-        emit geometrySelected({points}, heights);
-      } else
-        QMessageBox::information(this, "Orbit unavailable",
-                                 "Refresh the satellite catalog before requesting an orbit.");
-    }
   });
   connect(evidence_, &QPushButton::clicked, this, [this] {
     if (auto r = selected()) {
@@ -375,9 +349,9 @@ DomainWindow::~DomainWindow() {
   }
 }
 void DomainWindow::saveConfiguration() {
-  QString state =
-      network_.configuration().satelliteGroup + "|" + network_.configuration().transitID + "|" +
-      network_.configuration().cameraProvider + "|" + network_.configuration().sentinelKind;
+  QString state = network_.configuration().transitID + "|" +
+                  network_.configuration().cameraProvider + "|" +
+                  network_.configuration().sentinelKind;
   for (const auto &feed : domainFeeds())
     if (network_.enabled(feed.id))
       state += "|" + feed.id;
@@ -386,7 +360,6 @@ void DomainWindow::saveConfiguration() {
   persistedState_ = state;
   QSettings settings(profile_ + "/sources.ini", QSettings::IniFormat);
   const auto &c = network_.configuration();
-  settings.setValue("satelliteGroup", c.satelliteGroup);
   settings.setValue("transitID", c.transitID);
   settings.setValue("cameraProvider", c.cameraProvider);
   settings.setValue("sentinelKind", c.sentinelKind);
@@ -394,9 +367,7 @@ void DomainWindow::saveConfiguration() {
     settings.setValue("enabled/" + feed.id, network_.enabled(feed.id));
 }
 void DomainWindow::setConfiguration(DomainConfiguration configuration) {
-  const QSignalBlocker groupBlock(group_), transitBlock(transit_), cameraBlock(camera_),
-      sentinelBlock(sentinel_);
-  group_->setCurrentIndex(group_->findData(configuration.satelliteGroup));
+  const QSignalBlocker transitBlock(transit_), cameraBlock(camera_), sentinelBlock(sentinel_);
   transit_->setCurrentIndex(transit_->findData(configuration.transitID));
   camera_->setCurrentIndex(camera_->findData(configuration.cameraProvider));
   sentinel_->setCurrentIndex(sentinel_->findText(configuration.sentinelKind));
@@ -436,8 +407,6 @@ void DomainWindow::selectRecord(const QString &id) {
   for (const auto &r : network_.records())
     if (r.id == id) {
       emit liveSelectionRequested();
-      if (selectedID_ != id)
-        estimatedOrbit_ = false;
       selectedID_ = id;
       selectFeed(r.feed);
       update();
@@ -556,7 +525,6 @@ void DomainWindow::inspect() {
     mediaStatus_->clear();
   }
   focus_->setEnabled(bool(r));
-  orbit_->setEnabled(r && r->feed == "satellites");
   evidence_->setEnabled(bool(r));
   frame_->setEnabled(network_.networking() && r && r->feed == "cameras" && !imageWatcher_);
   video_->setEnabled(network_.networking() && r &&
@@ -594,12 +562,7 @@ void DomainWindow::inspect() {
   if (paths.isEmpty() && !r->footprint.isEmpty())
     paths.append(r->footprint);
   QVector<double> heights;
-  if (estimatedOrbit_ && r->feed == "satellites") {
-    QVector<Coordinate> points;
-    if (network_.orbit(r->id, points, heights,
-                       DomainParsers::utcDate(r->details["Propagation UTC"])))
-      paths = {points};
-  } else if (trails_->isChecked()) {
+  if (trails_->isChecked()) {
     const auto fixes = history_.fixes(followedID_.isEmpty() ? r->id : followedID_);
     QVector<Coordinate> trail;
     bool allAltitude = true;
@@ -716,7 +679,7 @@ QVector<DomainRecord> DomainWindow::displayRecords(const QVector<DomainRecord> &
     return records;
   QVector<DomainRecord> out;
   for (const auto &r : records) {
-    if (QStringList{"flights", "military", "vessels", "transit"}.contains(r.feed)) {
+    if (QStringList{"military", "vessels", "transit"}.contains(r.feed)) {
       if (auto prior = history_.delayed(r, playback_))
         out.append(*prior);
     } else
@@ -744,7 +707,6 @@ void DomainWindow::providerSettings() {
   layout->addWidget(buttons);
   connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
   for (auto pair : {std::pair(QString("firms"), QString("NASA FIRMS MAP_KEY")),
-                    std::pair(QString("tomtom"), QString("TomTom API key")),
                     std::pair(QString("ais"), QString("AISStream API key"))}) {
     auto *row = new QWidget;
     auto *line = new QHBoxLayout(row);
@@ -768,10 +730,8 @@ void DomainWindow::providerSettings() {
         state->setText("Enter a key to save it.");
         return;
       }
-      if (!erase && ((account == "firms" &&
-                      !QRegularExpression("^[A-Za-z0-9-]{8,128}$").match(value).hasMatch()) ||
-                     (account == "tomtom" &&
-                      !QRegularExpression("^[A-Za-z0-9_-]{16,128}$").match(value).hasMatch()))) {
+      if (!erase && account == "firms" &&
+          !QRegularExpression("^[A-Za-z0-9-]{8,128}$").match(value).hasMatch()) {
         state->setText(
             "The key does not match this provider's supported format. It has not been saved.");
         return;
@@ -797,9 +757,7 @@ void DomainWindow::providerSettings() {
                   removeGuard->setEnabled(true);
                 }
                 if (result.ok) {
-                  const auto feed = account == "ais"      ? "vessels"
-                                    : account == "tomtom" ? "traffic"
-                                                          : "fires";
+                  const auto feed = account == "ais" ? "vessels" : "fires";
                   network_.cancel(feed);
                   network_.refresh(feed);
                 }

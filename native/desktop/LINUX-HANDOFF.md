@@ -62,7 +62,7 @@ Optional provider keys require a working Linux Secret Service/libsecret store.
    hide/show passed instead. Large photogrammetry sites remain a separate stress gate.
 3. Exercise Map/Satellite/Marine/Sky/Ground and Sources & observations: layer
    controls, record/map selection, retained snapshots, stale/error states, orbits
-   and native camera playback. Keyed AIS/FIRMS/TomTom acceptance needs real keys.
+   and native camera playback. Keyed AIS/FIRMS acceptance needs real keys.
    See [source behavior and limits](DOMAIN-SOURCES.md).
 4. Draw annotations, search/route, change daily visualization/display settings,
    export/import a workspace and open a `helios://` link. Public providers may be

@@ -54,14 +54,14 @@ public:
   bool setPaths(const QString &layer, const QVector<QVector<Coordinate>> &paths,
                 const QVector<QVector<double>> &altitudes = {},
                 QColor color = QColor(128, 217, 255));
+  // Draws every line in one batched call. Intended for large reference layers
+  // (for example bundled cable routes) whose paths are not inspected one by one.
+  bool setBatchedPaths(const QString &layer, const QVector<QVector<Coordinate>> &paths,
+                       QColor color = QColor(128, 217, 255));
   bool hasPathLayer(const QString &layer) const {
     return paths_.contains(layer);
   }
   std::optional<QPointF> screenPoint(Coordinate point, std::optional<double> altitude = {}) const;
-  void setDisplayStyle(const QString &style);
-  QString displayStyle() const {
-    return displayStyle_;
-  }
   bool streets() const {
     return streets_;
   }
@@ -146,7 +146,7 @@ private:
     QImage image;
     QString textureKey;
     bool line = false, lineList = false, overlay = false, terrain = false, scene = false,
-         display = false, daily = false, background = false;
+         daily = false, background = false;
     bool doubleSided = false, blend = false;
     float alphaCutoff = -1;
     int wrapS = 10497, wrapT = 10497, magFilter = 9729, minFilter = 9987;
@@ -176,6 +176,7 @@ private:
     QVector<QVector<Coordinate>> paths;
     QVector<QVector<double>> altitudes;
     QColor color;
+    bool batched = false;
   };
   QMap<QString, MarkerLayer> markers_;
   QMap<QString, PathLayer> paths_;
@@ -195,7 +196,6 @@ private:
   QPointer<QObject> regionOwner_, pointCaptureOwner_;
   QPointF press_, previous_;
   double blend_ = 0.9, dailyOpacity_ = 0.7;
-  QString displayStyle_ = "standard";
   quint64 frames_ = 0, geometryRevision_ = 1, markerRevision_ = 1, pathRevision_ = 1;
   int renderedTiles_ = 0;
   bool statusPending_ = false;
@@ -212,7 +212,11 @@ private:
   CpuMesh tileMesh(TileID id, const QImage &image) const;
   CpuMesh productMesh(const ProductLayer &product, TileID tile) const;
   CpuMesh outlineMesh(Bounds bounds) const;
-  CpuMesh pathMesh(const QVector<Coordinate> &path, const QVector<double> &altitudes = {}) const;
+  CpuMesh pathMesh(const QVector<Coordinate> &path, const QVector<double> &altitudes = {},
+                   double step = 0.25, int maxSegments = 32) const;
+  CpuMesh pathBatchMesh(const QVector<QVector<Coordinate>> &paths) const;
+  bool setPathLayer(const QString &layer, const QVector<QVector<Coordinate>> &paths,
+                    const QVector<QVector<double>> &altitudes, QColor color, bool batched);
   CpuMesh markerMesh(const MarkerLayer &layer) const;
   CpuMesh globeMesh() const;
   void vertex(CpuMesh &mesh, Coordinate point, double height, double u, double v) const;

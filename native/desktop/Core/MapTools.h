@@ -11,29 +11,16 @@ struct PlaceMatch {
   QString label;
   Coordinate coordinate;
 };
-struct RouteStep {
-  QString instruction;
-  double distance = 0;
-  Coordinate coordinate;
-};
-struct NativeRoute {
-  QVector<Coordinate> points;
-  QVector<RouteStep> steps;
-  double distance = 0, duration = 0;
-};
 QUrl placeSearchURL(const QString &query);
 QVector<PlaceMatch> parsePlaces(const QByteArray &bytes);
-QUrl routeURL(Coordinate start, Coordinate end, const QString &mode);
-NativeRoute parseRoute(const QByteArray &bytes);
-// One cancellable operation per instance; create two instances for independent
-// search and routing. Parsing is bounded and runs outside the UI thread.
+// One cancellable search per instance; parsing is bounded and runs outside the
+// UI thread.
 class MapLookup : public QObject {
   Q_OBJECT
 public:
   explicit MapLookup(QObject *parent = nullptr, QNetworkAccessManager *network = nullptr);
   ~MapLookup() override;
   bool search(const QString &query);
-  bool route(Coordinate start, Coordinate end, const QString &mode);
   void cancel();
   bool busy() const {
     return busy_ || parsing_;
@@ -44,9 +31,6 @@ public:
   QVector<PlaceMatch> places() const {
     return places_;
   }
-  NativeRoute result() const {
-    return route_;
-  }
 signals:
   void changed();
   void completed(bool success);
@@ -54,11 +38,10 @@ signals:
 private:
   HttpRequest request_;
   quint64 generation_ = 0;
-  bool busy_ = false, routing_ = false, parsing_ = false;
+  bool busy_ = false, parsing_ = false;
   QString error_;
   QVector<PlaceMatch> places_;
-  NativeRoute route_;
-  bool start(const QUrl &url, bool routing);
+  bool start(const QUrl &url);
 };
 
 void validateAnnotations(const QJsonArray &annotations);

@@ -9,7 +9,7 @@ Free access does not imply unrestricted redistribution or commercial use.
 | Source | Native use | Terms and interpretation |
 | --- | --- | --- |
 | Esri World Imagery | Satellite basemap | Esri and imagery-provider attribution; a dated mosaic with varying acquisition dates. |
-| OpenStreetMap | Street basemap, mapped infrastructure, directions | © OpenStreetMap contributors, ODbL 1.0; public tile/Overpass/routing service policies apply. Community mapping is incomplete. |
+| OpenStreetMap | Street basemap, mapped infrastructure | © OpenStreetMap contributors, ODbL 1.0; public tile and Overpass service policies apply. Community mapping is incomplete. |
 | Mapzen terrain on AWS | Terrarium elevation tiles | Bundled attribution covers the underlying elevation sources. Mixed vertical datums/vintages; not survey-grade elevation. |
 | User-selected 3D Tiles / public AGI coverage | Georeferenced scene meshes | Dataset-specific terms; availability does not grant redistribution rights. Cesium Native/component notices are packaged separately. |
 | NASA Worldview / GIBS | Dated daily imagery composites | NASA/source credit; coarse composites may have gaps and do not resolve individual buildings. |
@@ -18,15 +18,11 @@ Free access does not imply unrestricted redistribution or commercial use.
 | CBERS-4A WPM public catalogue | Higher-detail optical option where available | INPE/CBERS and catalogue-provider terms/credit; 2 m pan and 8 m multispectral are distinct products, with incomplete coverage. |
 | PRISMA imported L2D | Local panchromatic/hyperspectral viewing | ASI/PRISMA terms for the user's product; no direct ASI ordering/download integration. 5 m pan and 30 m hyperspectral have different purposes. |
 | USGS | Recent earthquakes | Data courtesy of the U.S. Geological Survey. |
-| OpenSky Network | Civil aircraft reports | OpenSky non-commercial terms; availability/rate limits apply. |
-| adsb.lol | Regional civil fallback and military aircraft reports | ODbL 1.0; public ADS-B reception is incomplete. |
+| adsb.lol | Military aircraft reports | ODbL 1.0; public ADS-B reception is incomplete. |
 | AISStream | Vessel position messages | Provider terms and user key; reception gaps and unavailable fields stay explicit. |
-| CelesTrak | TLE satellite catalogs | CelesTrak attribution; native SGP4/SDP4 positions are propagated estimates, not observed fixes. |
 | Launch Library 2 / The Space Devs | Launch-site and mission metadata | Source attribution and provider policy; launch records do not locate vehicles in flight. |
-| Open-Meteo / CAMS | Weather and air-quality models | CC BY 4.0 and free-service non-commercial terms; model readouts are not station measurements. |
 | GDACS | Disaster alerts | UN / EU JRC source credit; public alert data. |
 | NASA FIRMS | Satellite thermal detections | NASA/FIRMS citation, provider MAP_KEY; detections are not confirmed fire perimeters. |
-| TomTom | Bounded relative road-flow tiles | Provider terms/key/quotas; flow estimates do not identify individual vehicles. |
 | TfL / Fintraffic | Public traffic-camera catalog/media | Operator terms/credits; stills and clips may be delayed, with missing capture timestamps. |
 | Public GTFS-realtime operators | Vehicle positions | Per-operator attribution and license are retained in the canonical JSON registry. |
 
@@ -47,7 +43,6 @@ reference data. The CMake build stages these files into the application:
   attribution, allowed headers and geographic bounds. Rome ATAC remains excluded
   under the existing terms decision.
 - `terrain-attribution.md`: source-specific terrain credits.
-- `SGP4-LICENSE.txt`: orbital-engine source license, separate from data licenses.
 
 Reference geometry describes a static dataset snapshot and does not establish
 current operational status. Resource READMEs retain detailed provenance and terms.

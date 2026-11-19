@@ -191,11 +191,10 @@ void validateItem(QJsonObject o) {
     text(r, "label", 1024, true);
     text(r, "source", 1024);
     check(ref == r["id"].toString(), "A source reference is inconsistent.");
-    const QSet<QString> feeds{"earthquakes", "flights",       "military", "atmosphere",
-                              "disasters",   "installations", "energy",   "satellites",
-                              "launches",    "vessels",       "fires",    "transit",
-                              "cameras",     "datacenters",   "dams",     "cables",
-                              "sentinel",    "annotations",   "traffic"};
+    const QSet<QString> feeds{"earthquakes", "military", "disasters",   "installations",
+                              "energy",      "launches", "vessels",     "fires",
+                              "transit",     "cameras",  "datacenters", "dams",
+                              "cables",      "sentinel", "annotations"};
     check(feeds.contains(r["feed"].toString()), "A saved source type is unsupported.");
     coordinate(r["coordinate"]);
     date(r, "observedAt", true);

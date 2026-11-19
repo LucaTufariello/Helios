@@ -58,11 +58,11 @@ bool uid(const QJsonValue &value) {
 double authoredNow() {
   return QDateTime::currentMSecsSinceEpoch() / 1000. - 978307200.;
 }
-const QStringList publicWorkspaceKeys{
-    "satelliteGroup", "transitOperator", "cameraProvider", "sentinelCollection",
-    "version",        "camera",          "layers",         "basemap",
-    "style",          "imagery",         "opacity",        "solar",
-    "terrain",        "trackedID",       "annotations",    "imageryDate"};
+const QStringList publicWorkspaceKeys{"transitOperator", "cameraProvider", "sentinelCollection",
+                                      "version",         "camera",         "layers",
+                                      "basemap",         "imagery",        "opacity",
+                                      "solar",           "terrain",        "trackedID",
+                                      "annotations",     "imageryDate"};
 } // namespace
 QUrl placeSearchURL(const QString &raw) {
   const auto query = raw.trimmed();
@@ -103,89 +103,6 @@ QVector<PlaceMatch> parsePlaces(const QByteArray &bytes) {
   }
   return result;
 }
-QUrl routeURL(Coordinate start, Coordinate end, const QString &mode) {
-  if (!start.valid() || !end.valid() || !QStringList{"car", "foot", "bike"}.contains(mode))
-    return {};
-  const auto delta = subtract(start.ecef(), end.ecef());
-  if (std::sqrt(dot(delta, delta)) > 1000000)
-    return {};
-  const auto profile = mode == "car" ? "driving" : mode;
-  QUrl url(QString("https://routing.openstreetmap.de/routed-%1/route/v1/%2/%3,%4;%5,%6")
-               .arg(mode, profile)
-               .arg(start.longitude, 0, 'g', 17)
-               .arg(start.latitude, 0, 'g', 17)
-               .arg(end.longitude, 0, 'g', 17)
-               .arg(end.latitude, 0, 'g', 17));
-  QUrlQuery parameters;
-  parameters.addQueryItem("overview", "full");
-  parameters.addQueryItem("geometries", "geojson");
-  parameters.addQueryItem("steps", "true");
-  url.setQuery(parameters);
-  return url;
-}
-NativeRoute parseRoute(const QByteArray &bytes) {
-  const auto document = decode(bytes, 8 * 1024 * 1024);
-  const auto root = document.object();
-  require(document.isObject() && root["code"] == "Ok" && root["routes"].isArray() &&
-              !root["routes"].toArray().isEmpty(),
-          "No valid route was returned by the routing provider.");
-  const auto route = root["routes"].toArray().first().toObject(),
-             geometry = route["geometry"].toObject();
-  require(number(route["distance"]) && route["distance"].toDouble() >= 0 &&
-              route["distance"].toDouble() <= 3000000 && number(route["duration"]) &&
-              route["duration"].toDouble() >= 0 && route["duration"].toDouble() < 2000000,
-          "The route distance or duration is outside the supported limits.");
-  require(geometry["type"] == "LineString" && geometry["coordinates"].isArray(),
-          "The route geometry must be a GeoJSON line.");
-  const auto coordinates = geometry["coordinates"].toArray();
-  require(coordinates.size() >= 2 && coordinates.size() <= 30000,
-          "The route geometry exceeds its point limit.");
-  NativeRoute result;
-  result.distance = route["distance"].toDouble();
-  result.duration = route["duration"].toDouble();
-  for (const auto &value : coordinates) {
-    const auto point = pair(value);
-    require(point.has_value(), "The route contains an invalid coordinate.");
-    result.points.append(*point);
-  }
-  const auto legs = route["legs"].toArray();
-  require(legs.size() <= 100, "The route has too many legs.");
-  for (const auto &leg : legs) {
-    const auto steps = leg.toObject()["steps"].toArray();
-    require(steps.size() <= 5000, "A route leg has too many steps.");
-    for (const auto &entry : steps) {
-      if (result.steps.size() == 2000)
-        break;
-      const auto step = entry.toObject(), maneuver = step["maneuver"].toObject();
-      const auto point = pair(maneuver["location"]);
-      if (!point || !number(step["distance"]) || step["distance"].toDouble() < 0 ||
-          step["distance"].toDouble() > 3000000)
-        continue;
-      const auto type = clean(maneuver["type"], 40), modifier = clean(maneuver["modifier"], 40),
-                 road = clean(step["name"], 256);
-      const QHash<QString, QString> actions{{"depart", "Start"},
-                                            {"arrive", "Arrive at your destination"},
-                                            {"turn", "Turn"},
-                                            {"end of road", "At the end of the road, turn"},
-                                            {"fork", "At the fork, keep"},
-                                            {"merge", "Merge"},
-                                            {"roundabout", "Enter the roundabout"},
-                                            {"rotary", "Enter the roundabout"},
-                                            {"exit roundabout", "Exit the roundabout"},
-                                            {"exit rotary", "Exit the roundabout"}};
-      auto instruction = actions.value(type, "Continue");
-      if (!modifier.isEmpty() && !QStringList{"arrive", "roundabout", "rotary"}.contains(type))
-        instruction += " " + QString(modifier).replace("slight ", "slightly ");
-      if ((type == "roundabout" || type == "rotary") && number(maneuver["exit"]) &&
-          maneuver["exit"].toDouble() >= 1 && maneuver["exit"].toDouble() < 100)
-        instruction += ", take exit " + QString::number(int(maneuver["exit"].toDouble()));
-      if (!road.isEmpty() && type != "arrive")
-        instruction += " onto " + road;
-      result.steps.append({instruction.left(500), step["distance"].toDouble(), *point});
-    }
-  }
-  return result;
-}
 MapLookup::MapLookup(QObject *parent, QNetworkAccessManager *network)
     : QObject(parent), request_(nullptr, network) {
   connect(&request_, &HttpRequest::completed, this,
@@ -203,39 +120,29 @@ MapLookup::MapLookup(QObject *parent, QNetworkAccessManager *network)
             }
             struct Parsed {
               QVector<PlaceMatch> places;
-              NativeRoute route;
               QString error;
             };
             auto *watcher = new QFutureWatcher<Parsed>(this);
             parsing_ = true;
-            const bool routing = routing_;
-            connect(watcher, &QFutureWatcher<Parsed>::finished, this,
-                    [this, watcher, generation, routing] {
-                      const auto result = watcher->result();
-                      watcher->deleteLater();
-                      parsing_ = false;
-                      if (generation != generation_) {
-                        emit changed();
-                        return;
-                      }
-                      busy_ = false;
-                      error_ = result.error;
-                      if (result.error.isEmpty()) {
-                        if (routing)
-                          route_ = result.route;
-                        else
-                          places_ = result.places;
-                      }
-                      emit changed();
-                      emit completed(error_.isEmpty());
-                    });
-            watcher->setFuture(QtConcurrent::run([bytes = std::move(bytes), routing] {
+            connect(watcher, &QFutureWatcher<Parsed>::finished, this, [this, watcher, generation] {
+              const auto result = watcher->result();
+              watcher->deleteLater();
+              parsing_ = false;
+              if (generation != generation_) {
+                emit changed();
+                return;
+              }
+              busy_ = false;
+              error_ = result.error;
+              if (result.error.isEmpty())
+                places_ = result.places;
+              emit changed();
+              emit completed(error_.isEmpty());
+            });
+            watcher->setFuture(QtConcurrent::run([bytes = std::move(bytes)] {
               Parsed result;
               try {
-                if (routing)
-                  result.route = parseRoute(bytes);
-                else
-                  result.places = parsePlaces(bytes);
+                result.places = parsePlaces(bytes);
               } catch (const std::exception &e) {
                 result.error = QString::fromUtf8(e.what());
               }
@@ -248,31 +155,26 @@ MapLookup::~MapLookup() {
   disconnect(&request_, nullptr, this, nullptr);
   request_.cancel();
 }
-bool MapLookup::start(const QUrl &url, bool routing) {
+bool MapLookup::start(const QUrl &url) {
   if (parsing_) {
     error_ = "The previous bounded response is still finishing. Retry in a moment.";
     emit changed();
     return false;
   }
   cancel();
-  routing_ = routing;
   if (url.isEmpty()) {
-    error_ = routing ? "Choose valid endpoints within 1,000 km and car, foot or bike travel."
-                     : "Enter a place query of 1–200 characters without control characters.";
+    error_ = "Enter a place query of 1–200 characters without control characters.";
     emit changed();
     return false;
   }
   error_.clear();
   busy_ = true;
-  request_.start(url, routing ? 8 * 1024 * 1024 : 1024 * 1024);
+  request_.start(url, 1024 * 1024);
   emit changed();
   return true;
 }
 bool MapLookup::search(const QString &query) {
-  return start(placeSearchURL(query), false);
-}
-bool MapLookup::route(Coordinate start, Coordinate end, const QString &mode) {
-  return this->start(routeURL(start, end, mode), true);
+  return start(placeSearchURL(query));
 }
 void MapLookup::cancel() {
   if (busy_ || parsing_)
@@ -356,14 +258,12 @@ void AnnotationLibrary::remove(const QString &id) {
 }
 QJsonObject defaultWorkspace() {
   return {{"version", 1},
-          {"satelliteGroup", "stations"},
           {"transitOperator", "mbta"},
           {"cameraProvider", "london"},
           {"sentinelCollection", "SENTINEL-2"},
           {"camera", Camera{}.json()},
           {"layers", QJsonArray{}},
           {"basemap", "satellite"},
-          {"style", "standard"},
           {"imagery", "off"},
           {"opacity", .85},
           {"solar", false},
@@ -377,11 +277,9 @@ QJsonObject validatedWorkspace(QJsonObject value) {
     require(value[key].isString() && choices.contains(value[key].toString()),
             "The workspace contains an unsupported provider or display choice.");
   };
-  oneOf("satelliteGroup", {"stations", "active", "starlink", "weather", "gps-ops"});
   oneOf("cameraProvider", {"london", "finland"});
   oneOf("sentinelCollection", {"SENTINEL-1", "SENTINEL-2"});
   oneOf("basemap", {"satellite", "streets"});
-  oneOf("style", {"standard", "monochrome", "nightVision", "thermal"});
   oneOf("imagery", {"off", "trueColor", "terra", "nightLights", "thermal"});
   QStringList operators{"mbta",     "capmetro-austin", "metrotransit-msp", "hsl-helsinki",
                         "ovapi-nl", "entur-norway",    "translink-seq"};

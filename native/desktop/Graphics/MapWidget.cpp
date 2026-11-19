@@ -24,7 +24,7 @@ struct MapWidget::GpuMesh {
   GEVector3 minimum{}, maximum{};
 };
 namespace {
-constexpr int uniformBytes = (32 + 96 * 4) * sizeof(float);
+constexpr int uniformBytes = (28 + 96 * 4) * sizeof(float);
 QShader shader(const QString &filename) {
   QFile file(filename);
   return file.open(QIODevice::ReadOnly) ? QShader::fromSerialized(file.readAll()) : QShader{};
@@ -362,18 +362,30 @@ bool MapWidget::setMarkers(const QString &layer, const QVector<MapMarker> &marke
 }
 bool MapWidget::setPaths(const QString &layer, const QVector<QVector<Coordinate>> &paths,
                          const QVector<QVector<double>> &altitudes, QColor color) {
+  return setPathLayer(layer, paths, altitudes, color, false);
+}
+bool MapWidget::setBatchedPaths(const QString &layer, const QVector<QVector<Coordinate>> &paths,
+                                QColor color) {
+  return setPathLayer(layer, paths, {}, color, true);
+}
+bool MapWidget::setPathLayer(const QString &layer, const QVector<QVector<Coordinate>> &paths,
+                             const QVector<QVector<double>> &altitudes, QColor color,
+                             bool batched) {
   if (layer.isEmpty() || layer.size() > 80 || (!paths_.contains(layer) && paths_.size() >= 32) ||
       (!altitudes.isEmpty() && altitudes.size() != paths.size()))
     return false;
+  // Batched layers exist for large reference geometry, so they get a budget of
+  // their own instead of competing with animated trails.
+  const qsizetype limit = batched ? 60000 : 10000;
   qsizetype total = 0;
   for (auto i = paths_.cbegin(); i != paths_.cend(); ++i)
-    if (i.key() != layer)
+    if (i.key() != layer && i->batched == batched)
       for (const auto &path : i->paths)
         total += path.size();
   for (qsizetype i = 0; i < paths.size(); ++i) {
     const auto &path = paths[i];
     total += path.size();
-    if (total > 10000 || (!altitudes.isEmpty() && altitudes[i].size() != path.size()))
+    if (total > limit || (!altitudes.isEmpty() && altitudes[i].size() != path.size()))
       return false;
     for (const auto point : path)
       if (!point.valid())
@@ -386,16 +398,10 @@ bool MapWidget::setPaths(const QString &layer, const QVector<QVector<Coordinate>
   if (paths.isEmpty())
     paths_.remove(layer);
   else
-    paths_[layer] = {paths, altitudes, color};
+    paths_[layer] = {paths, altitudes, color, batched};
   ++pathRevision_;
   update();
   return true;
-}
-void MapWidget::setDisplayStyle(const QString &style) {
-  if (!QStringList{"standard", "monochrome", "nightVision", "thermal"}.contains(style))
-    return;
-  displayStyle_ = style;
-  update();
 }
 bool MapWidget::setDailyImagery(DailySource source, QDate date, double opacity) {
   if (!std::isfinite(opacity) || !daily_.configure(source, date))
@@ -489,7 +495,6 @@ void MapWidget::vertex(CpuMesh &mesh, Coordinate point, double height, double u,
 MapWidget::CpuMesh MapWidget::tileMesh(TileID id, const QImage &image) const {
   CpuMesh m;
   m.image = image;
-  m.display = true;
   m.origin = id.coordinate(0.5, 0.5).ecef();
   // Keep coarse imagery close to the ellipsoid. A fixed 24-cell grid at zoom 1/2
   // cuts kilometres into it, which shows as faceting and as dark seams where the
@@ -518,7 +523,6 @@ MapWidget::CpuMesh MapWidget::productMesh(const ProductLayer &p, TileID id) cons
   // would cut into mountains at close range, even with correct geographic bounds.
   CpuMesh m = tileMesh(id, p.image);
   m.overlay = true;
-  m.display = false;
   m.textureKey = p.id + ":" + QString::number(p.image.cacheKey());
   const int side = std::max(24, 256 >> std::min(id.zoom, 8));
   for (int y = 0; y <= side; ++y)
@@ -562,7 +566,8 @@ MapWidget::CpuMesh MapWidget::outlineMesh(Bounds b) const {
   return m;
 }
 MapWidget::CpuMesh MapWidget::pathMesh(const QVector<Coordinate> &path,
-                                       const QVector<double> &altitudes) const {
+                                       const QVector<double> &altitudes, double step,
+                                       int maxSegments) const {
   CpuMesh mesh;
   mesh.image = whiteImage();
   mesh.line = true;
@@ -574,8 +579,8 @@ MapWidget::CpuMesh MapWidget::pathMesh(const QVector<Coordinate> &path,
     const auto a = path[i], b = path[i + 1];
     const auto longitude = std::remainder(b.longitude - a.longitude, 360.0);
     const auto segments = std::clamp(
-        int(std::ceil(std::max(std::abs(b.latitude - a.latitude), std::abs(longitude)) / 0.25)), 1,
-        32);
+        int(std::ceil(std::max(std::abs(b.latitude - a.latitude), std::abs(longitude)) / step)), 1,
+        maxSegments);
     for (int j = 0; j <= segments; ++j) {
       const double t = double(j) / segments;
       const Coordinate point{std::lerp(a.latitude, b.latitude, t),
@@ -587,6 +592,26 @@ MapWidget::CpuMesh MapWidget::pathMesh(const QVector<Coordinate> &path,
     }
   }
   return mesh;
+}
+MapWidget::CpuMesh MapWidget::pathBatchMesh(const QVector<QVector<Coordinate>> &paths) const {
+  CpuMesh batch;
+  batch.image = whiteImage();
+  batch.line = true;
+  batch.lineList = true;
+  batch.origin = camera_.center.ecef();
+  // Keep the trail-grade 0.25° great-circle step so long ocean segments follow
+  // the surface instead of sagging below it; one merged buffer stays affordable
+  // because every line shares a single draw call.
+  for (const auto &path : paths) {
+    const auto strip = pathMesh(path, {}, 0.25, 64);
+    for (qsizetype i = 0; i + 1 < strip.positions.size(); ++i)
+      for (const auto p : {strip.positions[i], strip.positions[i + 1]}) {
+        batch.positions.append(p);
+        const auto local = scale(subtract(p, batch.origin), 1 / 6378137.0);
+        batch.vertices.append({float(local.x), float(local.y), float(local.z), 0, 0, 0, 0});
+      }
+  }
+  return batch;
 }
 MapWidget::CpuMesh MapWidget::markerMesh(const MarkerLayer &layer) const {
   CpuMesh mesh;
@@ -810,7 +835,7 @@ void MapWidget::drawMesh(const QString &key, CpuMesh cpu, quint64 revision, QRhi
   slot->cpu.opacity = opacity;
   slot->cpu.cutouts = cutouts;
   const auto offset = scale(subtract(slot->cpu.origin, frameTarget_), 1 / 6378137.0);
-  std::array<float, 32 + 96 * 4> uniform{};
+  std::array<float, 28 + 96 * 4> uniform{};
   std::memcpy(uniform.data(), frameMatrix_.constData(), 64);
   uniform[16] = float(offset.x);
   uniform[17] = float(offset.y);
@@ -821,15 +846,11 @@ void MapWidget::drawMesh(const QString &key, CpuMesh cpu, quint64 revision, QRhi
   uniform[25] = slot->cpu.overlay ? 1.0f : 0.0f;
   uniform[26] = slot->cpu.scene ? (slot->cpu.blend ? 2.0f : 1.0f) : 0.0f;
   uniform[27] = slot->cpu.alphaCutoff;
-  uniform[28] = slot->cpu.display
-                    ? float(QStringList{"standard", "monochrome", "nightVision", "thermal"}.indexOf(
-                          displayStyle_))
-                    : 0;
   for (qsizetype i = 0; i < cutouts.size() && i < 96; ++i) {
-    uniform[size_t(32 + i * 4)] = float(cutouts[i].left());
-    uniform[size_t(33 + i * 4)] = float(cutouts[i].top());
-    uniform[size_t(34 + i * 4)] = float(cutouts[i].right());
-    uniform[size_t(35 + i * 4)] = float(cutouts[i].bottom());
+    uniform[size_t(28 + i * 4)] = float(cutouts[i].left());
+    uniform[size_t(29 + i * 4)] = float(cutouts[i].top());
+    uniform[size_t(30 + i * 4)] = float(cutouts[i].right());
+    uniform[size_t(31 + i * 4)] = float(cutouts[i].bottom());
   }
   updates->updateDynamicBuffer(slot->uniform.get(), 0, uniformBytes, uniform.data());
   drawn_.append(key);
@@ -926,7 +947,21 @@ void MapWidget::render(QRhiCommandBuffer *cb) {
       continue;
     drawMesh(key, std::move(mesh), markerRevision_, cb, updates);
   }
-  for (auto layer = paths_.cbegin(); layer != paths_.cend(); ++layer)
+  for (auto layer = paths_.cbegin(); layer != paths_.cend(); ++layer) {
+    if (layer->batched) {
+      const auto key = "path:" + layer.key();
+      const bool build =
+          !meshes_.contains(key) || !meshes_[key] || meshes_[key]->revision != pathRevision_;
+      auto mesh = build ? pathBatchMesh(layer->paths) : CpuMesh{};
+      if (build) {
+        const auto c = layer->color;
+        mesh.tint = {float(c.redF()), float(c.greenF()), float(c.blueF()), float(c.alphaF())};
+      }
+      if (build && mesh.positions.isEmpty())
+        continue;
+      drawMesh(key, std::move(mesh), pathRevision_, cb, updates);
+      continue;
+    }
     for (qsizetype i = 0; i < layer->paths.size(); ++i) {
       const auto key = "path:" + layer.key() + ":" + QString::number(i);
       const bool build =
@@ -943,6 +978,7 @@ void MapWidget::render(QRhiCommandBuffer *cb) {
         continue;
       drawMesh(key, std::move(mesh), pathRevision_, cb, updates);
     }
+  }
   // Share each scene texture across its primitives. Bound the visible GPU set
   // independently of Cesium's CPU cache and exclude unuploaded meshes from picks.
   auto sceneMeshes = sceneMeshes_;

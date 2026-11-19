@@ -4,7 +4,7 @@
 namespace helios {
 void DomainHistory::ingest(const QVector<DomainRecord> &records, QDateTime now) {
   for (const auto &record : records) {
-    if (!QStringList{"flights", "military", "vessels", "transit"}.contains(record.feed) ||
+    if (!QStringList{"military", "vessels", "transit"}.contains(record.feed) ||
         !record.observedAt.isValid() || record.observedAt > now.addSecs(120) ||
         record.observedAt < now.addSecs(-3600) || !record.coordinate.valid() ||
         (record.altitude && !std::isfinite(*record.altitude)))

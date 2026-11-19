@@ -9,7 +9,7 @@ private slots:
     QVERIFY(!helios::Credentials::save("firms", QString(257, 'x')).ok);
     QVERIFY(!helios::Credentials::save("ais", "header\r\ninjection").ok);
     QVERIFY(!helios::Credentials::erase("").ok);
-    QVERIFY(helios::Credentials::validAccount("tomtom"));
+    QVERIFY(helios::Credentials::validAccount("firms"));
   }
   void realPlatformStoreRoundTrip() {
     if (qEnvironmentVariable("HELIOS_SECRET_CHECK") != "1")

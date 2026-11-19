@@ -23,16 +23,15 @@ case "${1:---check}" in
     ;;
 esac
 
-# Upstream SGP4 sources keep their original formatting; only the Helios wrapper
-# and the application/shared/scene code are formatted.
+# Only the application, shared and scene code is formatted.
 helios_files=()
 while IFS= read -r helios_file; do
   helios_files+=("$helios_file")
 done < <(
   find "$helios_root/native/desktop" "$helios_root/native/shared" \
-    "$helios_root/native/scene" "$helios_root/native/sgp4" \
+    "$helios_root/native/scene" \
     \( -name '*.h' -o -name '*.cpp' -o -name '*.mm' -o -name '*.c' \) \
-    -not -path '*/build/*' -not -name 'SGP4.cpp' -not -name 'SGP4.h' -print |
+    -not -path '*/build/*' -print |
     sort
 )
 

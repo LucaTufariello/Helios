@@ -18,9 +18,9 @@ Silicon execution remains an acceptance check.
   Records and Inspector tabs share the same selection. Activate a record to open
   its inspector. **Inspect** opens the inspector directly; **Data** opens its raw
   record tab.
-- **Layers** contains basemap, terrain, display style, tilt and heading. **Tools**
-  contains places, directions, annotations, daily imagery and workspace files.
-  Display choices stay synchronized between these surfaces.
+- **Layers** contains basemap, terrain, tilt and heading. **Tools**
+  contains places, annotations, daily imagery and workspace files.
+  Layer choices stay synchronized between these surfaces.
 - Drag a panel's header to move it; drag its bottom-right handle to resize it.
   Collapse and close controls preserve its contents. A collapsed drawing panel
   suspends map point capture until it is expanded. Panel layout menus restore the

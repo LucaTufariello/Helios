@@ -99,11 +99,32 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
     QMap<QString, int> counts;
     QMap<QString, QVector<QVector<Coordinate>>> paths;
     QMap<QString, int> feedPoints;
-    qsizetype pathPoints = 0;
-    int omitted = 0;
+    qsizetype pathPoints = 0, cablePoints = 0;
+    int omitted = 0, landingPoints = 0;
     for (const auto &record : records) {
       if (record.feed == "annotations")
         continue;
+      // Cable routes and landing points are a static bundled reference, not a
+      // live feed: give them their own budget so the whole network reaches the
+      // GPU instead of the handful of records the per-feed caps allow.
+      if (record.feed == "cables") {
+        const bool landing = record.id.startsWith("cables:landing:");
+        if (!record.coordinate.valid() || (landing && landingPoints >= 2000)) {
+          ++omitted;
+          continue;
+        }
+        if (landing) {
+          ++landingPoints;
+          markers.append({record.id, record.coordinate, record.altitude});
+        }
+        for (const auto &line : record.paths) {
+          if (line.size() < 2 || cablePoints + line.size() > 20000)
+            continue;
+          cablePoints += line.size();
+          paths["cables"].append(line);
+        }
+        continue;
+      }
       if (counts.value(record.feed) >= 300 || record.id.size() > 512 ||
           !record.coordinate.valid() ||
           (record.altitude && (!std::isfinite(*record.altitude) || *record.altitude < -2000 ||
@@ -126,14 +147,7 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
           reduced.append(line[qsizetype(i) * (line.size() - 1) / (amount - 1)]);
         pathPoints += reduced.size();
         feedPoints[record.feed] += reduced.size();
-        QString group = "sources";
-        if (record.feed == "traffic") {
-          const auto flow = record.details["Relative flow"].toDouble(-1);
-          group = (record.details["Road closed"] == "Yes" || flow < .55) ? "traffic-slow"
-                  : flow < .85                                           ? "traffic-moderate"
-                                                                         : "traffic-free";
-        }
-        paths[group].append(reduced);
+        paths["sources"].append(reduced);
       }
     }
     if (!map_->setMarkers("sources", markers)) {
@@ -141,15 +155,14 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
       omitted += markers.size();
       markers.clear();
     }
+    map_->setBatchedPaths("cables", paths.value("cables"), QColor(80, 200, 220));
     map_->setPaths("sources", paths.value("sources"));
-    map_->setPaths("traffic-slow", paths.value("traffic-slow"), {}, QColor(245, 65, 65));
-    map_->setPaths("traffic-moderate", paths.value("traffic-moderate"), {}, QColor(255, 185, 55));
-    map_->setPaths("traffic-free", paths.value("traffic-free"), {}, QColor(65, 220, 125));
     domainSummary_->setVisible(!records.isEmpty());
     domainSummary_->setText(
-        QString("%1 source records on map%2 · Source times and attribution are in Sources. Lines "
+        QString("%1 source records on map%2%3 · Source times and attribution are in Sources. Lines "
                 "are simplified for display; saved evidence retains admitted source geometry.")
             .arg(markers.size())
+            .arg(cablePoints ? QString(" · %1 cable route points").arg(cablePoints) : QString{})
             .arg(omitted ? QString(" · %1 more in Sources (300 markers per feed / renderer limits)")
                                .arg(omitted)
                          : QString{}));
@@ -702,28 +715,15 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
   auto *terrainChoice = new QCheckBox("Terrain relief");
   terrainChoice->setChecked(true);
   layerForm->addRow("Surface", terrainChoice);
-  auto *styleChoice = new QComboBox;
-  for (const auto &name : QStringList{"Standard", "Monochrome", "Thermal", "Night vision"})
-    styleChoice->addItem(name, name == "Night vision" ? "nightVision" : name.toLower());
-  layerForm->addRow("Display", styleChoice);
   layerLayout->addLayout(layerForm);
-  auto *displayNote = design::label("Display styles change visualization only. Source measurements "
-                                    "and scientific exports retain their original values.",
-                                    "secondary");
-  displayNote->setWordWrap(true);
-  layerLayout->addWidget(displayNote);
   connect(mapChoice, &QComboBox::currentIndexChanged, this,
           [this](int i) { map_->setStreets(i == 1); });
   connect(terrainChoice, &QCheckBox::toggled, map_, &MapWidget::setTerrain);
-  connect(styleChoice, &QComboBox::currentIndexChanged, this,
-          [this, styleChoice] { map_->setDisplayStyle(styleChoice->currentData().toString()); });
-  connect(map_, &MapWidget::statusChanged, layerContent,
-          [this, mapChoice, terrainChoice, styleChoice] {
-            QSignalBlocker a(mapChoice), b(terrainChoice), c(styleChoice);
-            mapChoice->setCurrentIndex(map_->streets() ? 1 : 0);
-            terrainChoice->setChecked(map_->terrainEnabled());
-            styleChoice->setCurrentIndex(styleChoice->findData(map_->displayStyle()));
-          });
+  connect(map_, &MapWidget::statusChanged, layerContent, [this, mapChoice, terrainChoice] {
+    QSignalBlocker a(mapChoice), b(terrainChoice);
+    mapChoice->setCurrentIndex(map_->streets() ? 1 : 0);
+    terrainChoice->setChecked(map_->terrainEnabled());
+  });
   auto *cameraTitle = design::label("CAMERA", "kicker");
   layerLayout->addWidget(cameraTitle);
   auto *tilt = new QSlider(Qt::Horizontal);
@@ -940,14 +940,6 @@ MainWindow::MainWindow(const QString &profile, bool networking, QWidget *parent)
                              "observation times may differ.")
                          .arg(DailyImageryCache::sourceName(daily.source()),
                               daily.date().toString(Qt::ISODate)));
-    const auto style = map_->displayStyle();
-    if (style == "monochrome")
-      display.append("Monochrome basemap/daily display; scientific product colours are retained.");
-    else if (style != "standard")
-      display.append(
-          style == "thermal"
-              ? "Thermal-style recolouring for display; no thermal sensor measurement."
-              : "Night vision recolouring for display; no night vision sensor measurement.");
     const auto displayText = display.join('\n');
     if (displayInfo->text() != displayText)
       displayInfo->setText(displayText);

@@ -110,11 +110,6 @@ DomainHttpResult domainFetch(const QUrl &initial, qsizetype maximum,
   result.error = "Provider redirect limit reached.";
   return result;
 }
-struct DomainNetwork::TrafficCache {
-  QMap<QString, DomainSnapshot> snapshots;
-  QString credential, day;
-  int requests = 0;
-};
 namespace {
 DomainSnapshot failure(QString error) {
   DomainSnapshot out;
@@ -132,87 +127,6 @@ QUrl queryURL(QString base, const QList<QPair<QString, QString>> &items) {
 QString number(double value) {
   return QString::number(value, 'g', 15);
 }
-DomainSnapshot trafficRequest(Bounds bounds,
-                              const std::shared_ptr<DomainNetwork::TrafficCache> &cache,
-                              const std::shared_ptr<std::atomic_bool> &cancel) {
-  if (!bounds.validArea() || bounds.north - bounds.south > .05 || bounds.east - bounds.west > .05 ||
-      std::abs(bounds.south) >= 85 || std::abs(bounds.north) >= 85)
-    return failure("Zoom in: traffic requires a bounded ground view of at most 0.05°, below the "
-                   "horizon and away from the poles.");
-  auto credential = Credentials::read("tomtom");
-  if (!credential.ok)
-    return failure(credential.error);
-  const QString key = credential.value;
-  if (!QRegularExpression("^[A-Za-z0-9_-]{16,128}$").match(key).hasMatch())
-    return failure("Add a TomTom API key in Provider Settings to load actual traffic flow.");
-  if (cache->credential != key) {
-    cache->snapshots.clear();
-    cache->credential = key;
-  }
-  const QString day = QDateTime::currentDateTimeUtc().date().toString(Qt::ISODate);
-  if (day != cache->day) {
-    cache->day = day;
-    cache->requests = 0;
-  }
-  const auto nw = TileID::containing({bounds.north, bounds.west}, 12),
-             se = TileID::containing({bounds.south, bounds.east}, 12);
-  if (nw.x > se.x || nw.y > se.y || (se.x - nw.x + 1) * (se.y - nw.y + 1) > 9)
-    return failure("Zoom in for a bounded traffic request of at most nine tiles.");
-  DomainSnapshot out;
-  out.source = "© TomTom";
-  int failures = 0, loaded = 0;
-  for (int y = nw.y; y <= se.y; ++y)
-    for (int x = nw.x; x <= se.x; ++x) {
-      if (cancel->load())
-        return failure("Canceled.");
-      const TileID tile{x, y, 12};
-      auto snapshot = cache->snapshots.value(tile.key());
-      if (!snapshot.retrievedAt.isValid() ||
-          snapshot.retrievedAt.secsTo(QDateTime::currentDateTimeUtc()) >= 120) {
-        if (cache->requests >= 1000)
-          return failure("The 1,000-tile daily budget for this app session has been reached. Check "
-                         "your provider quota before restarting.");
-        ++cache->requests;
-        auto bytes = domainFetch(
-            queryURL(QString("https://api.tomtom.com/traffic/map/4/tile/flow/relative/12/%1/%2.pbf")
-                         .arg(x)
-                         .arg(y),
-                     {{"key", key}, {"margin", "0"}}),
-            2 * 1024 * 1024, cancel, {}, {}, false);
-        if (!bytes.error.isEmpty()) {
-          ++failures;
-          continue;
-        }
-        snapshot = DomainParsers::traffic(bytes.bytes, tile);
-        if (!snapshot.ok()) {
-          ++failures;
-          continue;
-        }
-        if (cache->snapshots.size() >= 64) {
-          auto oldest = cache->snapshots.begin();
-          for (auto entry = cache->snapshots.begin(); entry != cache->snapshots.end(); ++entry)
-            if (entry->retrievedAt < oldest->retrievedAt)
-              oldest = entry;
-          cache->snapshots.erase(oldest);
-        }
-        cache->snapshots[tile.key()] = snapshot;
-      }
-      ++loaded;
-      out.records += snapshot.records;
-      out.rejected += snapshot.rejected;
-      if (!out.retrievedAt.isValid() || snapshot.retrievedAt < out.retrievedAt)
-        out.retrievedAt = snapshot.retrievedAt;
-    }
-  if (!loaded)
-    return failure(
-        "TomTom traffic tiles could not be loaded. Check the key, quota and connection.");
-  out.notices = {
-      QString("Bounded local view: at most nine tiles. %1 failed. %2/1,000 requests used today in "
-              "this session. No synthetic traffic or absolute-speed inference.")
-          .arg(failures)
-          .arg(cache->requests)};
-  return out;
-}
 DomainSnapshot request(QString feed, Bounds view, DomainConfiguration config,
                        const std::shared_ptr<std::atomic_bool> &cancel) {
   const auto center = view.center();
@@ -227,42 +141,9 @@ DomainSnapshot request(QString feed, Bounds view, DomainConfiguration config,
     url = QUrl("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
   else if (feed == "military")
     url = QUrl("https://api.adsb.lol/v2/mil");
-  else if (feed == "flights") {
-    auto data =
-        domainFetch(QUrl("https://opensky-network.org/api/states/all?extended=1"), maximum, cancel);
-    if (data.error.isEmpty()) {
-      auto snapshot = DomainParsers::parse(feed, data.bytes, center, view, config);
-      if (snapshot.ok())
-        return snapshot;
-    }
-    if (cancel->load())
-      return failure("Canceled.");
-    url = QUrl(QString("https://api.adsb.lol/v2/lat/%1/lon/%2/dist/125")
-                   .arg(number(center.latitude), number(center.longitude)));
-  } else if (feed == "disasters") {
+  else if (feed == "disasters") {
     url = QUrl("https://www.gdacs.org/xml/rss.xml");
     maximum = 2 * 1024 * 1024;
-  } else if (feed == "atmosphere") {
-    auto weather = domainFetch(
-        queryURL("https://api.open-meteo.com/v1/forecast",
-                 {{"latitude", number(center.latitude)},
-                  {"longitude", number(center.longitude)},
-                  {"timezone", "UTC"},
-                  {"current", "temperature_2m,relative_humidity_2m,apparent_temperature,weather_"
-                              "code,wind_speed_10m,wind_direction_10m,surface_pressure"},
-                  {"daily", "temperature_2m_max,temperature_2m_min,precipitation_probability_max"},
-                  {"forecast_days", "2"}}),
-        2 * 1024 * 1024, cancel);
-    if (!weather.error.isEmpty())
-      return failure(weather.error);
-    auto air = domainFetch(
-        queryURL("https://air-quality-api.open-meteo.com/v1/air-quality",
-                 {{"latitude", number(center.latitude)},
-                  {"longitude", number(center.longitude)},
-                  {"timezone", "UTC"},
-                  {"current", "european_aqi,us_aqi,pm2_5,pm10,nitrogen_dioxide,ozone"}}),
-        2 * 1024 * 1024, cancel);
-    return DomainParsers::atmosphere(weather.bytes, air.bytes, center, air.error);
   } else if (feed == "installations" || feed == "energy") {
     QString error;
     auto query = DomainParsers::mappedQuery(feed, view, &error);
@@ -361,8 +242,7 @@ DomainSnapshot request(QString feed, Bounds view, DomainConfiguration config,
 }
 } // namespace
 DomainNetwork::DomainNetwork(QObject *parent, bool networking)
-    : QObject(parent), traffic_(std::make_shared<TrafficCache>()), ais_(this),
-      networking_(networking) {
+    : QObject(parent), ais_(this), networking_(networking) {
   for (const auto &feed : domainFeeds())
     entries_[feed.id] = {};
   connect(&ais_, &DomainSocket::changed, this, [this] {
@@ -405,7 +285,7 @@ void DomainNetwork::setView(Bounds bounds) {
       view_.north == bounds.north)
     return;
   view_ = bounds;
-  for (const QString feed : {"installations", "energy", "atmosphere", "sentinel", "traffic"})
+  for (const QString feed : {"installations", "energy", "sentinel"})
     if (enabled(feed)) {
       cancel(feed);
       refresh(feed);
@@ -414,12 +294,10 @@ void DomainNetwork::setView(Bounds bounds) {
 void DomainNetwork::setConfiguration(DomainConfiguration value) {
   const auto old = configuration_;
   configuration_ = value;
-  for (const auto &feed :
-       {QString("satellites"), QString("transit"), QString("cameras"), QString("sentinel")}) {
-    bool changed = feed == "satellites" ? old.satelliteGroup != value.satelliteGroup
-                   : feed == "transit"  ? old.transitID != value.transitID
-                   : feed == "cameras"  ? old.cameraProvider != value.cameraProvider
-                                        : old.sentinelKind != value.sentinelKind;
+  for (const auto &feed : {QString("transit"), QString("cameras"), QString("sentinel")}) {
+    bool changed = feed == "transit"   ? old.transitID != value.transitID
+                   : feed == "cameras" ? old.cameraProvider != value.cameraProvider
+                                       : old.sentinelKind != value.sentinelKind;
     if (changed && enabled(feed)) {
       cancel(feed);
       refresh(feed);
@@ -475,12 +353,6 @@ void DomainNetwork::refresh(const QString &feed) {
     emit changed(feed);
     return;
   }
-  if (feed == "satellites" && catalogs_.contains(configuration_.satelliteGroup) &&
-      catalogs_[configuration_.satelliteGroup].retrievedAt.secsTo(entry.attempted) < 6 * 3600) {
-    entry.snapshot = catalogs_[configuration_.satelliteGroup].snapshot();
-    emit changed(feed);
-    return;
-  }
   entry.queued = true;
   emit changed(feed);
   pump();
@@ -517,11 +389,6 @@ void DomainNetwork::setAnnotations(DomainSnapshot snapshot) {
   entries_["annotations"].snapshot = snapshot;
   emit changed("annotations");
 }
-bool DomainNetwork::orbit(const QString &record, QVector<Coordinate> &points,
-                          QVector<double> &altitudes, QDateTime at) const {
-  auto i = catalogs_.find(configuration_.satelliteGroup);
-  return i != catalogs_.end() && i->orbit(record, points, altitudes, at);
-}
 void DomainNetwork::pump() {
   if (active_ >= 3)
     return;
@@ -540,10 +407,9 @@ void DomainNetwork::start(const QString &feed) {
   entry.cancel = cancel;
   auto *watcher = new QFutureWatcher<DomainSnapshot>(this);
   entry.watcher = watcher;
-  auto orbit = std::make_shared<std::optional<DomainOrbit>>();
   auto aisKey = std::make_shared<CredentialResult>();
   connect(watcher, &QFutureWatcher<DomainSnapshot>::finished, this,
-          [this, watcher, feed, generation, orbit, aisKey] {
+          [this, watcher, feed, generation, aisKey] {
             --active_;
             auto &entry = entries_[feed];
             entry.watcher = nullptr;
@@ -551,8 +417,6 @@ void DomainNetwork::start(const QString &feed) {
             auto snapshot = watcher->result();
             watcher->deleteLater();
             if (entry.generation == generation && entry.enabled) {
-              if (*orbit)
-                catalogs_[configuration_.satelliteGroup] = **orbit;
               if (snapshot.ok()) {
                 if (!snapshot.retrievedAt.isValid() && feed != "vessels" && feed != "datacenters" &&
                     feed != "dams" && feed != "cables")
@@ -568,33 +432,16 @@ void DomainNetwork::start(const QString &feed) {
             emit changed(feed);
             pump();
           });
-  watcher->setFuture(
-      QtConcurrent::run([feed, view, config, cancel, orbit, aisKey, cache = traffic_] {
-        if (feed == "traffic")
-          return trafficRequest(view, cache, cancel);
-        if (feed == "vessels") {
-          *aisKey = Credentials::read("ais");
-          if (!aisKey->ok)
-            return failure(aisKey->error);
-          DomainSnapshot out;
-          out.source = "AISStream";
-          return out;
-        }
-        if (feed == "satellites") {
-          if (!QStringList{"stations", "active", "starlink", "weather", "gps-ops"}.contains(
-                  config.satelliteGroup))
-            return failure("Choose a registered CelesTrak satellite group.");
-          auto data = domainFetch(queryURL("https://celestrak.org/NORAD/elements/gp.php",
-                                           {{"GROUP", config.satelliteGroup}, {"FORMAT", "tle"}}),
-                                  8 * 1024 * 1024, cancel);
-          if (!data.error.isEmpty())
-            return failure(data.error);
-          *orbit = DomainOrbit::parse(data.bytes);
-          if (!*orbit)
-            return failure("CelesTrak returned no valid TLE elements.");
-          return (*orbit)->snapshot();
-        }
-        return request(feed, view, config, cancel);
-      }));
+  watcher->setFuture(QtConcurrent::run([feed, view, config, cancel, aisKey] {
+    if (feed == "vessels") {
+      *aisKey = Credentials::read("ais");
+      if (!aisKey->ok)
+        return failure(aisKey->error);
+      DomainSnapshot out;
+      out.source = "AISStream";
+      return out;
+    }
+    return request(feed, view, config, cancel);
+  }));
 }
 } // namespace helios

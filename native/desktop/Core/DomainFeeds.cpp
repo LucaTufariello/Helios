@@ -10,19 +10,13 @@ const QVector<FeedDescriptor> &domainFeeds() {
   static const QVector<FeedDescriptor> feeds{
       {"earthquakes", "Earthquakes (24h)", "Ground", "Data courtesy of the U.S. Geological Survey",
        60},
-      {"flights", "Live Flights", "Sky",
-       "OpenSky Network (non-commercial); regional fallback adsb.lol (ODbL 1.0)", 30},
       {"military", "Military Flights", "Sky", "adsb.lol · ODbL 1.0", 30},
-      {"atmosphere", "Atmosphere", "Sky",
-       "Open-Meteo / CAMS · CC BY 4.0 · non-commercial · model, not a station", 300},
       {"disasters", "Disaster Alerts", "Ground", "GDACS · UN / EU JRC · public-domain alerts",
        1800},
       {"installations", "Mapped Installations", "Ground",
        "© OpenStreetMap contributors · ODbL · community mapped, incomplete", 300},
       {"energy", "Energy & Refining", "Ground",
        "© OpenStreetMap contributors · ODbL · community mapped, incomplete", 300},
-      {"satellites", "Satellites", "Sky",
-       "CelesTrak · SGP4/SDP4 propagated estimates, not observed positions", 15},
       {"launches", "Space Missions", "Sky",
        "Launch Library 2 / The Space Devs · launch site, not vehicle position", 900},
       {"vessels", "AIS Vessels", "Marine", "AISStream · reported AIS positions · key required", 30},
@@ -43,9 +37,7 @@ const QVector<FeedDescriptor> &domainFeeds() {
       {"sentinel", "Sentinel Product Catalog", "Satellite",
        "Copernicus Data Space · dated product metadata, not decoded imagery", 900},
       {"annotations", "Local Annotations", "Ground",
-       "User-authored notes and geometry · saved locally", 86400},
-      {"traffic", "Road Traffic Flow", "Ground",
-       "© TomTom · provider flow estimates · API key and local view required", 120}};
+       "User-authored notes and geometry · saved locally", 86400}};
   return feeds;
 }
 const FeedDescriptor *domainFeed(const QString &id) {

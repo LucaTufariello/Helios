@@ -27,7 +27,7 @@ successfully has not thereby passed model inference or scientific validation.
 ## Implemented workflows
 
 `native/desktop` contains the Qt client: native map/terrain/raster rendering,
-bounded scientific libraries and original exports; all 19 source layers; optical
+bounded scientific libraries and original exports; all 15 source layers; optical
 catalogue/retrieval and local PRISMA import; Sentinel-1 search, session-only account
 access, downloads and shared Python/SNAP orchestration; infrastructure sites/change
 review; Mission Control timelines/monitors; map tools, workspace links and daily

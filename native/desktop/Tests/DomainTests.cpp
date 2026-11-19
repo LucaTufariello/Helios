@@ -1,7 +1,6 @@
 #include "Core/DomainFeeds.h"
 #include "Core/DomainHistory.h"
 #include "Core/DomainNetwork.h"
-#include "Core/DomainOrbit.h"
 #include "Core/DomainProto.h"
 #include "Core/DomainSocket.h"
 #include "Core/Missions.h"
@@ -43,27 +42,6 @@ QByteArray transitFix(std::optional<quint64> at, float latitude = 0) {
                  (at ? integer(5, *at) : QByteArray{}) + message(8, descriptor);
   return message(1, header) + message(2, message(1, "entity-1") + message(4, vehicle));
 }
-QByteArray trafficFix(std::optional<double> ratio, bool closed = false, bool malformed = false,
-                      bool duplicate = false) {
-  QByteArray values, tags;
-  if (ratio) {
-    char bytes[8];
-    qToLittleEndian<quint64>(std::bit_cast<quint64>(*ratio), bytes);
-    values += message(4, varint(25) + QByteArray(bytes, 8));
-    tags += varint(0) + varint(0);
-  }
-  if (closed) {
-    values += message(4, integer(7, 1));
-    tags += varint(1) + varint(ratio ? 1 : 0);
-  }
-  QByteArray geometry;
-  for (auto n : malformed ? QVector<quint64>{9, 0} : QVector<quint64>{9, 0, 0, 10, 200, 200})
-    geometry += varint(n);
-  const auto feature = integer(3, 2) + message(2, tags) + message(4, geometry);
-  return message(3, message(1, "Traffic flow") + integer(15, 2) + integer(5, 4096) +
-                        message(3, "traffic_level") + message(3, "road_closure") + values +
-                        message(2, feature) + (duplicate ? message(2, feature) : QByteArray{}));
-}
 QByteArray json(const QJsonObject &object) {
   return QJsonDocument(object).toJson(QJsonDocument::Compact);
 }
@@ -75,7 +53,7 @@ class DomainTests : public QObject {
   Q_OBJECT
 private slots:
   void catalogExclusionsAndIntervals() {
-    QCOMPARE(domainFeeds().size(), 19);
+    QCOMPARE(domainFeeds().size(), 15);
     QSet<QString> ids;
     for (const auto &feed : domainFeeds()) {
       QVERIFY(!feed.credit.isEmpty());
@@ -132,9 +110,9 @@ private slots:
     QCOMPARE(snapshot.rejected, 1);
     QCOMPARE(*snapshot.records[0].altitude, 304.8);
     QCOMPARE(snapshot.records[0].observedAt.toSecsSinceEpoch(), 1699999998LL);
-    QVERIFY(!parse("flights", {{"states", QJsonArray{}}}).records.size());
+    QVERIFY(!parse("military", {{"ac", QJsonArray{}}}).records.size());
     row.remove("seen_pos");
-    snapshot = parse("flights", {{"now", 1700000000}, {"ac", QJsonArray{row}}});
+    snapshot = parse("military", {{"now", 1700000000}, {"ac", QJsonArray{row}}});
     QVERIFY(!snapshot.records[0].observedAt.isValid());
   }
   void disastersRejectEntitiesAndPublicationTime() {
@@ -153,20 +131,6 @@ private slots:
                                   "<!DOCTYPE rss [<!ENTITY x SYSTEM 'file:///etc/passwd'>]>" + xml,
                                   {0, 0}, {-1, -1, 1, 1}, {})
                  .ok());
-  }
-  void modelWeatherPreservesUnitsAndMissingAir() {
-    QJsonObject weather{
-        {"current", QJsonObject{{"temperature_2m", 0},
-                                {"time", "2026-10-15T10:00"},
-                                {"weather_code", 0},
-                                {"wind_speed_10m", 0}}},
-        {"current_units", QJsonObject{{"temperature_2m", "°C"}, {"wind_speed_10m", "km/h"}}}};
-    auto snapshot = DomainParsers::atmosphere(json(weather), {}, {0, 0}, "provider unavailable");
-    QVERIFY(snapshot.ok());
-    QCOMPARE(snapshot.records.size(), 1);
-    QVERIFY(snapshot.records[0].details["Temperature"].toString().contains("0.0 °C"));
-    QVERIFY(snapshot.records[0].details["Air quality"].toString().contains("Unavailable"));
-    QVERIFY(snapshot.records[0].observedAt.isValid());
   }
   void mappedSitesLimitsAndIncompleteResponses() {
     QString error;
@@ -280,22 +244,6 @@ private slots:
     QVERIFY(!DomainParsers::transit(QByteArray::fromHex("0aff"), providers[0], now).ok());
     QVERIFY(!DomainProto::read(QByteArray::fromHex("80808080808080808002")));
   }
-  void trafficReportedZeroStableIDsAndMalformedWire() {
-    const TileID tile{2048, 2048, 12};
-    auto snapshot = DomainParsers::traffic(trafficFix(0), tile);
-    QVERIFY(snapshot.ok());
-    QCOMPARE(snapshot.records.size(), 1);
-    QVERIFY(!snapshot.records[0].observedAt.isValid());
-    QCOMPARE(snapshot.records[0].details["Relative flow"].toDouble(), 0.0);
-    QCOMPARE(snapshot.records[0].paths[0].size(), 2);
-    const auto other = DomainParsers::traffic(trafficFix(.8), tile);
-    QCOMPARE(other.records[0].id, snapshot.records[0].id);
-    QCOMPARE(DomainParsers::traffic(trafficFix({}, true), tile).records.size(), 1);
-    QVERIFY(DomainParsers::traffic(trafficFix(-.1), tile).records.isEmpty());
-    QCOMPARE(DomainParsers::traffic(trafficFix(.8, false, true), tile).rejected, 1);
-    QCOMPARE(DomainParsers::traffic(trafficFix(.8, false, false, true), tile).rejected, 1);
-    QVERIFY(!DomainParsers::traffic(QByteArray::fromHex("1aff"), tile).ok());
-  }
   void aisActualReportsAndWebSocketBounds() {
     QJsonObject row{
         {"MessageType", "PositionReport"},
@@ -331,33 +279,6 @@ private slots:
     QVERIFY(quint8(client[1]) & 128);
     QCOMPARE(client.size(), 8);
   }
-  void sgp4ExistingValladoReferenceVectors() {
-    QFile file(QString(HELIOS_DOMAIN_FIXTURE_DIR) + "/sgp4-reference.json");
-    QVERIFY(file.open(QIODevice::ReadOnly));
-    const auto rows = QJsonDocument::fromJson(file.readAll()).array();
-    QCOMPARE(rows.size(), 16);
-    for (const auto value : rows) {
-      const auto row = value.toObject();
-      const auto catalog = DomainOrbit::parse(row["tle"].toString().toUtf8());
-      QVERIFY(catalog);
-      QCOMPARE(catalog->satellites.size(), 1);
-      const auto p = catalog->satellites[0].position(row["minutes"].toDouble());
-      QVERIFY(p);
-      for (int i = 0; i < 3; ++i)
-        QVERIFY2(std::abs((*p)[i] - row["position"].toArray()[i].toDouble()) < 1e-6,
-                 "Shared Vallado propagation differs from the reference fixture");
-      const auto snapshot = catalog->snapshot(catalog->satellites[0].epoch);
-      QCOMPARE(snapshot.records.size(), 1);
-      QCOMPARE(snapshot.records[0].observedAt, catalog->satellites[0].epoch);
-      QVector<Coordinate> points;
-      QVector<double> altitudes;
-      QVERIFY(
-          catalog->orbit(snapshot.records[0].id, points, altitudes, catalog->satellites[0].epoch));
-      QCOMPARE(points.size(), 97);
-      QCOMPARE(altitudes.size(), 97);
-    }
-    QVERIFY(!DomainOrbit::parse("invalid\n1 00000\n2 00000"));
-  }
   void nativeStateRetainsSuppliedAnnotationsAndCancellation() {
     DomainNetwork network;
     DomainSnapshot supplied;
@@ -384,21 +305,21 @@ private slots:
   void missionSnapshotIsBoundedAndKeepsSourceIdentity() {
     DomainRecord record;
     record.id = "fixture:source-id";
-    record.feed = "traffic";
+    record.feed = "cameras";
     record.label = "Generated evidence fixture";
     record.source = "Provider fixture";
     record.coordinate = {0, 0};
-    record.details = {{"Relative flow", 0.0},
-                      {"Flow description", "0% of free-flow speed"},
-                      {"Frame URL", "https://weathercam.digitraffic.fi/C0150201.jpg"},
-                      {"Video URL", "temporary delivery URL"}};
+    record.details = {{"Frame URL", "https://weathercam.digitraffic.fi/C0150201.jpg"},
+                      {"Video URL", "temporary delivery URL"},
+                      {"Operator", "Generated operator label"}};
     record.raw = {{"sensitiveTransientResponse", "not retained in mission"}};
     const auto saved = record.missionJSON();
     QVERIFY(saved);
     QCOMPARE((*saved)["id"].toString(), record.id);
     QVERIFY(!saved->contains("raw"));
     QVERIFY(!(*saved)["details"].toObject().contains("Frame URL"));
-    QCOMPARE((*saved)["details"].toObject()["Relative flow"].toString(), "0");
+    QVERIFY(!(*saved)["details"].toObject().contains("Video URL"));
+    QCOMPARE((*saved)["details"].toObject()["Operator"].toString(), "Generated operator label");
     QVERIFY(!(*saved)["observedAt"].isString());
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -416,7 +337,7 @@ private slots:
     reopened.load(directory.filePath("plans.json"));
     const auto frozen = reopened.selected()["items"].toArray()[0].toObject()["record"].toObject();
     QCOMPARE(frozen["id"].toString(), record.id);
-    QCOMPARE(frozen["details"].toObject()["Relative flow"].toString(), "0");
+    QCOMPARE(frozen["details"].toObject()["Operator"].toString(), "Generated operator label");
     QVERIFY(frozen["observedAt"].isNull());
     QString error;
     record.footprint = QVector<Coordinate>(2001, Coordinate{0, 0});
@@ -431,7 +352,7 @@ private slots:
     const auto now = DomainParsers::utcDate("2026-10-15T10:00:00Z");
     DomainRecord r;
     r.id = "flight:fixture";
-    r.feed = "flights";
+    r.feed = "military";
     r.coordinate = {0, 0};
     r.observedAt = now.addSecs(-60);
     history.ingest({r}, now);
@@ -445,11 +366,7 @@ private slots:
     QCOMPARE(prior->observedAt, now.addSecs(-60));
     QVERIFY(prior->details["Playback"].toString().contains("no interpolation"));
     QVERIFY(!history.delayed(r, now.addSecs(-61)));
-    r.feed = "satellites";
-    r.id = "norad:fixture";
-    history.ingest({r}, now);
-    QVERIFY(history.fixes(r.id).isEmpty());
-    r.feed = "flights";
+    r.feed = "military";
     r.id = "unknown-time";
     r.observedAt = {};
     history.ingest({r}, now);
@@ -485,10 +402,10 @@ private slots:
   void degenerateViewportDoesNotReuseAnOlderArea() {
     DomainNetwork network;
     network.setView({9, 45, 9, 45});
-    for (const QString feed : {"installations", "energy", "traffic"})
+    for (const QString feed : {"installations", "energy"})
       network.setEnabled(feed, true);
     QTRY_VERIFY_WITH_TIMEOUT(!network.busy(), 3000);
-    for (const QString feed : {"installations", "energy", "traffic"})
+    for (const QString feed : {"installations", "energy"})
       QVERIFY(network.snapshot(feed).error.contains("Zoom in"));
   }
 };

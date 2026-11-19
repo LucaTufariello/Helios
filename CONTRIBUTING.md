@@ -9,7 +9,6 @@ with `make test-desktop`.
 - `native/desktop/`: Qt Widgets application, GPU map, workflow/storage modules and tests.
 - `native/scene/`: shared Cesium scene adapter.
 - `native/shared/`: portable C++20 geography library.
-- `native/sgp4/`: native Vallado SGP4/SDP4 propagation.
 - `native/workers/`: scientific Python workers and their tests.
 - `native/resources/`: canonical bundled datasets and the transit registry.
 

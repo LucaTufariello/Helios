@@ -20,9 +20,8 @@ int main(int argc, char **argv) {
   auto feeds = app.arguments().mid(2);
   const bool finland = feeds.removeAll("--finland") > 0;
   if (feeds.isEmpty())
-    feeds = {"earthquakes",   "flights",  "military",    "atmosphere", "disasters",
-             "installations", "energy",   "satellites",  "launches",   "transit",
-             "cameras",       "sentinel", "datacenters", "dams",       "cables"};
+    feeds = {"earthquakes", "military", "disasters", "installations", "energy", "launches",
+             "transit",     "cameras",  "sentinel",  "datacenters",   "dams",   "cables"};
   DomainNetwork network;
   if (finland) {
     auto config = network.configuration();
@@ -46,7 +45,7 @@ int main(int argc, char **argv) {
     }
   });
   for (const auto &feed : feeds) {
-    if (!domainFeed(feed) || QStringList{"fires", "traffic", "vessels"}.contains(feed)) {
+    if (!domainFeed(feed) || QStringList{"fires", "vessels"}.contains(feed)) {
       std::fprintf(stderr, "Unsupported or credentialed live-check feed: %s\n", qPrintable(feed));
       return 2;
     }
@@ -92,7 +91,7 @@ int main(int argc, char **argv) {
                       {"successful", successful},
                       {"total", feeds.size()},
                       {"limitation",
-                       "Keyless source transport checks only; no AIS/FIRMS/TomTom "
+                       "Keyless source transport checks only; no AIS/FIRMS "
                        "credentials, no scientific interpretation or GUI acceptance."}})
           .toJson(QJsonDocument::Indented);
   if (!output.open(QIODevice::WriteOnly) || output.write(bytes) != bytes.size() || !output.commit())

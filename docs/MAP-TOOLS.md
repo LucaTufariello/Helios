@@ -1,30 +1,23 @@
 # Native map tools core
 
-`Core/MapTools.{h,cpp}` implements Photon lookup, public OSRM directions, local
-annotation documents, version 1 workspaces/share links and the approximate solar
-terminator. The native UI and map renderer consume this core; the network
+`Core/MapTools.{h,cpp}` implements Photon lookup, local annotation documents,
+version 1 workspaces/share links and the approximate solar terminator. The native UI and map renderer consume this core; the network
 and document code has no graphics dependency.
 
-`MapLookup` exposes `search(query)`, `route(start,end,mode)`, `cancel()`, `busy()`,
-`error()`, `places()` and `result()`, with `changed` and `completed(bool)` signals.
-Create separate instances for independent place search and directions. HTTPS URLs
-are fixed to the existing public Photon and routing.openstreetmap.de providers.
-Queries are sent only on explicit user actions. A place query is 1–200 characters,
-its response is capped at 1 MiB and at most six validated named points are retained.
-Car, foot and bike routes require endpoints within a 1,000 km ECEF chord; responses
-are capped at 8 MiB, 30,000 points and 2,000 instructions. Distance and duration are
-finite and bounded. Provider data is parsed off the UI thread with one decode per
-instance. Cancellation invalidates the generation, aborts the owned HTTP request
+`MapLookup` exposes `search(query)`, `cancel()`, `busy()`, `error()` and
+`places()`, with `changed` and `completed(bool)` signals. HTTPS URLs are fixed to
+the existing public Photon provider. Queries are sent only on explicit user
+actions. A place query is 1–200 characters, its response is capped at 1 MiB and at
+most six validated named points are retained. Provider data is parsed off the UI
+thread with one decode per instance. Cancellation invalidates the generation, aborts the owned HTTP request
 and waits only for an already-running bounded parse to finish before another
 request can start. A failed request retains the prior admitted result. HTTP
 redirects and cookie storage are disabled by the existing bounded `HttpRequest`.
 
-The public services have availability/usage limits. Photon documents its
-[demo service and API](https://github.com/komoot/photon); route geometry and
-instructions follow the [OSRM route contract](https://project-osrm.org/docs/v5.24.0/api/).
-Use Photon/OpenStreetMap and OSRM/OpenStreetMap attribution in the UI. A route is
-a provider estimate, not observed movement or a navigation guarantee. Directions
-do not establish access rights, road conditions or reliable arrival times.
+The public service has availability/usage limits. Photon documents its
+[demo service and API](https://github.com/komoot/photon). Use
+Photon/OpenStreetMap attribution in the UI. A place match is a provider locator,
+not a verified site or an observation.
 
 `AnnotationLibrary` explicitly loads an array from a user document, then offers
 atomic `replace/add/update/remove` through `JsonFile`. Limits match the stored
@@ -58,21 +51,17 @@ terminator. It is an approximate day/night display, not an astronomical ephemeri
 measured illumination or acquisition-time correction.
 
 `Tests/MapToolsTests.cpp` exercises URL/query bounds, invalid/oversized JSON,
-route geometry/instructions, cancellation during network and parsing, retained
-results, annotation conflict/corrupt recovery/unknown-field round trips, workspace
-privacy/legacy fields/date admission, duplicate share fields and solar geometry.
-The default suite passes nine checks and skips two opt-in public service checks:
+cancellation during network and parsing, retained results, annotation
+conflict/corrupt recovery/unknown-field round trips, workspace privacy/legacy
+fields/date admission, duplicate share fields and solar geometry. The default
+suite passes the offline checks and skips the opt-in public service check:
 
 ```sh
 HELIOS_MAPTOOLS_LIVE=1 HELIOS_MAPTOOLS_QA=/absolute/path/to/qa \
   ./output/desktop/build/native/desktop/HeliosMapToolsTests
 ```
 
-On 2026-10-15, the actual walking route between (45.4641,9.1919) and
-(45.4700,9.2000) passed through the public OSRM endpoint. The admitted geometry,
-distance, duration and instruction counts are recorded in
-`output/qa/linux-migration-20261015/map-tools/osrm-live.json`. The actual Photon
-request for `Milano Italia` timed out without a response in the Qt check; an
-independent curl check also received no bytes before its deadline. That public
+The actual Photon request for `Milano Italia` timed out without a response in the
+Qt check; an independent curl check also received no bytes before its deadline. That public
 Photon acceptance gate remains unverified; fixture/parser/cancellation tests pass.
 No guessed place result or automatic alternate provider was substituted.

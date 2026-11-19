@@ -10,7 +10,7 @@ interactive outside palettes and remains the rendering surface for all sections.
   into one place. Existing deletion and export controls remain in their tools.
 - **Marine:** AIS vessels and submarine cable systems/landing points. Existing
   provider credentials, data attribution and coverage limitations still apply.
-- **Sky:** civil/military flights, orbital catalogs, launch metadata and atmosphere.
+- **Sky:** military flight reports and space-mission launch metadata.
 - **Ground:** infrastructure, energy, datacenters, dams, transit, cameras, road flow,
   disaster/thermal observations and annotations.
 - **Mission planner:** locally saved investigation plans connecting named views,

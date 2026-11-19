@@ -171,25 +171,7 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
                        {"limitation", "Dated visualization; pixel observation times can differ. "
                                       "Not a calibrated product validation."}};
         QTest::qWait(250);
-        const auto colour = window.map().grabFramebuffer();
-        colour.save(output + "/daily-terra-terrain.png");
-        window.map().setDisplayStyle("monochrome");
-        QTest::qWait(150);
-        const auto monochrome = window.map().grabFramebuffer();
-        int coloured = 0, gray = 0, samples = 0;
-        for (int y = monochrome.height() * 2 / 5; y < monochrome.height() * 3 / 5; y += 2)
-          for (int x = monochrome.width() * 2 / 5; x < monochrome.width() * 3 / 5; x += 2) {
-            const auto c = colour.pixelColor(x, y), m = monochrome.pixelColor(x, y);
-            ++samples;
-            if (std::abs(c.red() - c.green()) + std::abs(c.green() - c.blue()) > 8)
-              ++coloured;
-            if (std::abs(m.red() - m.green()) + std::abs(m.green() - m.blue()) <= 3)
-              ++gray;
-          }
-        require(coloured > samples / 20 && gray > samples * 9 / 10,
-                "Native display shader converts actual dated imagery to monochrome");
-        monochrome.save(output + "/daily-terra-monochrome.png");
-        window.map().setDisplayStyle("standard");
+        window.map().grabFramebuffer().save(output + "/daily-terra-terrain.png");
         window.map().setDailyImagery(DailySource::Off, requestedDate, 0);
 
       } else if (generated) {
@@ -292,20 +274,8 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
                     sw.blue() > 220,
                 "Georeferenced texture north/south and east/west orientation");
         pixels.save(output + "/generated-raster-overlay.png");
-        window.map().setDisplayStyle("monochrome");
         QTest::qWait(100);
-        auto *displayCaption = window.findChild<QLabel *>("mapDisplayCaption");
-        require(displayCaption && displayCaption->isVisible() &&
-                    displayCaption->text().contains("Monochrome"),
-                "Style disclosure appears after a GPU frame without reentrant rendering");
-        pixels = window.map().grabFramebuffer();
-        const auto unchanged = sample({45.465, 9.185});
-        require(unchanged.red() > 220 && unchanged.green() < 30 && unchanged.blue() < 30,
-                "Product preview retains original colours when the basemap display style changes");
-        window.map().setDisplayStyle("standard");
-        QTest::qWait(100);
-        require(!displayCaption->isVisible() && window.map().hardwareGpu(),
-                "Returning to standard display safely removes the map caption");
+        require(window.map().hardwareGpu(), "Generated raster overlay renders on the hardware map");
 
         auto second = layers.first();
         second.id += "-SECOND-GENERATED-QA";
@@ -671,7 +641,7 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
         require(toolTabs && annotationTitle && annotationShape && annotationBegin &&
                     annotationSave && annotations,
                 "Native drawing controls available");
-        toolTabs->setCurrentIndex(2);
+        toolTabs->setCurrentIndex(1);
         annotationTitle->setText("GENERATED QA polygon");
         annotationShape->setCurrentIndex(2);
         window.map().setCamera(Camera{{45.46, 9.19}, 20000, 0, 0});
@@ -711,19 +681,12 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
                 "Intentional live record selection replaces frozen evidence geometry");
         if (auto *inspector = window.domainWindow().findChild<QDialog *>("savedRecordInspector"))
           inspector->close();
-        toolTabs->setCurrentIndex(3);
-        auto *displayStyle = tools.findChild<QComboBox *>("displayStyle");
-        require(displayStyle, "Native display shader control available");
+        toolTabs->setCurrentIndex(2);
         window.map().setOverlays({});
-        displayStyle->setCurrentIndex(1);
         QTest::qWait(100);
-        require(window.map().displayStyle() == "monochrome" &&
-                    !window.map().grabFramebuffer().isNull(),
-                "Native basemap shader changes without a web runtime");
-        displayStyle->setCurrentIndex(0);
         window.map().setOverlays({first, second});
         tools.grab().save(output + "/map-tools-display.png");
-        toolTabs->setCurrentIndex(2);
+        toolTabs->setCurrentIndex(1);
         tools.grab().save(output + "/map-tools-annotations.png");
         require(tools.saveSession(), "Workspace display settings save for restart");
         tools.hide();
@@ -1024,16 +987,10 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
                         button->mapTo(layerViewport->viewport(), button->rect().center())),
                     "Default layer palette exposes its advanced tools action");
       window.grab().save(output + "/design-layers.png");
-      const auto currentStyle = window.map().displayStyle();
-      window.map().setDisplayStyle("monochrome");
       window.showMapTools();
-      auto *styleControl = window.mapToolsWindow().findChild<QComboBox *>("displayStyle");
-      require(styleControl && styleControl->currentData() == "monochrome",
-              "Workspace tools reflect display changes made in the layer palette");
-      window.map().setDisplayStyle(currentStyle);
       auto *displayTabs = window.mapToolsWindow().findChild<QTabWidget *>("mapToolsTabs");
       if (displayTabs)
-        displayTabs->setCurrentIndex(3);
+        displayTabs->setCurrentIndex(2);
       window.grab().save(output + "/design-tools.png");
       window.hideWorkspacePanels();
       layers->reveal();
@@ -1049,6 +1006,14 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
                       Qt::ToolButtonIconOnly,
               "Compact header preserves domain labels and accessible mission access");
       window.grab().save(output + "/design-compact.png");
+      window.domainWindow().network().setEnabled("cables", true);
+      QElapsedTimer cableRoutes;
+      cableRoutes.start();
+      while (!window.map().hasPathLayer("cables") && cableRoutes.elapsed() < 10000)
+        QTest::qWait(50);
+      require(window.map().hasPathLayer("cables"),
+              "Bundled submarine cable routes reach the shared map");
+      window.domainWindow().network().setEnabled("cables", false);
       window.hideWorkspacePanels();
       window.setFixedSize(1280, 820);
       auto &missionView = window.missionWindow();
@@ -1066,7 +1031,9 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
       window.showMission();
       QTest::qWait(100);
       missionView.grab().save(output + "/design-mission.png");
-      if (generated) {
+      // Dossier suggestions are drawn from the generated processing library, so
+      // this block needs the raster worker environment, not just offline mode.
+      if (!python.isEmpty() && generated) {
         auto &missions = window.missions();
         const auto mission = missions.selectedID();
         const QJsonObject site{{"id", newID()},

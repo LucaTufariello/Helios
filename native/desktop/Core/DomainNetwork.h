@@ -1,6 +1,5 @@
 #pragma once
 #include "DomainFeeds.h"
-#include "DomainOrbit.h"
 #include "DomainSocket.h"
 #include <QFutureWatcher>
 #include <QTimer>
@@ -20,7 +19,6 @@ DomainHttpResult domainFetch(const QUrl &url, qsizetype maximum,
 class DomainNetwork : public QObject {
   Q_OBJECT
 public:
-  struct TrafficCache;
   explicit DomainNetwork(QObject *parent = nullptr, bool networking = true);
   ~DomainNetwork() override;
   void setView(Bounds bounds);
@@ -39,8 +37,6 @@ public:
   DomainSnapshot snapshot(const QString &feed) const;
   QVector<DomainRecord> records() const;
   void setAnnotations(DomainSnapshot snapshot);
-  bool orbit(const QString &record, QVector<Coordinate> &points, QVector<double> &altitudes,
-             QDateTime at = QDateTime::currentDateTimeUtc()) const;
 signals:
   void changed(QString feed);
 
@@ -54,8 +50,6 @@ private:
     std::shared_ptr<std::atomic_bool> cancel;
   };
   QMap<QString, Entry> entries_;
-  QMap<QString, DomainOrbit> catalogs_;
-  std::shared_ptr<TrafficCache> traffic_;
   DomainSocket ais_;
   QTimer timer_;
   Bounds view_{8.9, 45.2, 9.5, 45.7};

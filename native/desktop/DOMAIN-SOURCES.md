@@ -1,16 +1,16 @@
 # Native domain sources
 
-The Qt Sources & observations window implements the 19 enabled feed kinds.
+The Qt Sources & observations window implements the 15 enabled feed kinds.
 It uses compiled Widgets, bounded native HTTPS and a fixed-endpoint TLS WebSocket
-client. Source records, stored mission snapshots, retained observed fixes and
-propagated orbital estimates remain distinct. Local annotations are supplied by
+client. Source records, stored mission snapshots and retained observed fixes remain
+distinct. Local annotations are supplied by
 the map editor; this window does not create a second annotation library.
 
 | Section | Sources |
 | --- | --- |
 | Marine | AISStream vessel reports; TeleGeography cable systems and landing points |
-| Sky | OpenSky flights with regional adsb.lol fallback; adsb.lol military reports; CelesTrak satellites; Launch Library 2; Open-Meteo weather and CAMS air-quality models |
-| Ground | OSM mapped installations and energy/refining; bundled datacenters and dams; seven public GTFS-realtime operators; TomTom road flow; TfL/Fintraffic cameras; USGS earthquakes; GDACS alerts; NASA FIRMS thermal detections; local annotations |
+| Sky | adsb.lol military reports; Launch Library 2 space missions |
+| Ground | OSM mapped installations and energy/refining; bundled datacenters and dams; seven public GTFS-realtime operators; TfL/Fintraffic cameras; USGS earthquakes; GDACS alerts; NASA FIRMS thermal detections; local annotations |
 | Satellite | Copernicus product metadata and footprints; actual optical/SAR processing uses the separate processing center |
 
 Bike share, radio, cockpit, voice and neighborhood boundaries remain excluded.
@@ -18,11 +18,11 @@ Bike share, radio, cockpit, voice and neighborhood boundaries remain excluded.
 ## Setup and operation
 
 Enable a source, select a record, inspect its details/raw provider fields, and use
-Show on map, Estimated orbit, Add evidence or Export record. Provider region
+Show on map, Add evidence or Export record. Provider region
 actions focus the actual selected camera/transit provider's coverage area.
 Filtering sources or selecting a workspace section does not delete source data.
 
-Provider settings saves optional `firms`, `tomtom` and `ais` keys through the
+Provider settings saves optional `firms` and `ais` keys through the
 existing platform credential adapter. It never writes keys to settings, mission
 documents, exports or logs. The fields do not display stored secrets. An
 unavailable operating-system secret store produces an explicit error; there is no
@@ -47,27 +47,18 @@ annotations remain usable.
 
 Mapped queries have 10° installation / 2° energy span limits and 700 / 400 result
 caps, respectively. The four existing Overpass endpoints are tried in order.
-Successful queries have a five-minute, 32-entry memory cache. TomTom requires a
-local 0.05° view, at most nine zoom-12 tiles, a 64-tile cache and a 1,000-tile daily
-budget for the app session. Failed traffic requests still consume the budget.
-Coverage and observation time are never inferred from retrieval success.
+Successful queries have a five-minute, 32-entry memory cache. Coverage and
+observation time are never inferred from retrieval success.
 
-## Orbits, following and retained fixes
-
-The CelesTrak TLE parser validates checksums, identifiers, epochs and physical
-parameter bounds. It calls the existing Vallado CSGP4 implementation unchanged.
-Catalogs are retained for six hours; positions are propagated every 15 seconds.
-Estimated orbit paths contain 97 samples over one period. Records retain the TLE
-epoch separately from propagation UTC and explicitly state the estimate's age.
-These are not observed positions or guaranteed trajectories.
+## Following and retained fixes
 
 Follow selection updates the shared map's center while retaining its view
 parameters. Retained trails and playback use actual timestamped aircraft,
 vessel or transit fixes from this app session: at most one hour, 240 fixes per
 object and 5,000 objects. Unknown, stale, excessive-future and nonmonotonic fixes
 are excluded. Playback selects the last observed fix at or before the selected
-time, without interpolation or extrapolation. Orbital estimates do not become
-track history. The inspector labels retained positions and current metadata.
+time, without interpolation or extrapolation. The inspector labels retained
+positions and current metadata.
 Workspace restoration can retain a bounded pending follow target until that
 source record arrives; it never substitutes another object's position.
 
@@ -119,7 +110,7 @@ Bundled data and notices are deployed under `share/helios/sources` on Linux and
 `Contents/Resources/sources` on macOS. The source snapshot contains 4,351
 datacenter rows, 704 dam rows and 712 cable-system / 1,917 landing-point rows.
 Duplicate admission produces 4,351 datacenter, 703 dam and 2,611 cable records.
-Dataset README files and the SGP4 notice accompany those resources. Datacenters
+Dataset README files accompany those resources. Datacenters
 and dams retain OSM/Open Infrastructure Map ODbL notices; TeleGeography data
 retains CC BY-NC-SA 3.0 and its non-commercial restriction. Acquisition dates for
 the OSM-derived extracts remain unknown; the cable snapshot date is 2026-05-24.
@@ -128,8 +119,8 @@ the OSM-derived extracts remain unknown; the cable snapshot date is 2026-05-24.
 
 `Tests/DomainTests.cpp` covers feed inventory/exclusions, numbers/coordinates,
 timestamps/units, malformed JSON/XML/protobuf, GTFS/MVT/AIS admission, reference
-counts/deduplication, mission snapshot limits, retained histories, offline
-requests and the existing 16 Vallado reference vectors. `Tests/DomainUITests.cpp`
+counts/deduplication, mission snapshot limits, retained histories and offline
+requests. `Tests/DomainUITests.cpp`
 covers actual selection/evidence controls, restored offline settings and bounded
 clip-frame parsing. Real camera media is explicitly opt-in:
 
@@ -140,7 +131,7 @@ HELIOS_LIVE_CHECKS=1 /path/to/HeliosDomainLiveChecks /absolute/report.json
 ```
 
 The live-source harness records actual source IDs, times, counts, errors and
-latency. It rejects credentialed sources; AISStream, TomTom and FIRMS require
+latency. It rejects credentialed sources; AISStream and FIRMS require
 separate checks with user-supplied keys. Provider downtime is reported as a
 failed/limited real check, never replaced with fixture records. Generated
 fixtures are used only inside tests and disposable profiles. Tests and Linux

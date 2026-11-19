@@ -52,8 +52,8 @@ QVector<Coordinate> annotationPoints(const QJsonObject &value) {
 MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWindow &domain,
                                Missions &missions, bool networking, QWidget *parent)
     : QDialog(parent), map_(map), domain_(domain), missions_(missions),
-      annotations_(profile + "/annotations.json"), places_(this), directions_(this),
-      profile_(profile), networking_(networking) {
+      annotations_(profile + "/annotations.json"), places_(this), profile_(profile),
+      networking_(networking) {
   setWindowFlag(Qt::Window, true);
   setAttribute(Qt::WA_QuitOnClose, false);
   setObjectName("mapToolsWindow");
@@ -115,99 +115,6 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
       auto c = map_.camera();
       c.center = *p;
       c.range = 12000;
-      map_.setCamera(c);
-    }
-  });
-  auto *routeLayout = page("Directions");
-  auto *routeForm = new QFormLayout;
-  routeLayout->addLayout(routeForm);
-  start_ = new QLineEdit;
-  start_->setObjectName("routeStart");
-  end_ = new QLineEdit;
-  end_->setObjectName("routeEnd");
-  routeForm->addRow("Start (latitude, longitude)", start_);
-  routeForm->addRow("End (latitude, longitude)", end_);
-  mode_ = new QComboBox;
-  mode_->addItem("Driving", "car");
-  mode_->addItem("Walking", "foot");
-  mode_->addItem("Cycling", "bike");
-  routeForm->addRow("Mode", mode_);
-  auto *routeButtons = new QHBoxLayout;
-  routeLayout->addLayout(routeButtons);
-  connect(button(routeButtons, "Pick start"), &QPushButton::clicked, this, [this] {
-    map_.beginPointCapture(this);
-    pickEndpoint_ = 1;
-    routeStatus_->setText("Click the start point on the map.");
-  });
-  connect(button(routeButtons, "Pick end"), &QPushButton::clicked, this, [this] {
-    map_.beginPointCapture(this);
-    pickEndpoint_ = 2;
-    routeStatus_->setText("Click the end point on the map.");
-  });
-  auto *route = button(routeButtons, "Find route");
-  auto *cancelRoute = button(routeButtons, "Cancel");
-  auto *clearRoute = button(routeButtons, "Clear");
-  routeStatus_ =
-      new QLabel("OSRM / © OpenStreetMap contributors · endpoints at most 1,000 km apart.");
-  routeStatus_->setWordWrap(true);
-  routeLayout->addWidget(routeStatus_);
-  routeSteps_ = new QListWidget;
-  routeSteps_->setObjectName("routeSteps");
-  routeLayout->addWidget(routeSteps_, 1);
-  connect(route, &QPushButton::clicked, this, [this] {
-    auto a = coordinate(start_->text()), b = coordinate(end_->text());
-    if (!a || !b) {
-      routeStatus_->setText("Enter valid latitude, longitude for both endpoints.");
-      return;
-    }
-    if (!networking_) {
-      routeStatus_->setText("Offline mode: directions are unavailable.");
-      return;
-    }
-    if (!directions_.route(*a, *b, mode_->currentData().toString()))
-      routeStatus_->setText("Choose endpoints within 1,000 km.");
-  });
-  connect(cancelRoute, &QPushButton::clicked, &directions_, &MapLookup::cancel);
-  connect(clearRoute, &QPushButton::clicked, this, [this] {
-    directions_.cancel();
-    map_.setPaths("route", {});
-    map_.setMarkers("route", {});
-    routeSteps_->clear();
-  });
-  connect(&directions_, &MapLookup::changed, this, [this, route] {
-    route->setEnabled(!directions_.busy());
-    routeStatus_->setText(directions_.busy() ? "Finding route…" : directions_.error());
-  });
-  connect(&directions_, &MapLookup::completed, this, [this](bool ok) {
-    if (!ok)
-      return;
-    const auto r = directions_.result();
-    routeSteps_->clear();
-    for (const auto &step : r.steps) {
-      auto *i = new QListWidgetItem(
-          step.instruction + QString(" · %1 m").arg(step.distance, 0, 'f', 0), routeSteps_);
-      i->setData(Qt::UserRole, step.coordinate.json());
-    }
-    map_.setPaths("route", {thin(r.points, 1500)}, {}, QColor(60, 150, 255));
-    if (!r.points.isEmpty()) {
-      map_.setMarkers("route", {{{}, r.points.first(), {}}, {{}, r.points.last(), {}}},
-                      QColor(70, 255, 140));
-      auto c = map_.camera();
-      c.center = r.points.first();
-      c.range = std::clamp(r.distance * 2, 3000.0, 3000000.0);
-      map_.setCamera(c);
-    }
-    routeStatus_->setText(QString("%1 km · %2 min · OSRM estimates · %3 retained route points; map "
-                                  "display capped at 1,500 points.")
-                              .arg(r.distance / 1000, 0, 'f', 1)
-                              .arg(r.duration / 60, 0, 'f', 0)
-                              .arg(r.points.size()));
-  });
-  connect(routeSteps_, &QListWidget::itemActivated, this, [this](QListWidgetItem *i) {
-    if (auto p = Coordinate::read(i->data(Qt::UserRole).toJsonObject())) {
-      auto c = map_.camera();
-      c.center = *p;
-      c.range = 3000;
       map_.setCamera(c);
     }
   });
@@ -356,9 +263,8 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
     }
   });
   connect(tabs, &QTabWidget::currentChanged, this, [this](int page) {
-    pickEndpoint_ = 0;
     map_.endPointCapture(this);
-    if (drawing_ && page == 2) {
+    if (drawing_ && page == 1) {
       map_.beginPointCapture(this);
       drawPreview();
     } else if (drawing_)
@@ -367,13 +273,6 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
   connect(&map_, &MapWidget::pointSelected, this, [this](Coordinate p, double, bool, bool) {
     if (!isVisible())
       return;
-    if (pickEndpoint_) {
-      (pickEndpoint_ == 1 ? start_ : end_)->setText(coordinateText(p));
-      pickEndpoint_ = 0;
-      if (!drawing_ || !title_->isVisible())
-        map_.endPointCapture(this);
-      return;
-    }
     if (!drawing_ || !title_->isVisible())
       return;
     if (drawingPoints_.size() >= 2000) {
@@ -392,19 +291,6 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
   basemap_->addItem("Esri satellite", "satellite");
   basemap_->addItem("OpenStreetMap", "streets");
   displayForm->addRow("Basemap", basemap_);
-  style_ = new QComboBox;
-  style_->setObjectName("displayStyle");
-  for (const auto &pair : QVector<QPair<QString, QString>>{{"Standard", "standard"},
-                                                           {"Monochrome", "monochrome"},
-                                                           {"Night vision display", "nightVision"},
-                                                           {"Thermal-style display", "thermal"}})
-    style_->addItem(pair.first, pair.second);
-  displayForm->addRow("Display style", style_);
-  auto *styleHelp = new QLabel("Display styles recolour basemap/daily imagery only. Night vision "
-                               "and thermal-style display do not represent sensor measurements. "
-                               "Scientific product previews retain their original colours.");
-  styleHelp->setWordWrap(true);
-  display->addWidget(styleHelp);
   imagery_ = new QComboBox;
   imagery_->setObjectName("dailySource");
   for (const auto s : {DailySource::Off, DailySource::TrueColor, DailySource::Terra,
@@ -435,8 +321,6 @@ MapToolsWindow::MapToolsWindow(const QString &profile, MapWidget &map, DomainWin
   display->addStretch();
   connect(basemap_, &QComboBox::currentIndexChanged, this,
           [this] { map_.setStreets(basemap_->currentData() == "streets"); });
-  connect(style_, &QComboBox::currentIndexChanged, this,
-          [this] { map_.setDisplayStyle(style_->currentData().toString()); });
   connect(terrain_, &QCheckBox::toggled, &map_, &MapWidget::setTerrain);
   connect(imagery_, &QComboBox::currentIndexChanged, this, &MapToolsWindow::updateDaily);
   connect(date_, &QDateEdit::dateChanged, this, &MapToolsWindow::updateDaily);
@@ -718,7 +602,6 @@ QJsonObject MapToolsWindow::workspace() const {
   auto state = extensions_.isEmpty() ? defaultWorkspace() : extensions_;
   const auto c = domain_.network().configuration();
   state["camera"] = map_.camera().json();
-  state["satelliteGroup"] = c.satelliteGroup;
   state["transitOperator"] = c.transitID;
   state["cameraProvider"] = c.cameraProvider;
   state["sentinelCollection"] = c.sentinelKind;
@@ -728,7 +611,6 @@ QJsonObject MapToolsWindow::workspace() const {
       layers.append(feed.id);
   state["layers"] = layers;
   state["basemap"] = map_.streets() ? "streets" : "satellite";
-  state["style"] = map_.displayStyle();
   state["imagery"] = imagery_->currentData().toString();
   state["opacity"] = opacity_->value() / 100.0;
   state["solar"] = solar_->isChecked();
@@ -748,8 +630,7 @@ void MapToolsWindow::applyWorkspace(const QJsonObject &input, bool preserveAnnot
     annotations_.replace(state["annotations"].toArray());
   extensions_ = state;
   applying_ = true;
-  domain_.setConfiguration({state["satelliteGroup"].toString(), state["transitOperator"].toString(),
-                            state["cameraProvider"].toString(),
+  domain_.setConfiguration({state["transitOperator"].toString(), state["cameraProvider"].toString(),
                             state["sentinelCollection"].toString()});
   const auto layers = state["layers"].toArray();
   for (const auto &feed : domainFeeds())
@@ -757,7 +638,6 @@ void MapToolsWindow::applyWorkspace(const QJsonObject &input, bool preserveAnnot
   if (auto c = Camera::read(state["camera"].toObject()))
     map_.setCamera(*c);
   basemap_->setCurrentIndex(basemap_->findData(state["basemap"].toString()));
-  style_->setCurrentIndex(style_->findData(state["style"].toString()));
   imagery_->setCurrentIndex(imagery_->findData(state["imagery"].toString()));
   opacity_->setValue(qRound(state["opacity"].toDouble() * 100));
   terrain_->setChecked(state["terrain"].toBool(true));
@@ -766,7 +646,6 @@ void MapToolsWindow::applyWorkspace(const QJsonObject &input, bool preserveAnnot
   if (date.isValid())
     date_->setDate(date);
   map_.setStreets(state["basemap"] == "streets");
-  map_.setDisplayStyle(state["style"].toString());
   map_.setTerrain(state["terrain"].toBool(true));
   applying_ = false;
   updateDaily();
@@ -848,14 +727,12 @@ void MapToolsWindow::persistDraft() {
 }
 void MapToolsWindow::hideEvent(QHideEvent *event) {
   map_.endPointCapture(this);
-  pickEndpoint_ = 0;
   persistDraft();
   QDialog::hideEvent(event);
 }
 void MapToolsWindow::synchronizeDisplayControls() {
-  const QSignalBlocker a(basemap_), b(style_), c(terrain_);
+  const QSignalBlocker a(basemap_), b(terrain_);
   basemap_->setCurrentIndex(basemap_->findData(map_.streets() ? "streets" : "satellite"));
-  style_->setCurrentIndex(style_->findData(map_.displayStyle()));
   terrain_->setChecked(map_.terrainEnabled());
 }
 void MapToolsWindow::showEvent(QShowEvent *event) {

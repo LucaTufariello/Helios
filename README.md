@@ -6,7 +6,7 @@ floating tools and a separate Mission Control window share the same areas,
 imagery and evidence.
 
 Helios is a single **C++20 / Qt 6 Widgets** application for **Apple Silicon macOS
-and Linux**. It implements the GPU globe and shared Cesium scene engine, 19 source
+and Linux**. It implements the GPU globe and shared Cesium scene engine, 15 source
 layers, map tools, optical/SAR processing controls, infrastructure review, Mission
 Control timelines/monitors and optional local CPU model proposals. Linux builds and
 actual Wayland/Vulkan checks run on Omarchy with a GTX 1070. Platform and scientific
@@ -107,7 +107,7 @@ Mission Control sidebar. Search is available with **Ctrl+K** on Linux;
 and keyboard access.
 
 - **Map:** geographic search, terrain and 3D Tiles, layers, record inspection,
-  raw data, annotations, directions and saved view state.
+  raw data, annotations and saved view state.
 - **Satellite:** a searchable saved library, dated optical acquisitions,
   Sentinel-1 GRD search/download/processing and infrastructure change review.
   Sentinel-2 is the default optical source. CBERS-4A and imported PRISMA products
@@ -203,7 +203,6 @@ recorded in migration status.
 - `native/desktop/`: C++20/Qt client, GPU map, source/workflow/storage modules and tests.
 - `native/scene/`: shared C++ scene adapter and pinned Cesium Native build.
 - `native/shared/`: portable C++20 geography library.
-- `native/sgp4/`: native Vallado SGP4/SDP4 propagation.
 - `native/workers/`: owned Python scientific workers, their tests and validation tools.
 - `native/resources/`: canonical bundled reference datasets and transit registry.
 - `docs/`: maintained workflow and architecture guides.

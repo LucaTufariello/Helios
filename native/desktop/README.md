@@ -48,8 +48,8 @@ acceptance gates are recorded in [migration status](../../docs/MIGRATION-STATUS.
   Python/SNAP processing with owned jobs, cancellation and restart recovery.
 - Saved infrastructure sites, compatible acquisition pairs, shared calibrated-power
   change review, analyst decisions/drafts, map previews and original scientific exports.
-- Place lookup, car/foot/bike directions, annotation drawing, workspace JSON and
-  `helios://` view/workspace links, display styles and approximate solar terminator.
+- Place lookup, annotation drawing, workspace JSON and
+  `helios://` view/workspace links and approximate solar terminator.
 - Dated NASA daily visualization layers with bounded caches and explicit source/date
   attribution; these are distinct from dated scientific acquisitions.
 - Optional local ONNX Runtime CPU assistance with explicit model contracts, retained
