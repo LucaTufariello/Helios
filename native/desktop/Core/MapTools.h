@@ -84,7 +84,7 @@ private:
   QJsonArray values_;
 };
 QJsonObject defaultWorkspace();
-// Validates known Swift v1 fields while preserving unknown fields for local I/O.
+// Validates known legacy v1 fields while preserving unknown fields for local I/O.
 QJsonObject validatedWorkspace(QJsonObject workspace);
 QJsonObject loadWorkspace(const QString &filename);
 void saveWorkspace(const QString &filename, const QJsonObject &workspace);

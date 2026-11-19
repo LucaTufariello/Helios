@@ -263,7 +263,7 @@ def detect(request, contract_sha):
     mapped = [geographic_box(box, request["bounds"]) for box in boxes]
     selected = sorted((i for i, score in enumerate(scores) if score >= request["threshold"]), key=lambda i: (-float(scores[i]), i))[:200]
     source_sha = hashlib.sha256(source).hexdigest()
-    now = time.time() - 978307200  # Swift Foundation epoch, retained by mission JSON.
+    now = time.time() - 978307200  # Foundation epoch retained by mission JSON.
     proposals = []
     transform = "RGB full-image bilinear stretch " + ("0..255; TinyYOLOv2 VOC anchors; class NMS IoU .5" if request["backend"] == "onnx-tinyyolov2-voc-cpu" else "/255; NCHW") + "; upper-left normalized xyxy to EPSG:4326 preview edges"
     for index in selected:

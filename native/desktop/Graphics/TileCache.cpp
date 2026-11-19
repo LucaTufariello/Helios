@@ -234,8 +234,8 @@ std::shared_ptr<TileData> TileCache::image(TileID id, bool streets) {
 std::optional<double> TileCache::height(Coordinate p) const {
   if (terrainLevels_ == 0 || !p.valid())
     return {};
-  const double latitude = std::clamp(p.latitude, -85.05112878, 85.05112878) *
-                          std::numbers::pi / 180;
+  const double latitude =
+      std::clamp(p.latitude, -85.05112878, 85.05112878) * std::numbers::pi / 180;
   const double mercatorX = (p.longitude + 180) / 360;
   const double mercatorY = (1 - std::asinh(std::tan(latitude)) / std::numbers::pi) / 2;
   unsigned remaining = terrainLevels_;
@@ -245,8 +245,8 @@ std::optional<double> TileCache::height(Coordinate p) const {
     const int count = 1 << z;
     const double scaledX = mercatorX * count, scaledY = mercatorY * count;
     const int rawX = int(std::floor(scaledX));
-    const TileID id{rawX == count ? 0 : rawX,
-                    std::clamp(int(std::floor(scaledY)), 0, count - 1), z};
+    const TileID id{rawX == count ? 0 : rawX, std::clamp(int(std::floor(scaledY)), 0, count - 1),
+                    z};
     const auto *data = terrainIndex_.value(terrainKey(id), nullptr);
     if (!data)
       continue;

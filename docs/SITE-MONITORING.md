@@ -37,7 +37,7 @@ Install the optional registration dependencies into the selected **raster Python
 not the application's inference environment or system Python:
 
 ```sh
-/path/to/raster/python -m pip install -r native/macos/Sources/HeliosMac/Resources/SAR/requirements-monitoring.txt
+/path/to/raster/python -m pip install -r native/workers/SAR/requirements-monitoring.txt
 ```
 
 This adds scikit-image 0.26.0 and its dependencies. The ordinary map, optical and
@@ -120,10 +120,9 @@ clears task-origin links. Restarted queued/interrupted runs require an explicit
 retry; completed owned jobs can recover their result into the inbox. No saved PID
 is used to signal a process.
 
-Qt and Swift have matching optional typed persistence extensions. The Swift
-reference preserves these records and cleans up removed references; its UI does
-not implement this monitoring workbench. Use updated clients and separate working
-copies. Fresh Swift/macOS execution remains a platform acceptance check.
+The monitoring records are optional typed extensions of the mission document.
+The Qt client preserves them, writes them atomically and cleans up removed
+references. Fresh Apple Silicon execution remains a platform acceptance check.
 
 ## Civilian evaluation case
 
@@ -142,11 +141,11 @@ are covered. The acquisition candidates require manual download/processing and
 independently dated optical labels before real-data accuracy can be evaluated.
 
 ```sh
-.venv/bin/python3 native/macos/Validation/evaluate_monitoring.py \
+.venv/bin/python3 native/workers/validation/evaluate_monitoring.py \
   --case docs/evaluation/gagarin-development.json --discover \
   --report output/qa/gagarin-catalogue.json
 
-.venv/bin/python3 native/macos/Validation/evaluate_monitoring.py \
+.venv/bin/python3 native/workers/validation/evaluate_monitoring.py \
   --case docs/evaluation/gagarin-held-out.json \
   --review /path/to/completed/job/product/result.json \
   --report output/qa/gagarin-held-out.json
@@ -164,8 +163,8 @@ performance at other sites, seasons or geometries.
 ## Verification
 
 `make test-desktop` includes monitoring persistence, cleanup, queue limits,
-manual priority, setup drafts, stale review dialogs and shared Swift/Qt fixtures.
-With the optional environment installed, `native/macos/test-sar.sh` additionally
+manual priority, setup drafts, stale review dialogs and shared document fixtures.
+With the optional environment installed, `native/workers/test.sh` additionally
 checks fractional shifts, independent deformation rejection, ambiguous/invalid
 controls, original preservation, retained real change, source changes and labelled
 generated evaluation. Set `HELIOS_SAR_PYTHON` to that environment's interpreter.

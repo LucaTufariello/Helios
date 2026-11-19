@@ -12,7 +12,8 @@ namespace {
 int checks = 0;
 void require(bool ok, const char *message) {
   ++checks;
-  if (!ok) throw std::runtime_error(message);
+  if (!ok)
+    throw std::runtime_error(message);
 }
 void near(double actual, double expected, double tolerance, const char *message) {
   require(std::isfinite(actual) && std::abs(actual - expected) <= tolerance, message);
@@ -34,7 +35,8 @@ void coordinates() {
         require(ge_wgs84_from_ecef(p, &result), "round trip inverse");
         near(result.latitude, lat, 1e-8, "round trip latitude");
         near(result.height, height, 0.001, "round trip height");
-        if (std::abs(lat) < 90.0) near(result.longitude, lon, 1e-8, "round trip longitude");
+        if (std::abs(lat) < 90.0)
+          near(result.longitude, lon, 1e-8, "round trip longitude");
       }
     }
   }
@@ -59,12 +61,16 @@ void rays() {
   require(ge_ray_ellipsoid_distance(ray, &distance), "inside exit");
   near(distance, 6378137, 1e-6, "inside exit distance");
   require(ge_ray_make({0.25, 0.25, 3}, {0, 0, -10}, &ray), "triangle ray");
-  require(ge_ray_triangle_distance(ray, {0, 0, 0}, {1, 0, 0}, {0, 1, 0}, &distance), "triangle hit");
+  require(ge_ray_triangle_distance(ray, {0, 0, 0}, {1, 0, 0}, {0, 1, 0}, &distance),
+          "triangle hit");
   near(distance, 3, 1e-12, "triangle distance");
-  require(ge_ray_triangle_distance(ray, {0, 1, 0}, {1, 0, 0}, {0, 0, 0}, &distance), "two-sided hit");
-  require(!ge_ray_triangle_distance(ray, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, &distance), "degenerate triangle");
+  require(ge_ray_triangle_distance(ray, {0, 1, 0}, {1, 0, 0}, {0, 0, 0}, &distance),
+          "two-sided hit");
+  require(!ge_ray_triangle_distance(ray, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, &distance),
+          "degenerate triangle");
   ray.direction = {0, 0, 1};
-  require(!ge_ray_triangle_distance(ray, {0, 0, 0}, {1, 0, 0}, {0, 1, 0}, &distance), "triangle behind ray");
+  require(!ge_ray_triangle_distance(ray, {0, 0, 0}, {1, 0, 0}, {0, 1, 0}, &distance),
+          "triangle behind ray");
 }
 void cameras() {
   for (double latitude : {-89.0, 0.0, 45.0, 90.0}) {
@@ -72,7 +78,8 @@ void cameras() {
       for (double heading : {0.0, 90.0, 123.0, 270.0}) {
         for (double tilt : {0.0, 55.0, 80.0}) {
           GECameraBasis basis{};
-          require(ge_camera_basis(latitude, longitude, 800, heading, tilt, 2100, &basis), "camera basis");
+          require(ge_camera_basis(latitude, longitude, 800, heading, tilt, 2100, &basis),
+                  "camera basis");
           GERay ray{};
           require(ge_camera_ray(basis, 0, 0, 1.8, &ray), "center ray");
           const GEVector3 target{ray.origin.x + ray.direction.x * 800,
@@ -82,7 +89,8 @@ void cameras() {
           near(target.y, basis.target.y, 1e-8, "center ray target y");
           near(target.z, basis.target.z, 1e-8, "center ray target z");
           near(basis.forward.x * basis.right.x + basis.forward.y * basis.right.y +
-                   basis.forward.z * basis.right.z, 0, 1e-14, "camera orthogonality");
+                   basis.forward.z * basis.right.z,
+               0, 1e-14, "camera orthogonality");
           require(ge_camera_ray(basis, -0.8, 0.7, 1.8, &ray), "off-center ray");
         }
       }
@@ -97,21 +105,25 @@ void invalidInputs() {
   GERay ray{};
   GECameraBasis basis{};
   double distance = -1;
-  require(!ge_wgs84_to_ecef(91, 0, 0, &vector) && vector.x == 1, "invalid latitude preserves output");
+  require(!ge_wgs84_to_ecef(91, 0, 0, &vector) && vector.x == 1,
+          "invalid latitude preserves output");
   require(!ge_wgs84_to_ecef(0, 181, 0, &vector), "invalid longitude");
   require(!ge_wgs84_to_ecef(nan, 0, 0, &vector), "NaN latitude");
   require(!ge_wgs84_to_ecef(0, 0, inf, &vector), "infinite height");
   require(!ge_wgs84_to_ecef(0, 0, 0, nullptr), "null coordinate output");
-  require(!ge_wgs84_from_ecef({0, 0, 0}, &point) && point.latitude == 1, "undefined origin preserves output");
+  require(!ge_wgs84_from_ecef({0, 0, 0}, &point) && point.latitude == 1,
+          "undefined origin preserves output");
   require(!ge_wgs84_from_ecef({inf, 0, 0}, &point), "invalid inverse input");
   require(!ge_wgs84_from_ecef({1, 2, 3}, nullptr), "null inverse output");
   require(!ge_ray_make({nan, 0, 0}, {1, 0, 0}, &ray), "invalid ray origin");
   require(!ge_ray_make({0, 0, 0}, {0, 0, 0}, &ray), "zero direction");
   require(!ge_ray_make({0, 0, 0}, {1e-14, 0, 0}, &ray), "near-zero direction");
   require(!ge_ray_make({0, 0, 0}, {1, 0, 0}, nullptr), "null ray output");
-  require(!ge_ray_ellipsoid_distance(ray, &distance) && distance == -1, "invalid hit preserves output");
+  require(!ge_ray_ellipsoid_distance(ray, &distance) && distance == -1,
+          "invalid hit preserves output");
   require(!ge_ray_ellipsoid_distance(ray, nullptr), "null distance output");
-  require(!ge_ray_triangle_distance(ray, {nan, 0, 0}, {}, {}, &distance), "invalid triangle vertex");
+  require(!ge_ray_triangle_distance(ray, {nan, 0, 0}, {}, {}, &distance),
+          "invalid triangle vertex");
   require(!ge_camera_basis(0, 0, 499, 0, 0, 0, &basis), "invalid range");
   require(!ge_camera_basis(0, 0, 500, 360, 0, 0, &basis), "invalid heading");
   require(!ge_camera_basis(0, 0, 500, 0, 81, 0, &basis), "invalid tilt");

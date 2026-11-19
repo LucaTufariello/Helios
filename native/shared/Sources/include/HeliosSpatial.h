@@ -1,7 +1,7 @@
 #ifndef HELIOS_SPATIAL_H
 #define HELIOS_SPATIAL_H
 
-// Portable double-precision geography shared by the Swift and future Qt clients.
+// Portable double-precision geography shared by the native desktop clients.
 // No Apple, Qt, CUDA, renderer or allocator dependency crosses this boundary.
 // Functions return 1 on success, 0 on invalid input/no intersection. An output
 // pointer must be non-null and is written only on success. Distances are metres,
@@ -36,8 +36,8 @@ int ge_ray_triangle_distance(GERay ray, GEVector3 a, GEVector3 b, GEVector3 c, d
 // Matches the existing camera: range 500..60,000,000 m, heading [0,360),
 // tilt 0..80 degrees. Height describes the rendered target surface, not a DEM
 // accuracy guarantee. The basis is shared by display and geographic picking.
-int ge_camera_basis(double latitude, double longitude, double range, double heading,
-                    double tilt, double target_height, GECameraBasis *output);
+int ge_camera_basis(double latitude, double longitude, double range, double heading, double tilt,
+                    double target_height, GECameraBasis *output);
 int ge_camera_ray(GECameraBasis basis, double x, double y, double aspect, GERay *output);
 
 #ifdef __cplusplus

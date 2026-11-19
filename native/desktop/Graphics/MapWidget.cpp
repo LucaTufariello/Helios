@@ -34,8 +34,7 @@ QImage whiteImage() {
   image.fill(Qt::white);
   return image;
 }
-bool intersectsBounds(const GERay &ray, GEVector3 minimum, GEVector3 maximum,
-                      double nearest) {
+bool intersectsBounds(const GERay &ray, GEVector3 minimum, GEVector3 maximum, double nearest) {
   double near = 0, far = nearest;
   const std::array<double, 3> origins{ray.origin.x, ray.origin.y, ray.origin.z};
   const std::array<double, 3> directions{ray.direction.x, ray.direction.y, ray.direction.z};
@@ -61,7 +60,7 @@ bool intersectsBounds(const GERay &ray, GEVector3 minimum, GEVector3 maximum,
   return true;
 }
 std::optional<QPointF> projectPoint(GEVector3 world, const GECameraBasis &basis,
-                                   const QMatrix4x4 &projection, int width, int height) {
+                                    const QMatrix4x4 &projection, int width, int height) {
   const auto delta = subtract(world, basis.eye);
   const double distance = std::sqrt(dot(delta, delta));
   if (distance <= 0)
@@ -71,8 +70,8 @@ std::optional<QPointF> projectPoint(GEVector3 world, const GECameraBasis &basis,
       surface + 100 < distance)
     return {};
   const auto relative = scale(subtract(world, basis.target), 1 / 6378137.0);
-  const auto clip = projection *
-                    QVector4D(float(relative.x), float(relative.y), float(relative.z), 1);
+  const auto clip =
+      projection * QVector4D(float(relative.x), float(relative.y), float(relative.z), 1);
   if (clip.w() <= 0)
     return {};
   const auto ndc = clip.toVector3DAffine();
@@ -411,12 +410,12 @@ std::optional<QPointF> MapWidget::screenPoint(Coordinate point,
   if (!point.valid())
     return {};
   const auto h = targetHeight();
-  const auto world = point.ecef(altitude ? *altitude
-                                      : terrain_ ? std::max(0.0, tiles_.height(point).value_or(0)) + 8
-                                                 : 8);
+  const auto world = point.ecef(altitude   ? *altitude
+                                : terrain_ ? std::max(0.0, tiles_.height(point).value_or(0)) + 8
+                                           : 8);
   return projectPoint(world, camera_.basis(h),
-                      viewProjection(camera_, h, double(width()) / std::max(1, height())),
-                      width(), height());
+                      viewProjection(camera_, h, double(width()) / std::max(1, height())), width(),
+                      height());
 }
 void MapWidget::setOverlays(const QVector<ProductLayer> &products) {
   if (products.size() > 2 || std::any_of(products.begin(), products.end(), [](const auto &p) {
@@ -492,9 +491,9 @@ MapWidget::CpuMesh MapWidget::tileMesh(TileID id, const QImage &image) const {
   m.image = image;
   m.display = true;
   m.origin = id.coordinate(0.5, 0.5).ecef();
-  // Coarse imagery triangles must stay above the fallback globe. A fixed
-  // 24-cell grid at zoom 1/2 cuts kilometres into the ellipsoid and lets the
-  // more finely tessellated globe show through as dark horizontal seams.
+  // Keep coarse imagery close to the ellipsoid. A fixed 24-cell grid at zoom 1/2
+  // cuts kilometres into it, which shows as faceting and as dark seams where the
+  // fallback globe's tessellation meets the imagery surface.
   const int side = std::max(24, 256 >> std::min(id.zoom, 8));
   m.positions.reserve((side + 1) * (side + 1));
   m.vertices.reserve((side + 1) * (side + 1) * 7);
@@ -605,8 +604,10 @@ MapWidget::CpuMesh MapWidget::markerMesh(const MarkerLayer &layer) const {
   const double size = std::clamp(camera_.range / std::max(1, height()) * 0.45, 1.0, 40000.0);
   const auto right = scale(basis.right, size), up = scale(basis.up, size);
   for (const auto &marker : layer.markers) {
-    const double elevation = marker.altitude ? *marker.altitude
-        : (terrain_ ? std::max(0.0, tiles_.height(marker.coordinate).value_or(0)) : 0) + 12;
+    const double elevation =
+        marker.altitude
+            ? *marker.altitude
+            : (terrain_ ? std::max(0.0, tiles_.height(marker.coordinate).value_or(0)) : 0) + 12;
     const auto p = marker.coordinate.ecef(elevation);
     if (!projectPoint(p, basis, projection, width(), height()))
       continue;
@@ -626,6 +627,7 @@ MapWidget::CpuMesh MapWidget::globeMesh() const {
   CpuMesh m;
   m.image = whiteImage();
   m.tint = {0.08f, 0.14f, 0.19f, 1};
+  m.background = true;
   constexpr int rows = 64, columns = 128;
   for (int y = 0; y <= rows; ++y)
     for (int x = 0; x <= columns; ++x)
@@ -673,7 +675,7 @@ void MapWidget::initialize(QRhiCommandBuffer *) {
   const auto vertexShader = shader(":/helios/shaders/globe.vert.qsb"),
              fragmentShader = shader(":/helios/shaders/globe.frag.qsb");
   auto pipeline = [&](bool line, bool overlay, bool scene = false, bool doubleSided = true,
-                      bool list = false) {
+                      bool list = false, bool depth = true) {
     auto p = std::unique_ptr<QRhiGraphicsPipeline>(rhi()->newGraphicsPipeline());
     p->setShaderStages(
         {{QRhiShaderStage::Vertex, vertexShader}, {QRhiShaderStage::Fragment, fragmentShader}});
@@ -686,8 +688,8 @@ void MapWidget::initialize(QRhiCommandBuffer *) {
     p->setTopology(line ? (list ? QRhiGraphicsPipeline::Lines : QRhiGraphicsPipeline::LineStrip)
                         : QRhiGraphicsPipeline::Triangles);
     p->setCullMode(scene && !doubleSided ? QRhiGraphicsPipeline::Back : QRhiGraphicsPipeline::None);
-    p->setDepthTest(true);
-    p->setDepthWrite(!line && !overlay);
+    p->setDepthTest(depth);
+    p->setDepthWrite(depth && !line && !overlay);
     p->setDepthOp(QRhiGraphicsPipeline::GreaterOrEqual);
     p->setSampleCount(sampleCount());
     QRhiGraphicsPipeline::TargetBlend blend;
@@ -707,6 +709,10 @@ void MapWidget::initialize(QRhiCommandBuffer *) {
   overlayPipeline_ = pipeline(false, true);
   lines_ = pipeline(true, false);
   lineList_ = pipeline(true, false, false, true, true);
+  // The fallback globe is a background fill, not geometry that occludes
+  // anything: it paints first and never touches the depth buffer, so imagery
+  // always wins over it regardless of the depth buffer's resolution at range.
+  background_ = pipeline(false, false, false, true, false, false);
   for (int i = 0; i < 4; ++i)
     scenePipelines_[i] = pipeline(false, i >= 2, true, i % 2);
   queueStatusChanged();
@@ -829,7 +835,7 @@ void MapWidget::drawMesh(const QString &key, CpuMesh cpu, quint64 revision, QRhi
   drawn_.append(key);
 }
 void MapWidget::render(QRhiCommandBuffer *cb) {
-  if (!triangles_ || !overlayPipeline_ || !lines_)
+  if (!triangles_ || !overlayPipeline_ || !lines_ || !background_)
     return;
   drawn_.clear();
   const double height = targetHeight();
@@ -988,10 +994,11 @@ void MapWidget::render(QRhiCommandBuffer *cb) {
   for (const auto &key : drawn_) {
     auto &m = *meshes_[key];
     cb->setGraphicsPipeline(
-        m.cpu.scene     ? scenePipelines_[int(m.cpu.blend) * 2 + int(m.cpu.doubleSided)].get()
-        : m.cpu.line    ? (m.cpu.lineList ? lineList_.get() : lines_.get())
-        : m.cpu.overlay ? overlayPipeline_.get()
-                        : triangles_.get());
+        m.cpu.background ? background_.get()
+        : m.cpu.scene    ? scenePipelines_[int(m.cpu.blend) * 2 + int(m.cpu.doubleSided)].get()
+        : m.cpu.line     ? (m.cpu.lineList ? lineList_.get() : lines_.get())
+        : m.cpu.overlay  ? overlayPipeline_.get()
+                         : triangles_.get());
     cb->setShaderResources(m.bindings.get());
     const QRhiCommandBuffer::VertexInput input(m.vertices.get(), 0);
     cb->setVertexInput(0, 1, &input, m.indices.get(), 0, QRhiCommandBuffer::IndexUInt32);
@@ -1023,6 +1030,7 @@ void MapWidget::releaseResources() {
   overlayPipeline_.reset();
   lines_.reset();
   lineList_.reset();
+  background_.reset();
   for (auto &pipeline : scenePipelines_)
     pipeline.reset();
   layoutBindings_.reset();

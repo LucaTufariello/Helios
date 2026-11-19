@@ -1,11 +1,10 @@
 # Desktop workspace design
 
-The Qt client follows the Swift macOS workspace's organization: a persistent map,
+The Qt client keeps the native workspace organization: a persistent map,
 Map / Satellite / Marine / Sky / Ground navigation, floating analysis palettes,
 and a separate Mission Control window connected to the same working data.
-The Qt visual system is applied to both its Linux and macOS builds. The Swift
-reference retains its native appearance; exact pixel parity and fresh Mac
-execution have not been verified on this Linux machine.
+The Qt visual system is applied to both its Linux and macOS builds; fresh Apple
+Silicon execution remains an acceptance check.
 
 ## Map workspace
 
@@ -48,7 +47,7 @@ draft resolution and review states retain their existing behavior.
 Overview, Evidence, Reviews, Notes and Tasks. Curated links, pinned acquisitions
 and task origins persist in optional mission metadata. Existing map, Timeline
 and SAR tools receive the selected context. See [site dossiers](SITE-DOSSIERS.md)
-for workflow, cleanup and Swift compatibility details.
+for workflow, cleanup and compatibility details.
 
 ## Linux keyboard access
 

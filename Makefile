@@ -1,10 +1,10 @@
-.PHONY: build run build-shared build-desktop test test-shared test-desktop test-raster setup-raster format format-check check
+.PHONY: build run build-shared build-desktop test-shared test-desktop test-raster setup-raster format format-check check
 
 build:
-	./native/macos/build-app.sh
+	./native/desktop/build.sh
 
 run: build
-	open output/native/Helios.app
+	open output/desktop/build/bin/HeliosDesktop.app
 
 build-shared:
 	cmake -S . -B output/shared/build -DCMAKE_BUILD_TYPE=Release
@@ -19,19 +19,16 @@ build-desktop:
 test-desktop: build-desktop
 	ctest --test-dir output/desktop/build --output-on-failure
 
-test:
-	./native/macos/test.sh
-
 test-raster:
-	./native/macos/test-sar.sh
+	./native/workers/test.sh
 
 setup-raster:
-	./native/macos/setup-sar.sh
+	./native/workers/setup-raster.sh
 
 format:
-	./native/macos/format.sh --write
+	./native/format.sh --write
 
 format-check:
-	./native/macos/format.sh --check
+	./native/format.sh --check
 
-check: format-check test-shared test test-raster
+check: format-check test-shared test-desktop test-raster

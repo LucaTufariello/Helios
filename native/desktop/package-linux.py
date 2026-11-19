@@ -269,7 +269,7 @@ def main() -> None:
                          (ROOT / "DATA_SOURCES.md", "DATA-SOURCES.md"),
                          (build / "SCENE-NOTICES.txt", "SCENE-NOTICES.txt")):
         copy_file(source, licensing / name)
-    resources = ROOT / "native/macos/Sources/HeliosCore/Resources"
+    resources = ROOT / "native/resources"
     copy_file(resources / "SGP4-LICENSE.txt", licensing / "SGP4-LICENSE.txt")
     for source in resources.glob("*/README.md"):
         copy_file(source, licensing / "datasets" / source.parent.name / source.name)
@@ -324,7 +324,7 @@ def main() -> None:
         sources.append(f"- {name} {version}: https://gitlab.archlinux.org/archlinux/packaging/packages/{name}/-/tree/{version}")
     sources += ["", "Cesium and its static dependencies are pinned in the source build. Their license texts",
                 "and component names are in SCENE-NOTICES.txt. The source build scripts fetch their pinned",
-                "upstream revisions. Scientific workers are the same source files used by the Swift client.",
+                "upstream revisions. Scientific workers are shared source files staged by the CMake build.",
                 "The package also contains the distribution's FFmpeg executable and libav/libsw runtime",
                 "libraries for isolated native clip playback. Their matching upstream source and Arch",
                 "recipe/patch archive accompanies this package as `" + media_source.name + "` (SHA-256 `" + digest(media_source) + "`).",

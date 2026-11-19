@@ -11,7 +11,7 @@ expensive work on the application's CPU/render thread: repeated elevation
 lookups, whole-surface rebuilds during terrain arrivals, per-marker camera
 calculations and triangle searches during picking. Additional RAM does not
 shorten those operations. The results below describe this machine and generated
-workload; they do not establish a hardware comparison with the Swift Mac client.
+workload; they do not establish a hardware comparison with earlier Mac measurements.
 
 ## Changes
 

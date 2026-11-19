@@ -1,6 +1,6 @@
 # NASA daily visualization layer
 
-`Core/DailyImagery.{h,cpp}` ports the existing Swift `Imagery.swift` choices:
+`Core/DailyImagery.{h,cpp}` implements the daily-imagery choices:
 Off, VIIRS true colour, Terra true colour, night lights and thermal anomalies.
 The cache starts **Off** and sends no startup requests. The map chooses an
 explicit UTC calendar date. That date identifies the requested daily product;
@@ -27,7 +27,7 @@ another date or another radiance product. The source label identifies this archi
 Thermal WMTS is currently advertised as vector tiles. The cache requests NASA's
 WMS PNG rendering of the same thermal layer/date with the exact EPSG:3857 tile
 bounding box, fixed 256×256 output and transparency, preserving the raster map
-workflow. These are corrections to the old Swift universal Level9/PNG URLs,
+workflow. These are corrections to the earlier universal Level9/PNG URLs,
 which did not work for these two sources in the actual service check.
 
 `DailyImageryCache(directory, networking, parent, optionalNetworkManager)` exposes:

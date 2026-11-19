@@ -372,9 +372,7 @@ InvestigationWorkbench::InvestigationWorkbench(const QString &profile, Missions 
   controls->addWidget(graphDepth_);
   button(controls, "Expand", this,
          [this] { graphDepth_->setValue(std::min(10, graphDepth_->value() + 1)); });
-  button(controls, "Fit", this, [this] {
-    static_cast<GraphView *>(graph_)->fitContents();
-  });
+  button(controls, "Fit", this, [this] { static_cast<GraphView *>(graph_)->fitContents(); });
   graphStatus_ = notice({});
   graphStatus_->setObjectName("connectionsStatus");
   c->addWidget(graphStatus_);

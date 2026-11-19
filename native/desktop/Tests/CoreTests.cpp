@@ -341,7 +341,7 @@ private slots:
     m.addEvidence(products.first().missionEvidence());
     validateMissions(m.plans());
   }
-  void sharedSwiftQtFixture() {
+  void sharedLegacyFixture() {
     const auto filename = QStringLiteral(HELIOS_FIXTURE_DIR) + "/cross-platform-mission.json";
     if (!QFileInfo::exists(filename))
       QSKIP("Cross-client fixture is generated after native GPU validation.");

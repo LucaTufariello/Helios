@@ -345,7 +345,7 @@ private slots:
       QVERIFY(p);
       for (int i = 0; i < 3; ++i)
         QVERIFY2(std::abs((*p)[i] - row["position"].toArray()[i].toDouble()) < 1e-6,
-                 "Shared Vallado propagation differs from the Swift fixture");
+                 "Shared Vallado propagation differs from the reference fixture");
       const auto snapshot = catalog->snapshot(catalog->satellites[0].epoch);
       QCOMPARE(snapshot.records.size(), 1);
       QCOMPARE(snapshot.records[0].observedAt, catalog->satellites[0].epoch);

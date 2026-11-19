@@ -63,7 +63,7 @@ For isolated checks, use a new profile:
 prove hardware rendering, HTTPS trust or scientific processing. Run GPU checks
 inside the actual graphical session and inspect their report and screenshots.
 `--validate-live` additionally exercises HTTPS map/terrain requests. A clean
-profile does not alter an existing Swift or Qt library.
+profile does not alter an existing mission or satellite library.
 
 The repeatable package check copies the app to a disposable directory outside
 the checkout, checks its hashes and Qt resolution, and exercises user
@@ -103,8 +103,8 @@ licenses, and verifies an ad-hoc signature. The CI Qt job builds and checks that
 bundle on an arm64 runner. Its notice collector retains installed Homebrew Qt
 and dependency license files, source recipes, and deployed library linkage;
 missing notices are explicitly reported. A hosted compile/test job does not establish Metal,
-physical input, accessibility or Apple M2 runtime acceptance. Keep the existing
-Swift app until the replacement passes the migration gates on both platforms.
+physical input, accessibility or Apple M2 runtime acceptance. The Qt client is
+the only application; hosted results do not replace hardware sessions.
 Mac clip playback requires an external `ffmpeg`; the app checks next to its
 executable, standard Homebrew locations, then the executable search path. Missing
 FFmpeg does not prevent ordinary map startup.

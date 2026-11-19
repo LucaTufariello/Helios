@@ -107,11 +107,19 @@ MonitoringInboxPanel::MonitoringInboxPanel(Missions &missions, MonitoringRunner 
     return b;
   };
   action("Draft finding from entry", "inboxDraftFinding", [this] {
-    const auto e=selected(); if(e.isEmpty()) return;
-    emit findingRequested(QJsonObject{{"kind","Monitoring entry"},{"sourceID",e["id"]},
-      {"label",e["title"].toString(e["reason"].toString("Monitoring entry"))},{"record",e},
-      {"areaID",e["areaID"]},{"manifest",runner_.reportFile(e)},
-      {"qualityLimitations","Monitoring event is a candidate for analyst investigation. Registration, coverage and processing limitations in the original entry remain applicable."}});
+    const auto e = selected();
+    if (e.isEmpty())
+      return;
+    emit findingRequested(QJsonObject{
+        {"kind", "Monitoring entry"},
+        {"sourceID", e["id"]},
+        {"label", e["title"].toString(e["reason"].toString("Monitoring entry"))},
+        {"record", e},
+        {"areaID", e["areaID"]},
+        {"manifest", runner_.reportFile(e)},
+        {"qualityLimitations",
+         "Monitoring event is a candidate for analyst investigation. Registration, coverage and "
+         "processing limitations in the original entry remain applicable."}});
   });
   action("Review entry…", "inboxReview", [this] { review(); });
   open_ = action("Open measured review", "inboxOpenReview", [this] {

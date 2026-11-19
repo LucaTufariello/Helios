@@ -1,8 +1,8 @@
 # Native data sources and attribution
 
-The canonical provider names/credits are in
-`native/macos/Sources/HeliosCore/Records.swift`. URLs, bounds and request policies
-live with the native services. This table describes the maintained application;
+The canonical provider names and credits live in
+`native/desktop/Core/DomainFeeds.cpp`. URLs, bounds and request policies live with
+the native services. This table describes the maintained application;
 provider terms control data use independently of the project's MIT source license.
 Free access does not imply unrestricted redistribution or commercial use.
 
@@ -32,8 +32,8 @@ Free access does not imply unrestricted redistribution or commercial use.
 
 ## Canonical bundled resources
 
-`native/macos/Sources/HeliosCore/Resources/` is the only maintained copy of the
-reference data. Its files are packaged directly by SwiftPM:
+`native/resources/` is the only maintained copy of the
+reference data. The CMake build stages these files into the application:
 
 - `datacenters/`: 4,351 OpenStreetMap-derived features, ODbL 1.0. Extraction date
   and original query were not recorded; future updates must record them.
@@ -46,10 +46,10 @@ reference data. Its files are packaged directly by SwiftPM:
 - `transit-feeds.json`: seven admitted public operator feeds with license URLs,
   attribution, allowed headers and geographic bounds. Rome ATAC remains excluded
   under the existing terms decision.
-- `terrain-attribution.json`: source-specific terrain credits.
+- `terrain-attribution.md`: source-specific terrain credits.
 - `SGP4-LICENSE.txt`: orbital-engine source license, separate from data licenses.
 
 Reference geometry describes a static dataset snapshot and does not establish
 current operational status. Resource READMEs retain detailed provenance and terms.
-See [resource maintenance](native/macos/scripts/README.md), [NOTICE.md](NOTICE.md)
+See [resource maintenance](native/resources/README.md), [NOTICE.md](NOTICE.md)
 and the satellite guides for processing-specific provenance and limitations.

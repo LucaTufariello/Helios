@@ -1,15 +1,14 @@
 # Helios C++ / Qt desktop client
 
-This compiled C++20/Qt client implements the macOS/Linux migration workflows.
-It is maintained alongside the functional Swift macOS reference while platform,
-provider and scientific acceptance continue. Current evidence and remaining gates
-are recorded in [migration status](../../docs/MIGRATION-STATUS.md).
+This compiled C++20/Qt client is the Helios desktop application on macOS and
+Linux. The earlier Swift client has been removed. Current evidence and remaining
+acceptance gates are recorded in [migration status](../../docs/MIGRATION-STATUS.md).
 
 ## Implemented
 
 - A shared native analyst design with domain navigation, floating map palettes,
-  compact-window layouts and a Mission Control sidebar following the Swift
-  reference. See the [desktop design guide](../../docs/DESKTOP-DESIGN.md).
+  compact-window layouts and a Mission Control sidebar. See the
+  [desktop design guide](../../docs/DESKTOP-DESIGN.md).
 - Area dossiers with curated evidence, pinned reference acquisitions, scoped reviews,
   notes/tasks and existing map/Timeline/SAR handoffs. See [site dossiers](../../docs/SITE-DOSSIERS.md).
 - Site watches, an inbox, translation-only registration with independent controls,
@@ -57,19 +56,19 @@ are recorded in [migration status](../../docs/MIGRATION-STATUS.md).
   source/model hashes and separately reviewed mission observation proposals.
 
 These workflows are implemented, but Linux fixture/public-source checks do not
-establish complete parity on every platform or provider. Fresh Apple Silicon Qt,
-Swift/Keychain/Metal checks, real SNAP/calibrated SAR pairs, keyed sources and
-physical input/display/accessibility checks remain open. Visual blending and model
+establish complete parity on every platform or provider. Fresh Apple Silicon Qt
+Keychain/Metal checks, real SNAP/calibrated SAR pairs, keyed sources and physical
+input/display/accessibility checks remain open. Visual blending and model
 scores do not imply scientific registration or validated change detection.
 
 ## Build
 
 Requirements: CMake 3.24+, a C++20 compiler and Qt 6.8+ with Core, GUI/private
 headers, Widgets, Network, Concurrent, Test and Shader Tools. Qt 6.11.2 is the
-tested Linux version. The earlier Mac slice has historical Metal evidence; the
-expanded client needs a fresh Mac run. Compile against the Qt build
-that you will run/deploy; RHI private interfaces do not promise compatibility
-across Qt builds.
+tested Linux version. Earlier Mac Metal evidence was recorded for a smaller
+slice; the expanded client needs a fresh Apple Silicon run. Compile against the Qt
+build that you will run/deploy; RHI private interfaces do not promise
+compatibility across Qt builds.
 
 On macOS, install `qtbase` and `qtshadertools` using Homebrew, then:
 
@@ -78,9 +77,9 @@ make test-desktop
 open output/desktop/build/bin/HeliosDesktop.app
 ```
 
-The build script deploys Qt frameworks/plugins into this separate arm64
-bundle and verifies its local ad-hoc signature. It does not replace
-`output/native/Helios.app`. Neither bundle is a notarized public release.
+The build script deploys Qt frameworks/plugins into this arm64 bundle, adds the
+application icon and verifies its local ad-hoc signature. The bundle is not a
+notarized public release.
 
 On Omarchy, use the normal distribution update process and then install development
 dependencies, leaving the existing GPU driver unchanged:
@@ -127,8 +126,8 @@ It never automatically imports or replaces the existing macOS mission library.
 - **Mission Control → Open:** choose an existing mission JSON library. **Save as**
   writes a separate copy; **Save** deliberately updates the selected file after
   conflict checks. Concurrent changes cause a refusal rather than silent overwrite.
-  Use separate working copies while both clients are open: the old Swift writer
-  does not participate in the Qt file lock, so this is not a shared-editing protocol.
+  Use a separate working copy for experimentation; concurrent writers are not a
+  supported shared-editing protocol.
 - `--mission-library /absolute/path/to/missions.json` opens a chosen library with
   automatic monitor checks paused. The Automations page can explicitly resume them.
 - **Satellite → Import result.json:** choose a completed optical or SAR job manifest.
@@ -180,9 +179,9 @@ so installed-package validation does not depend on a source checkout.
 
 Core tests cover mission validation/round trips, extension fields, conflicts,
 Unicode, timestamps, refinement masks, invalid product paths/CRS, scientific versus
-preview dimensions, exports and cancellation cleanup. The Qt-authored generated
-mission fixture is covered by the Swift compatibility tests; their current execution
-remains a Mac acceptance gate. The expanded suites also cover jobs/downloads,
+preview dimensions, exports and cancellation cleanup. The generated mission
+round-trip fixture preserves the document format and is exported for external
+comparison. The expanded suites also cover jobs/downloads,
 dossier/link/pin/review/task persistence and stale-dialog isolation,
  timeline/monitor persistence, source parsers/orbits, credential boundaries, map
 documents, daily caches and CPU inference admission.

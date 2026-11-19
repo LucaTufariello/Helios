@@ -400,9 +400,8 @@ int main(int argc, char **argv) {
         loadPickView(pickViews[view]);
         int point = 0;
         for (const QPointF pixel :
-             {QPointF(map.width() * .5, map.height() * .5), QPointF(0, 0),
-              QPointF(map.width(), 0), QPointF(0, map.height()),
-              QPointF(map.width(), map.height())}) {
+             {QPointF(map.width() * .5, map.height() * .5), QPointF(0, 0), QPointF(map.width(), 0),
+              QPointF(0, map.height()), QPointF(map.width(), map.height())}) {
           const auto hit = map.pick(pixel);
           require(hit && hit->coordinate.valid() && std::isfinite(hit->height) && hit->terrain &&
                       !hit->scene && std::abs(hit->height - flatElevation) < .75,
@@ -413,10 +412,10 @@ int main(int argc, char **argv) {
           require(projected && QLineF(*projected, pixel).length() < .1,
                   "Picked boundary coordinate projects back to its native widget position");
           boundaryPicks.append(QJsonObject{{"view", view + 1},
-                                            {"pixelX", pixel.x()},
-                                            {"pixelY", pixel.y()},
-                                            {"coordinate", hit->coordinate.json()},
-                                            {"heightMetres", hit->height}});
+                                           {"pixelX", pixel.x()},
+                                           {"pixelY", pixel.y()},
+                                           {"coordinate", hit->coordinate.json()},
+                                           {"heightMetres", hit->height}});
         }
       }
       report["generatedFlatTerrainBoundaryPicks"] = boundaryPicks;
@@ -446,16 +445,14 @@ int main(int argc, char **argv) {
       require(transparent && transparent->terrain &&
                   std::abs(transparent->height - flatElevation) < .15,
               "Transparent product pixels retain the underlying 1234 m terrain pick");
-      require(opaque && opaque->terrain &&
-                  std::abs(opaque->height - (flatElevation + 2)) < .15,
+      require(opaque && opaque->terrain && std::abs(opaque->height - (flatElevation + 2)) < .15,
               "Opaque product pixels retain the lifted 1236 m product-surface pick");
       require(outside && outside->terrain && std::abs(outside->height - flatElevation) < .15,
               "Outside product bounds the 1234 m terrain remains pickable");
       map.setBlend(0);
       QTest::qWait(80);
       const auto invisible = pickCoordinate({0, .0015});
-      require(invisible && invisible->terrain &&
-                  std::abs(invisible->height - flatElevation) < .15,
+      require(invisible && invisible->terrain && std::abs(invisible->height - flatElevation) < .15,
               "Zero-opacity product pixels retain the underlying 1234 m terrain pick");
       map.setOverlays({});
       QTest::qWait(80);

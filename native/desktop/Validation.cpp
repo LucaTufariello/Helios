@@ -364,7 +364,7 @@ int runValidation(QApplication &app, const QString &output, bool live, const QSt
         window.missions().save(file);
         exportProductFile(file, output + "/qt-mission-roundtrip.json");
         require(QFileInfo::exists(output + "/qt-mission-roundtrip.json"),
-                "Qt-authored mission fixture retained for Swift compatibility checks");
+                "Qt-authored mission fixture retained for document compatibility checks");
         const auto tileset =
             qa::sceneFixture(profile.path() + "/scene-fixture", "roof.glb", 4, "OPAQUE", 1, true);
         require(window.map().loadTileset(QUrl::fromLocalFile(tileset)),

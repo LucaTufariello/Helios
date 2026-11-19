@@ -2,13 +2,6 @@
 *.log
 output/
 
-# Native macOS build products and downloaded engine dependencies.
-native/macos/.build/
-native/macos/.swiftpm/
-native/shared/.build/
-native/shared/.swiftpm/
-native/macos/Sources/CScene/include/HeliosSceneBuild.h
-
 # Local Python environments and bytecode.
 .venv/
 __pycache__/

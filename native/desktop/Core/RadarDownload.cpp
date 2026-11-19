@@ -147,7 +147,9 @@ bool RadarDownload::start(const RadarScene &scene, const RadarQuery &query, cons
           "This acquisition already exists. Use its saved archive; it was not replaced.");
     QStorageInfo storage(directory);
     storage.refresh();
-    if (storage.isReadOnly() ||
+    // macOS reports the sealed system volume at "/" as read-only even for
+    // paths on the writable data volume, so probe the target directory itself.
+    if (!QFileInfo(directory).isWritable() ||
         (storage.bytesAvailable() >= 0 &&
          storage.bytesAvailable() <
              std::max(2ll * 1024 * 1024 * 1024, scene.contentLength + 1024 * 1024 * 1024)))

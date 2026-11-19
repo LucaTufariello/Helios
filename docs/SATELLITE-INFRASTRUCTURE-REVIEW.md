@@ -1,6 +1,6 @@
 # Satellite analysis and infrastructure change review
 
-Helios's **Satellite** section contains **Library**, **SAR**, **Optical** and **Site review**. Copernicus search/download, SAFE import, SNAP processing, saved SAR results, engine setup and exports live in SAR. The map is the shared SwiftUI/AppKit/Metal globe, with Mission Control available in a separate native window.
+Helios's **Satellite** section contains **Library**, **SAR**, **Optical** and **Site review**. Copernicus search/download, SAFE import, SNAP processing, saved SAR results, engine setup and exports live in SAR. The map is the shared native Qt globe, with Mission Control available in a separate window.
 
 This is an initial **human review workflow for site-scale radar changes**. It does not classify construction, materials, vehicles, structural damage or operating status, and it does not certify radiometric/geographic accuracy. These limits remain visible in the interface and exported evidence.
 
@@ -19,14 +19,13 @@ This is an initial **human review workflow for site-scale radar changes**. It do
 
 ## Processing architecture
 
-- `Sources/HeliosCore/InfrastructureReview.swift`: site, options, result, provenance, candidate decisions, pair compatibility and bounded atomic JSON storage.
-- `Sources/HeliosCore/SarProcessor.swift`: the existing cancellation/progress-safe process adapter now exposes `compare(request:destination:progress:)`. Command syntax stays behind this boundary; arguments are never shell interpolated.
-- `Sources/HeliosMac/SatelliteWorkspace.swift`: native saved-site/review state, background tasks, recovery, notes and exports.
-- `Sources/HeliosMac/SatelliteViews.swift`: satellite navigation and infrastructure review controls using the existing native UI style.
-- `Resources/SAR/change_review.py`: modular pair admission, grid admission, local-power averaging, log-ratio calculation, connected-patch extraction and exports. The existing isolated `sentinel1.py` worker dispatches the new `compare` operation.
-- Existing workspace navigation/tools and the Metal overlay wrapper are adjusted to host the dedicated section. All original SAR processing jobs/downloads stay in their existing locations.
+- `Core/Infrastructure.{h,cpp}`: site, options, result, provenance, candidate decisions, pair compatibility and bounded atomic JSON storage.
+- `Core/ScientificQueue.{h,cpp}`, `Core/WorkerJob.{h,cpp}`: cancellation/progress-safe process adapter exposes the `compare` operation. Command syntax stays behind this boundary; arguments are never shell interpolated.
+- `UI/ReviewWindow.cpp`, `UI/SatelliteWindow.cpp`: saved-site/review state, background tasks, recovery, notes and exports.
+- `native/workers/SAR/change_review.py`: modular pair admission, grid admission, local-power averaging, log-ratio calculation, connected-patch extraction and exports. The isolated `sentinel1.py` worker dispatches the `compare` operation.
+- Existing navigation/tools and the native raster overlay host the dedicated section. All original SAR processing jobs/downloads stay in their existing locations.
 
-External dependencies are unchanged: **ESA SNAP GPT / Microwave Toolbox** for creating calibrated/geocoded input products, plus the existing Apple Silicon **Rasterio/GDAL, NumPy and Pillow** environment for comparison. Comparing two already processed acquisitions does not rerun SNAP or redownload a scene. No paid detector/API or Python GUI bridge is required.
+External dependencies are unchanged: **ESA SNAP GPT / Microwave Toolbox** for creating calibrated/geocoded input products, plus a **Rasterio/GDAL, NumPy and Pillow** environment for comparison. Comparing two already processed acquisitions does not rerun SNAP or redownload a scene. No paid detector/API or Python GUI bridge is required.
 
 ## Measurement stages and interpretation
 
@@ -67,17 +66,16 @@ JSON reads/writes are bounded and atomic. Unreadable prior site/notes documents 
 
 ## Validation and remaining work
 
-`native/macos/test-sar.sh` includes generated small raster tests for a known power ratio, no change, decreases, minimum patch support, invalid pixels, linear-before-log averaging, geometry/date/settings gates, shifted grids, coverage rejection, path traversal/symlinks, partial-output cleanup and the actual isolated worker CLI. Swift tests cover compatibility, bounded site/notes persistence, corrupt-document preservation, output admission and decoding/round-tripping the worker's scientific provenance. Generated fixtures are labeled and do not establish real-product accuracy.
+`make test-raster` includes generated small raster tests for a known power ratio, no change, decreases, minimum patch support, invalid pixels, linear-before-log averaging, geometry/date/settings gates, shifted grids, coverage rejection, path traversal/symlinks, partial-output cleanup and the actual isolated worker CLI. Desktop tests cover compatibility, bounded site/notes persistence, corrupt-document preservation, output admission and decoding/round-tripping the worker's scientific provenance. Generated fixtures are labeled and do not establish real-product accuracy.
 
-Validation on 2026-10-04: 119 native tests passed with 9 optional checks skipped; all 37 SAR tests passed; 3,899 legacy tests passed with one skip. The arm64 release build, strict signature verification, formatting and module-boundary checks passed. Native UI checks used an isolated, explicitly generated profile and covered site creation/drawing, acquisition comparison, before/after/change switching, candidate location, saved decisions/notes/citations, restart persistence, all three user-facing exports and optical-to-radar navigation. The exported scientific TIFF was verified as Float32/EPSG:4326 with dB units and nodata; the evidence export retained notes and provenance without private absolute paths or a worker PID. These checks establish implementation behavior, not accuracy on real infrastructure acquisitions.
+Earlier validation on 2026-10-04 (historical): 119 native tests passed with 9 optional checks skipped; all 37 SAR tests passed; 3,899 legacy tests passed with one skip. The arm64 release build, strict signature verification, formatting and module-boundary checks passed. Native UI checks used an isolated, explicitly generated profile and covered site creation/drawing, acquisition comparison, before/after/change switching, candidate location, saved decisions/notes/citations, restart persistence, all three user-facing exports and optical-to-radar navigation. The exported scientific TIFF was verified as Float32/EPSG:4326 with dB units and nodata; the evidence export retained notes and provenance without private absolute paths or a worker PID. These checks establish implementation behavior, not accuracy on real infrastructure acquisitions.
 
 For an isolated native UI profile, run:
 
 ```sh
 "$HOME/Library/Application Support/Helios/SAR/runtime/bin/python3" -B \
-  native/macos/Validation/create_change_review_fixture.py --output /tmp/helios-review-qa
-HELIOS_VALIDATION_ROOT=/tmp/helios-review-qa \
-  output/native/Helios.app/Contents/MacOS/HeliosMac
+  native/workers/validation/create_change_review_fixture.py --output /tmp/helios-review-qa
+./output/desktop/build/bin/HeliosDesktop --profile /tmp/helios-review-qa
 ```
 
 The output directory must be new. The satellite sidebar explicitly identifies the developer profile/generated QA data. Fixture jobs never enter the user's normal library. This flag is only an explicit developer override; the application does not automatically load example acquisitions or findings. Stop the validation instance and remove its temporary profile after testing.

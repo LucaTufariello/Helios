@@ -1,8 +1,8 @@
 # Native map tools core
 
-`Core/MapTools.{h,cpp}` ports the existing Photon lookup, public OSRM directions,
-local annotation documents, Swift version 1 workspaces/share links and approximate
-solar terminator. The native UI and map renderer consume this core; the network
+`Core/MapTools.{h,cpp}` implements Photon lookup, public OSRM directions, local
+annotation documents, version 1 workspaces/share links and the approximate solar
+terminator. The native UI and map renderer consume this core; the network
 and document code has no graphics dependency.
 
 `MapLookup` exposes `search(query)`, `route(start,end,mode)`, `cancel()`, `busy()`,
@@ -27,7 +27,7 @@ a provider estimate, not observed movement or a navigation guarantee. Directions
 do not establish access rights, road conditions or reliable arrival times.
 
 `AnnotationLibrary` explicitly loads an array from a user document, then offers
-atomic `replace/add/update/remove` through `JsonFile`. Limits match the Swift
+atomic `replace/add/update/remove` through `JsonFile`. Limits match the stored
 schema: at most 500 unique UUIDs, nonempty titles up to 256 UTF-16 code units,
 1–2,000 valid geographic points, at least three points for a closed shape and a
 finite Foundation-epoch `createdAt`. Unknown entry fields survive edits to known
@@ -36,7 +36,7 @@ publication protect existing bytes. A corrupt library disables replacement until
 the user recovers it. Removing an annotation does not cascade into mission evidence
 snapshots. An annotation is user-authored geometry, not a provider measurement.
 
-`validatedWorkspace` checks known Swift v1 fields and retains unknown fields for
+`validatedWorkspace` checks known version 1 fields and retains unknown fields for
 local JSON I/O. It validates camera, layers/providers, display choices, opacity,
 annotations and tracked identifier; old removed `neighborhoods` layers/tracking
 are discarded, and absent legacy terrain defaults to true. If an active daily
@@ -45,14 +45,14 @@ before any UI/library mutation. `loadWorkspace/saveWorkspace` perform bounded
 validated import/export without replacing corrupt existing documents.
 
 `cameraShareURL/cameraFromShareURL` retain `helios://view` latitude, longitude,
-altitude, heading and tilt. `workspaceShareURL/workspaceFromShareURL` retain Swift's
+altitude, heading and tilt. `workspaceShareURL/workspaceFromShareURL` retain the
 base64 JSON `helios://workspace?state=…` contract. Links reject duplicate or malformed
 fields and size overruns. Shared workspaces exclude annotations and unknown root
 or camera fields; provider credentials are never read or inserted. Incoming shared
 links with annotation content are rejected. Imported local unknown fields stay
 local, so preserving future schema fields cannot silently disclose them in links.
 
-`SolarState` reproduces the Swift approximate seasonal declination and UTC
+`SolarState` reproduces the approximate seasonal declination and UTC
 subsolar longitude, with solar elevation and a 721-point orthogonal great-circle
 terminator. It is an approximate day/night display, not an astronomical ephemeris,
 measured illumination or acquisition-time correction.

@@ -59,9 +59,13 @@ CredentialResult linuxCredential(const QString &account, const QString *value, b
                           static_cast<const char *>(nullptr));
     if (secret) {
       result.found = true;
-      const auto length=strnlen(secret,1025);
-      if (length>1024) { result.ok=false; result.found=false; result.error="Saved provider key exceeds the supported limit; re-enter it."; }
-      else result.value = QString::fromUtf8(secret,qsizetype(length));
+      const auto length = strnlen(secret, 1025);
+      if (length > 1024) {
+        result.ok = false;
+        result.found = false;
+        result.error = "Saved provider key exceeds the supported limit; re-enter it.";
+      } else
+        result.value = QString::fromUtf8(secret, qsizetype(length));
       release(secret);
     }
   }

@@ -12,6 +12,31 @@ def command(*arguments: str) -> str:
     return subprocess.check_output(arguments, text=True).strip()
 
 
+def spdx_licenses(path: Path, formula: str) -> dict[str, str]:
+    """Read declared license identifiers from a Homebrew SPDX SBOM."""
+    try:
+        document = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+    names = {formula, formula.split("@", 1)[0], formula.split("/")[-1]}
+    licenses = {}
+    for package in document.get("packages", []):
+        name = str(package.get("name", "")).split(" ")[0]
+        if name in names:
+            for key in ("licenseDeclared", "licenseConcluded"):
+                declared = package.get(key)
+                if declared and declared != "NOASSERTION":
+                    licenses[name] = declared
+                    break
+    return licenses
+
+
+def install_id(path: Path) -> str | None:
+    """Return a dylib/framework's own install name, which otool -L lists first."""
+    lines = command("otool", "-D", str(path)).splitlines()
+    return lines[1].strip() if len(lines) > 1 else None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", required=True, type=Path)
@@ -33,12 +58,19 @@ def main() -> None:
         destination = target / formula
         destination.mkdir(parents=True, exist_ok=True)
         files = []
+        spdx = {}
         for path in prefix.iterdir():
-            if path.name.upper().startswith(("LICENSE", "COPYING", "NOTICE")):
-                if path.is_dir():
-                    shutil.copytree(path, destination / path.name, dirs_exist_ok=True)
-                elif path.is_file():
-                    shutil.copy2(path, destination / path.name)
+            if not path.is_file():
+                continue
+            upper = path.name.upper()
+            if upper == "SBOM.SPDX.JSON":
+                shutil.copy2(path, destination / path.name)
+                files.append(path.name)
+                spdx = spdx_licenses(path, formula)
+            elif upper.startswith(("LICENSE", "COPYING", "NOTICE", "COPYRIGHT", "UNLICENSE")) \
+                    or upper.endswith(("-LICENSE.TXT", "-LICENSE", ".LICENSE")) \
+                    or upper in ("LGPL-2.1-OR-LATER.TXT", "LGPL-3.0-OR-LATER.TXT"):
+                shutil.copy2(path, destination / path.name)
                 files.append(path.name)
         for path in (prefix / "share/qt/licenses", prefix / "share/licenses"):
             if path.is_dir():
@@ -50,7 +82,8 @@ def main() -> None:
         if recipe.is_file():
             shutil.copy2(recipe, destination / "homebrew-formula.rb")
         records.append({"formula": formula, "installedVersion": prefix.name,
-                        "localNotices": files, "savedFormula": recipe.is_file()})
+                        "localNotices": files, "spdxLicense": spdx,
+                        "savedFormula": recipe.is_file()})
         if not files:
             missing.append(formula)
     linkage = {}
@@ -59,10 +92,15 @@ def main() -> None:
             continue
         if "Mach-O" not in command("file", "-b", str(path)):
             continue
-        links = command("otool", "-L", str(path)).splitlines()[1:]
-        linkage[str(path.relative_to(app))] = [line.strip() for line in links]
+        identity = install_id(path)
+        links = [line.strip() for line in command("otool", "-L", str(path)).splitlines()[1:]]
+        linkage[str(path.relative_to(app))] = links
         for line in links:
-            dependency = line.strip().split(" (", 1)[0]
+            dependency = line.split(" (", 1)[0]
+            # otool -L repeats a dylib's own absolute install name first; that
+            # identifier is not a dependency and loaders use the rewritten paths.
+            if dependency == identity:
+                continue
             if dependency.startswith("/") and not dependency.startswith(("/System/Library/", "/usr/lib/")):
                 raise ValueError("Undeployed absolute dependency: " + dependency)
     (target / "inventory.json").write_text(json.dumps({"roots": roots, "formulas": records,

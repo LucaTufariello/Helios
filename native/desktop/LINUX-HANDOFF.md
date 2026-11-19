@@ -2,8 +2,8 @@
 
 Updated 16 October 2026. The C++20/Qt client now implements the migration's map,
 source, processing, mission and local CPU-assistance workflows. It builds and runs
-on Omarchy/Wayland with actual GTX 1070 Vulkan rendering. The functional Swift
-macOS client remains the reference until the remaining acceptance gates pass.
+on Omarchy/Wayland with actual GTX 1070 Vulkan rendering. The Swift macOS
+client has been removed; the remaining platform gates are listed below.
 
 Start with [MIGRATION-HANDOFF.md](../../MIGRATION-HANDOFF.md) and the current
 [migration status](../../docs/MIGRATION-STATUS.md). The latter distinguishes
@@ -96,9 +96,9 @@ Optional provider keys require a working Linux Secret Service/libsecret store.
    release audit.
 
 Mission documents can be opened as a separate copy. Source raster paths must be
-re-established on Linux; evidence links do not transfer image bytes. Swift and
-Qt file locks do not form a joint editing protocol, so use separate working
-copies while both clients are open. Imported references can be forgotten without
+re-established on Linux; evidence links do not transfer image bytes. Concurrent
+writers are not a joint editing protocol, so use a separate working copy for
+experimentation while the application is open. Imported references can be forgotten without
 source deletion; only validated owned jobs support the separate OS Trash action.
 Use `--mission-library /absolute/path/to/missions.json` to open a library with
 automatic monitor checks paused; resume them explicitly in the Monitors page.
@@ -111,8 +111,8 @@ map documents and local CPU inference. Their retained Linux evidence is listed i
 migration status. No claim of complete cross-platform or scientific parity follows
 from these selected checks.
 
-Run fresh Apple Silicon Qt build/bundle/Keychain/Metal and Swift compatibility
-regressions after the shared-source extraction. CI jobs are configured, but hosted
+Run fresh Apple Silicon Qt build/bundle/Keychain/Metal regressions after the
+shared-source extraction. CI jobs are configured, but hosted
 execution has not been claimed. The historical Mac slice is not acceptance of the
 expanded client.
 

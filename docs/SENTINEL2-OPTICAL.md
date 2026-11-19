@@ -25,11 +25,11 @@ Georeferencing comes from the source GeoTIFF's projected CRS and Rasterio/GDAL's
 
 ## Implementation and storage
 
-- `HeliosCore/SentinelOptical.swift`: bounded query/catalogue parsing, scene admission, trusted asset validation and typed request/result metadata.
-- `HeliosCore/SarProcessor.swift`: the existing isolated/cancellable command adapter exposes `renderOptical` without putting command syntax in the UI.
-- `HeliosMac/OpticalWorkspace.swift`: native search/load state, saved images, interrupted-job recovery, preview controls and atomic exports.
-- `HeliosMac/Resources/Optical/sentinel2.py`: request validation, bounded COG window rendering, alpha/nodata handling, geocoding and exports.
-- Satellite views, shared region state and the existing Metal raster overlay are reused. SAR calibration/comparison algorithms are unchanged.
+- `Core/OpticalCatalog.{h,cpp}`: bounded query/catalogue parsing, scene admission, trusted asset validation and typed request/result metadata.
+- `Core/ScientificQueue.{h,cpp}`, `Core/WorkerJob.{h,cpp}`: the isolated/cancellable command adapter exposes the optical render operation without putting command syntax in the UI.
+- `UI/ProcessingWindow.cpp`, `UI/SatelliteWindow.cpp`: search/load state, saved images, interrupted-job recovery, preview controls and atomic exports.
+- `native/workers/Optical/sentinel2.py`, `optical_sources.py`: request validation, bounded COG window rendering, alpha/nodata handling, geocoding and exports.
+- Satellite views, shared region state and the native raster overlay are reused. SAR calibration/comparison algorithms are unchanged.
 
 ```text
 ~/Library/Application Support/Helios/Satellite/optical/<UUID>/
@@ -47,7 +47,7 @@ Temporary UUID request files are removed after completion/failure/cancellation. 
 
 ## Checks
 
-Run `native/macos/test.sh`, `native/macos/test-sar.sh` and `make format-check`. New native tests cover UTC/cloud queries, real public catalogue metadata, URL/size admission, typed result provenance and the Swift-to-Python failure/cleanup boundary. Generated RGB tests cover source channel order, valid CRS/bounds, nodata transparency, region clipping, large-source downsampling, invalid/no-coverage rejection, request bounds and failure cleanup. Fixtures are testing inputs, not fabricated operational acquisitions.
+Run `make test-desktop`, `make test-raster` and `make format-check`. Tests cover UTC/cloud queries, real public catalogue metadata, URL/size admission, typed result provenance and the worker failure/cleanup boundary. Generated RGB tests cover source channel order, valid CRS/bounds, nodata transparency, region clipping, large-source downsampling, invalid/no-coverage rejection, request bounds and failure cleanup. Fixtures are testing inputs, not fabricated operational acquisitions.
 
 A real live request on October 4 retrieved `S2C_T32TNR_20260927T102053_L2A` over central Milan, rendered it using its actual projected source CRS, and exported EPSG:4326 RGBA with the recorded acquisition date. Live service availability is separate from deterministic test results.
 
